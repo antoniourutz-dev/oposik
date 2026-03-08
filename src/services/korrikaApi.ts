@@ -196,12 +196,7 @@ type RegisterPlayerTarget = {
   payloadFactory: (input: RegisterPlayerInput) => Record<string, string>;
 };
 
-const PLAYER_SOURCES: PlayersSource[] = [
-  { table: 'korrika_jokalariak', columns: ['name', 'username', 'email', 'code'] },
-  { table: 'players', columns: ['name', 'username', 'email'] },
-  { table: 'profiles', columns: ['username', 'full_name', 'email'] },
-  { table: 'usuarios', columns: ['nombre', 'username', 'email', 'codigo'] }
-];
+const PLAYER_SOURCES: PlayersSource[] = [];
 
 const PLAYER_REGISTER_TARGETS: RegisterPlayerTarget[] = [
   {
