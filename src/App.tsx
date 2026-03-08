@@ -390,8 +390,8 @@ const App: React.FC = () => {
   const needsUsernameSetup = !!(user && !loadingAccount && accountIdentity && usernameHistory.length === 0);
 
   return (
-    <div className={`min-h-[100dvh] w-full flex flex-col bg-gray-50 text-gray-800 safe-pt safe-pb safe-pl safe-pr ${gameState !== GameState.AUTH ? 'overflow-x-hidden overflow-y-hidden' : 'overflow-auto'}`}>
-      <header className="sticky top-0 w-full korrika-bg-gradient px-3 py-2 sm:px-4 sm:py-3 text-white shadow-md flex-shrink-0 z-50">
+    <div className={`fixed inset-0 w-full flex flex-col bg-gray-50 text-gray-800 safe-pl safe-pr ${gameState !== GameState.AUTH ? 'overflow-hidden' : 'overflow-auto'}`}>
+      <header className="w-full flex-shrink-0 korrika-bg-gradient px-3 pb-2 sm:px-4 sm:pb-3 pt-[max(env(safe-area-inset-top),0.5rem)] text-white shadow-md z-50">
         <div className="w-full max-w-5xl mx-auto relative flex justify-center items-center min-h-[2.5rem] sm:min-h-[3rem]">
           {user && gameState !== GameState.AUTH && (
             <button
