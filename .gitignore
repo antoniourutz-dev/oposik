@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dev-dist/
+.npm-cache/
+.vscode/
+*.log
+.env.local
+.env.supabase
+.devserver.pid

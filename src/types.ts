@@ -32,7 +32,7 @@ export interface DailyProgress {
   completed: boolean;
   date: string;
   answers: UserAnswer[];
-  players?: Player[]; // Store competition results if any
+  players?: Player[]; // Lehiaketako emaitzak gordetzeko
 }
 
 export enum GameState {
@@ -43,7 +43,7 @@ export enum GameState {
   QUIZ = 'QUIZ',
   TURN_TRANSITION = 'TURN_TRANSITION',
   RANKING = 'RANKING',
-  RESULTS = 'RESULTS', // Solo results
+  RESULTS = 'RESULTS', // Bakarkako emaitzak
   SUPERVISOR = 'SUPERVISOR'
 }
 
