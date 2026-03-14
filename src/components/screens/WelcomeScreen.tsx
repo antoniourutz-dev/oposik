@@ -7,7 +7,7 @@ type WelcomeScreenProps = {
 };
 
 const MESSAGE_LINES = [
-  'Ongi etorri Korrikaren inguruko jolas xume honetara',
+  'ONGI ETORRI! KORRIKAREN INGURUKO JOLAS XUME HONETARA',
   'Eutsi hamaika egunez!',
   'Parte hartu, ikasi eta gozatu.'
 ];
