@@ -14,6 +14,8 @@ export default defineConfig({
     tailwindcss(),
     react(),
     VitePWA({
+      // Temporary recovery mode: replace stale deployed service workers and clear old caches.
+      selfDestroying: true,
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       workbox: {
