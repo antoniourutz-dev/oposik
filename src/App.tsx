@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from './supabase';
+import { missingSupabaseEnvVars, supabase, supabaseConfigError } from './supabase';
 import { GameState, Question, DailyProgress, UserAnswer, Player, PlayMode, QuizData } from './types';
 import AuthScreen from './components/screens/AuthScreen';
 import BottomNav from './components/BottomNav';
+import ConfigurationErrorScreen from './components/screens/ConfigurationErrorScreen';
 
 const CountdownScreen = React.lazy(() => import('./components/CountdownScreen'));
 const QuizScreen = React.lazy(() => import('./components/QuizScreen'));
@@ -112,6 +113,10 @@ import { useAppProfiler } from './hooks/useAppProfiler';
 import { useShallow } from 'zustand/react/shallow';
 
 const App: React.FC = () => {
+  if (supabaseConfigError) {
+    return <ConfigurationErrorScreen missingVars={missingSupabaseEnvVars} />;
+  }
+
   const {
     user, loadingAuth, accountIdentity, usernameHistory, pendingUsername, loadingAccount,
     usernameChangeError, usernameChangeNotice, gameState, playMode, dayIndex,
