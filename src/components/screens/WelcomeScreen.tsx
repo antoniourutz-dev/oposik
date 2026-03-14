@@ -101,15 +101,18 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = React.memo(({ onContinue }) 
 
               <motion.button
                 variants={itemVariants}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.985 }}
                 type="button"
                 onClick={onContinue}
-                className="group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.6rem] bg-slate-900 px-6 py-4 text-sm font-black uppercase tracking-[0.22em] text-white shadow-[0_18px_45px_-22px_rgba(15,23,42,0.8)] transition-all hover:bg-slate-800 sm:w-auto sm:min-w-[16rem]"
+                className="group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-[1.6rem] border border-white/40 bg-[linear-gradient(135deg,#ec4899_0%,#f43f5e_42%,#f97316_100%)] px-6 py-4 text-sm font-black uppercase tracking-[0.22em] text-white shadow-[0_24px_60px_-22px_rgba(244,63,94,0.6)] transition-all sm:w-auto sm:min-w-[17rem]"
               >
-                <div className="absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.18),transparent)] translate-x-[-120%] group-hover:translate-x-[120%] transition-transform duration-700" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.32),transparent_42%)] opacity-80" />
+                <div className="absolute inset-x-0 top-0 h-px bg-white/50" />
+                <div className="absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.3),transparent)] translate-x-[-120%] group-hover:translate-x-[120%] transition-transform duration-700" />
+                <div className="absolute -left-6 top-1/2 h-20 w-20 -translate-y-1/2 rounded-full bg-white/15 blur-2xl transition-transform duration-500 group-hover:scale-125" />
                 <span className="relative z-10">Hasi erronka</span>
-                <ArrowRight className="relative z-10 transition-transform duration-300 group-hover:translate-x-1" size={18} />
+                <ArrowRight className="relative z-10 transition-transform duration-300 group-hover:translate-x-1.5" size={18} />
               </motion.button>
             </div>
 
