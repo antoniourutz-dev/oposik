@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
-import { missingSupabaseEnvVars, supabase, supabaseConfigError } from './supabase';
+import { getSafeSupabaseSession, missingSupabaseEnvVars, supabase, supabaseConfigError } from './supabase';
 import { GameState, Question, DailyProgress, UserAnswer, Player, PlayMode, QuizData } from './types';
 import AuthScreen from './components/screens/AuthScreen';
 import BottomNav from './components/BottomNav';
@@ -322,7 +322,7 @@ const App: React.FC = () => {
 
     const checkUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = await getSafeSupabaseSession();
         if (session?.user) {
           setUser(session.user);
           setGameState(GameState.HOME);

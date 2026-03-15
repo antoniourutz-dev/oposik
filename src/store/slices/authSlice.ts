@@ -1,6 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { StateCreator } from 'zustand';
-import { supabase } from '../../supabase';
+import { getSafeSupabaseSession } from '../../supabase';
 import { AccountIdentity, UsernameHistoryEntry, getMyAccountIdentity, getMyUsernameHistory } from '../../services/accountApi';
 
 export interface AuthSlice {
@@ -43,24 +43,22 @@ export const createAuthSlice: StateCreator<AuthSlice, [], [], AuthSlice> = (set,
     setUsernameChangeNotice: (usernameChangeNotice) => set({ usernameChangeNotice }),
 
     fetchAccountIdentity: async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
-            set({ accountIdentity: null, usernameHistory: [], pendingUsername: '' });
-            return;
-        }
-
-        const sessionUserId = session.user.id;
-
         try {
+            const session = await getSafeSupabaseSession();
+            if (!session?.user) {
+                set({ accountIdentity: null, usernameHistory: [], pendingUsername: '' });
+                return;
+            }
+
+            const sessionUserId = session.user.id;
+
             set({ loadingAccount: true });
             const [identity, history] = await Promise.all([
                 getMyAccountIdentity(),
                 getMyUsernameHistory(8)
             ]);
 
-            const {
-                data: { session: latestSession }
-            } = await supabase.auth.getSession();
+            const latestSession = await getSafeSupabaseSession();
 
             if (latestSession?.user?.id !== sessionUserId) {
                 return;
