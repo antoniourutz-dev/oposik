@@ -5,6 +5,7 @@ import { readLocalCache, writeLocalCache, removeLocalCache } from '../../utils/l
 import {
     PLAYERS_CACHE_KEY, PLAYERS_CACHE_TTL_MS,
     EDUKIAK_CACHE_KEY, EDUKIAK_CACHE_TTL_MS,
+    GAURKO_ISTORIAK_CACHE_KEY,
     QUIZ_CACHE_KEY, QUIZ_CACHE_TTL_MS,
     START_DATE_CACHE_KEY, START_DATE_CACHE_TTL_MS,
     GLOBAL_CONFIG_TABLE, START_DATE_CONFIG_KEY, DEFAULT_CHALLENGE_START_DATE,
@@ -17,6 +18,8 @@ export interface GameDataSlice {
     loadingData: boolean;
     edukiak: KorrikaEdukia[];
     loadingEdukiak: boolean;
+    gaurkoIstoriak: KorrikaEdukia[];
+    loadingGaurkoIstoriak: boolean;
     registeredPlayers: string[];
     challengeStartDate: string;
     adminStartDateInput: string;
@@ -26,11 +29,14 @@ export interface GameDataSlice {
     setRegisteredPlayers: (players: string[]) => void;
     setEdukiak: (edukiak: KorrikaEdukia[]) => void;
     setLoadingEdukiak: (loading: boolean) => void;
+    setGaurkoIstoriak: (gaurkoIstoriak: KorrikaEdukia[]) => void;
+    setLoadingGaurkoIstoriak: (loading: boolean) => void;
     setChallengeStartDate: (date: string) => void;
     setAdminStartDateInput: (date: string) => void;
 
     fetchRegisteredPlayers: (force?: boolean) => Promise<void>;
     fetchEdukiak: (force?: boolean) => Promise<void>;
+    fetchGaurkoIstoriak: (force?: boolean) => Promise<void>;
     fetchQuizData: (force?: boolean) => Promise<void>;
     fetchGlobalStartDate: (force?: boolean) => Promise<void>;
 }
@@ -40,6 +46,8 @@ export const createGameDataSlice: StateCreator<GameDataSlice, [], [], GameDataSl
     loadingData: true,
     edukiak: [],
     loadingEdukiak: false,
+    gaurkoIstoriak: [],
+    loadingGaurkoIstoriak: false,
     registeredPlayers: [],
     challengeStartDate: DEFAULT_CHALLENGE_START_DATE,
     adminStartDateInput: DEFAULT_CHALLENGE_START_DATE,
@@ -49,6 +57,8 @@ export const createGameDataSlice: StateCreator<GameDataSlice, [], [], GameDataSl
     setRegisteredPlayers: (registeredPlayers) => set({ registeredPlayers }),
     setEdukiak: (edukiak) => set({ edukiak }),
     setLoadingEdukiak: (loadingEdukiak) => set({ loadingEdukiak }),
+    setGaurkoIstoriak: (gaurkoIstoriak) => set({ gaurkoIstoriak }),
+    setLoadingGaurkoIstoriak: (loadingGaurkoIstoriak) => set({ loadingGaurkoIstoriak }),
     setChallengeStartDate: (challengeStartDate) => set({ challengeStartDate }),
     setAdminStartDateInput: (adminStartDateInput) => set({ adminStartDateInput }),
 
@@ -105,6 +115,36 @@ export const createGameDataSlice: StateCreator<GameDataSlice, [], [], GameDataSl
 
         try { await reqCache.edukiaRequest; }
         finally { reqCache.edukiaRequest = null; }
+    },
+
+    fetchGaurkoIstoriak: async (force = false) => {
+        if (!force) {
+            const cachedIstoriak = readLocalCache<KorrikaEdukia[]>(GAURKO_ISTORIAK_CACHE_KEY, EDUKIAK_CACHE_TTL_MS);
+            if (cachedIstoriak) {
+                set({ gaurkoIstoriak: cachedIstoriak, loadingGaurkoIstoriak: false });
+                return;
+            }
+        }
+
+        if (reqCache.gaurkoIstoriaRequest) return reqCache.gaurkoIstoriaRequest;
+
+        reqCache.gaurkoIstoriaRequest = (async () => {
+            try {
+                set({ loadingGaurkoIstoriak: true });
+                const mapped = await getEdukiak(DAYS_COUNT, 'gaurko_istoria');
+                set({ gaurkoIstoriak: mapped });
+                writeLocalCache(GAURKO_ISTORIAK_CACHE_KEY, mapped);
+            } catch (err) {
+                console.error('Error fetching korrika_edukiak (gaurko_istoria):', err);
+                set({ gaurkoIstoriak: [] });
+                removeLocalCache(GAURKO_ISTORIAK_CACHE_KEY);
+            } finally {
+                set({ loadingGaurkoIstoriak: false });
+            }
+        })();
+
+        try { await reqCache.gaurkoIstoriaRequest; }
+        finally { reqCache.gaurkoIstoriaRequest = null; }
     },
 
     fetchQuizData: async (force = false) => {

@@ -3,6 +3,7 @@ export const LEGACY_PROGRESS_STORAGE_KEY = 'korrika_quiz_progress_v6';
 export const SIMULATION_STORAGE_KEY = 'korrika_simulation_mode';
 export const QUIZ_CACHE_KEY = 'korrika_quiz_data_v1';
 export const EDUKIAK_CACHE_KEY = 'korrika_edukiak_v1';
+export const GAURKO_ISTORIAK_CACHE_KEY = 'korrika_gaurko_istoriak_v1';
 export const PLAYERS_CACHE_KEY = 'korrika_registered_players_v1';
 export const START_DATE_CACHE_KEY = 'korrika_start_date_v1';
 export const LEADERBOARDS_CACHE_KEY = 'korrika_leaderboards_v2';

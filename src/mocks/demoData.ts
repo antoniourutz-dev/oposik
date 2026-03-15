@@ -170,6 +170,7 @@ export const PROFILING_DEMO_EDUKIAK: KorrikaEdukia[] = [
     {
         day: 1,
         title: 'Profilatzeko saio automatikoa',
-        content: 'Eduki honek apparen errendimendua neurtzeko pantailak automatikoki zeharkatzen ditu.'
+        content: 'Eduki honek apparen errendimendua neurtzeko pantailak automatikoki zeharkatzen ditu.',
+        kind: 'eguneko_edukia'
     }
 ];

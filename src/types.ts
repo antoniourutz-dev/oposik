@@ -38,6 +38,7 @@ export interface DailyProgress {
 export enum GameState {
   AUTH = 'AUTH',
   HOME = 'HOME',
+  TODAY_STORY = 'TODAY_STORY',
   PLAYER_SETUP = 'PLAYER_SETUP',
   COUNTDOWN = 'COUNTDOWN',
   QUIZ = 'QUIZ',

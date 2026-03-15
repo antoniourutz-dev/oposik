@@ -28,10 +28,13 @@ export type UserDailyPlayRow = {
   answers: StoredAnswerRow[];
 };
 
+export type KorrikaEdukiaKind = 'eguneko_edukia' | 'gaurko_istoria';
+
 export type KorrikaEdukia = {
   day: number;
   title: string;
   content: string;
+  kind: KorrikaEdukiaKind;
 };
 
 const parseDayIndex = (raw: unknown) => {
@@ -395,7 +398,10 @@ export const getUserDailyPlays = async (userId: string, daysCount: number) => {
   return [...uniqueByDay.values()].sort((a, b) => a.day_index - b.day_index);
 };
 
-export const getEdukiak = async (daysCount: number) => {
+export const getEdukiak = async (
+  daysCount: number,
+  targetKind: KorrikaEdukiaKind = 'eguneko_edukia'
+) => {
   const { data, error } = await supabase.from('korrika_edukiak').select('*');
   if (error) throw error;
 
@@ -404,13 +410,17 @@ export const getEdukiak = async (daysCount: number) => {
       const dayRaw = row['day'] ?? row['day_index'] ?? row['dia'] ?? row['eguna'];
       const titleRaw = row['title'] ?? row['titulo'] ?? row['izenburua'] ?? row['izenburua_eu'];
       const contentRaw = row['content'] ?? row['text'] ?? row['testua'] ?? row['edukia'] ?? row['body'];
+      const kindRaw = row['kind'] ?? row['type'] ?? row['mota'];
 
       const day = Number(dayRaw);
       const title = String(titleRaw ?? `Eguna ${day}`);
       const content = String(contentRaw ?? '').trim();
+      const rawKind = String(kindRaw ?? 'eguneko_edukia').trim();
+      const kind: KorrikaEdukiaKind =
+        rawKind === 'gaurko_istoria' ? 'gaurko_istoria' : 'eguneko_edukia';
 
-      if (!Number.isFinite(day) || day < 0 || day > daysCount || !content) return null;
-      return { day, title, content };
+      if (!Number.isFinite(day) || day < 0 || day > daysCount || !content || kind !== targetKind) return null;
+      return { day, title, content, kind };
     })
     .filter((item): item is KorrikaEdukia => Boolean(item))
     .sort((a, b) => a.day - b.day);

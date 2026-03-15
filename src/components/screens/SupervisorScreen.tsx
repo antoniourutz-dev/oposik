@@ -20,6 +20,7 @@ import { GameState } from '../../types';
 import {
   DAY_OPTIONS,
   EDUKIAK_CACHE_KEY,
+  GAURKO_ISTORIAK_CACHE_KEY,
   LEADERBOARDS_CACHE_KEY,
   LEGACY_PROGRESS_STORAGE_KEY,
   PLAYERS_CACHE_KEY,
@@ -96,6 +97,7 @@ const SupervisorScreen: React.FC<SupervisorScreenProps> = React.memo((props) => 
       SIMULATION_STORAGE_KEY,
       QUIZ_CACHE_KEY,
       EDUKIAK_CACHE_KEY,
+      GAURKO_ISTORIAK_CACHE_KEY,
       PLAYERS_CACHE_KEY,
       START_DATE_CACHE_KEY,
       LEADERBOARDS_CACHE_KEY

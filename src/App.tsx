@@ -11,6 +11,7 @@ const CountdownScreen = React.lazy(() => import('./components/CountdownScreen'))
 const QuizScreen = React.lazy(() => import('./components/QuizScreen'));
 const HomeScreen = React.lazy(() => import('./components/screens/HomeScreen'));
 const WelcomeScreen = React.lazy(() => import('./components/screens/WelcomeScreen'));
+const TodayStoryScreen = React.lazy(() => import('./components/screens/TodayStoryScreen'));
 const PlayerSetupScreen = React.lazy(() => import('./components/screens/PlayerSetupScreen'));
 const UsernameSetupScreen = React.lazy(() => import('./components/screens/UsernameSetupScreen'));
 const TurnTransitionScreen = React.lazy(() => import('./components/screens/TurnTransitionScreen'));
@@ -121,14 +122,14 @@ const App: React.FC = () => {
     user, loadingAuth, accountIdentity, usernameHistory, pendingUsername, loadingAccount,
     usernameChangeError, usernameChangeNotice, gameState, playMode, dayIndex,
     currentQuestionIdx, challengeStartDate, adminStartDateInput, quizData, loadingData,
-    edukiak, loadingEdukiak, registeredPlayers, progress, userDailyPlays,
+    loadingEdukiak, registeredPlayers, progress, userDailyPlays,
     activeQuestions, players, currentPlayerIdx, tempPlayerNames, leaderboardRows, loadingRanking,
     isSimulationRun, reviewDayIndex, sequentialSimulationActive, sequentialSimulationDay, sequentialSimulationProgress,
     currentTab,
 
     setUser, setGameState, setLoadingAuth, setAccountIdentity, setUsernameHistory,
     setPendingUsername, setLoadingData, setQuizData, setLeaderboardRows,
-    setUserDailyPlays, setRegisteredPlayers, setEdukiak, setLoadingEdukiak,
+    setUserDailyPlays, setRegisteredPlayers, setEdukiak, setLoadingEdukiak, setGaurkoIstoriak, setLoadingGaurkoIstoriak,
     setChallengeStartDate, setAdminStartDateInput, setProgress, setUsernameChangeError,
     setUsernameChangeNotice, setPlayers, setCurrentPlayerIdx, setCurrentQuestionIdx,
     setPlayMode, setDayIndex, setActiveQuestions, setTempPlayerNames,
@@ -137,7 +138,7 @@ const App: React.FC = () => {
 
     dailyPlayLockMessage,
     fetchRegisteredPlayers, fetchLeaderboards, fetchUserDailyPlays,
-    fetchEdukiak, fetchQuizData, fetchGlobalStartDate, fetchAccountIdentity
+    fetchEdukiak, fetchGaurkoIstoriak, fetchQuizData, fetchGlobalStartDate, fetchAccountIdentity
   } = useAppStore(useShallow((state) => ({
     user: state.user,
     loadingAuth: state.loadingAuth,
@@ -155,7 +156,6 @@ const App: React.FC = () => {
     adminStartDateInput: state.adminStartDateInput,
     quizData: state.quizData,
     loadingData: state.loadingData,
-    edukiak: state.edukiak,
     loadingEdukiak: state.loadingEdukiak,
     registeredPlayers: state.registeredPlayers,
     progress: state.progress,
@@ -185,6 +185,8 @@ const App: React.FC = () => {
     setRegisteredPlayers: state.setRegisteredPlayers,
     setEdukiak: state.setEdukiak,
     setLoadingEdukiak: state.setLoadingEdukiak,
+    setGaurkoIstoriak: state.setGaurkoIstoriak,
+    setLoadingGaurkoIstoriak: state.setLoadingGaurkoIstoriak,
     setChallengeStartDate: state.setChallengeStartDate,
     setAdminStartDateInput: state.setAdminStartDateInput,
     setProgress: state.setProgress,
@@ -209,6 +211,7 @@ const App: React.FC = () => {
     fetchLeaderboards: state.fetchLeaderboards,
     fetchUserDailyPlays: state.fetchUserDailyPlays,
     fetchEdukiak: state.fetchEdukiak,
+    fetchGaurkoIstoriak: state.fetchGaurkoIstoriak,
     fetchQuizData: state.fetchQuizData,
     fetchGlobalStartDate: state.fetchGlobalStartDate,
     fetchAccountIdentity: state.fetchAccountIdentity
@@ -254,11 +257,13 @@ const App: React.FC = () => {
     await Promise.all([
       fetchGlobalStartDate(true),
       fetchRegisteredPlayers(true),
+      fetchEdukiak(true),
+      fetchGaurkoIstoriak(true),
       fetchAccountIdentity(),
       fetchLeaderboards(true),
       fetchUserDailyPlays(targetUserId, true)
     ]);
-  }, [fetchGlobalStartDate, fetchRegisteredPlayers, fetchAccountIdentity, fetchLeaderboards, fetchUserDailyPlays]);
+  }, [fetchGlobalStartDate, fetchRegisteredPlayers, fetchEdukiak, fetchGaurkoIstoriak, fetchAccountIdentity, fetchLeaderboards, fetchUserDailyPlays]);
 
   useEffect(() => {
     if (gameState !== GameState.HOME) return;
@@ -304,6 +309,8 @@ const App: React.FC = () => {
       setRegisteredPlayers(['ADMIN', 'JOKALARI DEMO']);
       setEdukiak(PROFILING_DEMO_EDUKIAK);
       setLoadingEdukiak(false);
+      setGaurkoIstoriak(PROFILING_DEMO_EDUKIAK);
+      setLoadingGaurkoIstoriak(false);
       setChallengeStartDate(todayKey);
       setAdminStartDateInput(todayKey);
       setSimulationEnabled(true);
@@ -336,6 +343,7 @@ const App: React.FC = () => {
     fetchGlobalStartDate();
     fetchQuizData();
     fetchEdukiak();
+    fetchGaurkoIstoriak();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION') return;
@@ -580,6 +588,10 @@ const App: React.FC = () => {
                   formatCountdown={formatCountdown}
                   dailyPlayLockMessage={dailyPlayLockMessage}
                   isAdmin={isAdmin}
+                  onOpenGaurkoIstoria={() => {
+                    setCurrentTab('home');
+                    setGameState(GameState.TODAY_STORY);
+                  }}
                   onOpenSupervisor={() => setGameState(GameState.SUPERVISOR)}
                   startSequentialSimulation={startSequentialSimulation}
                   stopSequentialSimulation={stopSequentialSimulation}
@@ -608,6 +620,19 @@ const App: React.FC = () => {
                 <AccountPanel />
               )}
             </div>
+          )}
+
+          {gameState === GameState.TODAY_STORY && (
+            renderWithProfiler(
+              'TodayStoryScreen',
+              <TodayStoryScreen
+                storyDayIndex={currentChallengeDayIndex}
+                onBack={() => {
+                  setCurrentTab('home');
+                  setGameState(GameState.HOME);
+                }}
+              />
+            )
           )}
 
           {showBottomNav && (

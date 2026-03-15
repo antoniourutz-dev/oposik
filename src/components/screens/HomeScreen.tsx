@@ -1,20 +1,27 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Play, Trophy, Lock, Star, Shield } from 'lucide-react';
+import { ArrowRight, BookOpen, Play, Trophy, Lock, Star, Shield } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { useShallow } from 'zustand/react/shallow';
+
+const resolveContentByDay = <T extends { day: number }>(items: T[], contentDayIndex: number) =>
+  items.find((item) => item.day === contentDayIndex) ?? items[contentDayIndex] ?? null;
 
 // ---- SUBCOMPONENTE EDUKIA ---- //
 type EdukiaCardProps = {
   contentDayIndex: number;
+  onOpenGaurkoIstoria: () => void;
 };
 
-const EdukiaCard: React.FC<EdukiaCardProps> = React.memo(({ contentDayIndex }) => {
-  const { edukiak, loadingEdukiak } = useAppStore(useShallow((state) => ({
+const EdukiaCard: React.FC<EdukiaCardProps> = React.memo(({ contentDayIndex, onOpenGaurkoIstoria }) => {
+  const { edukiak, loadingEdukiak, gaurkoIstoriak, loadingGaurkoIstoriak } = useAppStore(useShallow((state) => ({
     edukiak: state.edukiak,
-    loadingEdukiak: state.loadingEdukiak
+    loadingEdukiak: state.loadingEdukiak,
+    gaurkoIstoriak: state.gaurkoIstoriak,
+    loadingGaurkoIstoriak: state.loadingGaurkoIstoriak
   })));
-  const activeEdukia = edukiak[contentDayIndex] || null;
+  const activeEdukia = resolveContentByDay(edukiak, contentDayIndex);
+  const activeStory = resolveContentByDay(gaurkoIstoriak, contentDayIndex);
 
   return (
     <motion.section
@@ -51,6 +58,16 @@ const EdukiaCard: React.FC<EdukiaCardProps> = React.memo(({ contentDayIndex }) =
             <p className="text-sm sm:text-base leading-relaxed text-slate-600 font-medium">
               {activeEdukia.content}
             </p>
+            <button
+              type="button"
+              onClick={onOpenGaurkoIstoria}
+              disabled={loadingGaurkoIstoriak || !activeStory}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-sky-700 transition-all hover:border-sky-300 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <BookOpen size={16} />
+              {loadingGaurkoIstoriak ? 'Kargatzen...' : 'Gaurko istoria'}
+              <ArrowRight size={15} />
+            </button>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-6 text-slate-400">
@@ -79,6 +96,7 @@ type HomeScreenExtractedProps = {
   dailyPlayLockMessage: string | null;
   isAdmin: boolean;
   onOpenSupervisor: () => void;
+  onOpenGaurkoIstoria: () => void;
   startSequentialSimulation: () => void;
   stopSequentialSimulation: () => void;
   saveChallengeStartDate: (setSaving: (saving: boolean) => void) => Promise<void>;
@@ -110,7 +128,10 @@ const HomeScreen: React.FC<HomeScreenExtractedProps> = React.memo((props) => {
 
 
         {/* Tarjeta de Contenido Educativo */}
-        <EdukiaCard contentDayIndex={props.currentChallengeDayIndex} />
+        <EdukiaCard
+          contentDayIndex={props.currentChallengeDayIndex}
+          onOpenGaurkoIstoria={props.onOpenGaurkoIstoria}
+        />
 
         {/* Panel de Botón Jugar Gigante */}
         <motion.section variants={itemVariants} className="w-full">
