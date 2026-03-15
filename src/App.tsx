@@ -407,7 +407,7 @@ const App: React.FC = () => {
 
 
 
-  const handleLogout = async () => {
+  const performLogout = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
     setAccountIdentity(null);
@@ -426,7 +426,40 @@ const App: React.FC = () => {
     setSequentialSimulationActive(false);
     setSequentialSimulationDay(0);
     setSequentialSimulationProgress([]);
-  };
+  }, [
+    setAccountIdentity,
+    setCurrentTab,
+    setDailyPlayLockMessage,
+    setGameState,
+    setPendingUsername,
+    setPlayers,
+    setProgress,
+    setReviewDayIndex,
+    setSequentialSimulationActive,
+    setSequentialSimulationDay,
+    setSequentialSimulationProgress,
+    setShowWelcomeScreen,
+    setUser,
+    setUserDailyPlays,
+    setUsernameChangeError,
+    setUsernameChangeNotice,
+    setUsernameHistory
+  ]);
+
+  const handleGoHome = useCallback(() => {
+    setReviewDayIndex(null);
+    setShowWelcomeScreen(false);
+    setCurrentTab('home');
+    setGameState(GameState.HOME);
+  }, [setCurrentTab, setGameState, setReviewDayIndex]);
+
+  const handleLogout = useCallback(() => {
+    if (!window.confirm('Saioa itxi eta jokotik atera nahi duzu?')) {
+      return;
+    }
+
+    void performLogout();
+  }, [performLogout]);
 
   const {
     currentUsername,
@@ -525,10 +558,10 @@ const App: React.FC = () => {
         <div className="w-full max-w-5xl mx-auto relative flex justify-center items-center min-h-[2.5rem] sm:min-h-[3rem]">
           {user && gameState !== GameState.AUTH && (
             <button
-              onClick={handleLogout}
+              onClick={handleGoHome}
               className="absolute left-0 rounded-full bg-white/20 px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider hover:bg-white/30 transition-colors whitespace-nowrap active:scale-95"
             >
-              Irten
+              Hasiera
             </button>
           )}
 
@@ -542,9 +575,14 @@ const App: React.FC = () => {
           </div>
 
           {user && gameState !== GameState.AUTH && (
-            <div className="absolute right-0 rounded-full bg-white/20 px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider max-w-[35%] truncate text-center">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="absolute right-0 rounded-full bg-white/20 px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider max-w-[35%] truncate text-center hover:bg-white/30 transition-colors active:scale-95"
+              title="Saioa itxi"
+            >
               {userDisplayName}
-            </div>
+            </button>
           )}
         </div>
       </header>
