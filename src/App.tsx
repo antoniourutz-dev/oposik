@@ -589,6 +589,7 @@ const App: React.FC = () => {
                   dailyPlayLockMessage={dailyPlayLockMessage}
                   isAdmin={isAdmin}
                   onOpenGaurkoIstoria={() => {
+                    void fetchGaurkoIstoriak(true);
                     setCurrentTab('home');
                     setGameState(GameState.TODAY_STORY);
                   }}

@@ -133,7 +133,9 @@ export const createGameDataSlice: StateCreator<GameDataSlice, [], [], GameDataSl
                 set({ loadingGaurkoIstoriak: true });
                 const mapped = await getEdukiak(DAYS_COUNT, 'gaurko_istoria');
                 set({ gaurkoIstoriak: mapped });
-                writeLocalCache(GAURKO_ISTORIAK_CACHE_KEY, mapped);
+                mapped.length > 0
+                    ? writeLocalCache(GAURKO_ISTORIAK_CACHE_KEY, mapped)
+                    : removeLocalCache(GAURKO_ISTORIAK_CACHE_KEY);
             } catch (err) {
                 console.error('Error fetching korrika_edukiak (gaurko_istoria):', err);
                 set({ gaurkoIstoriak: [] });

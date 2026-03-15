@@ -30,6 +30,14 @@ export type UserDailyPlayRow = {
 
 export type KorrikaEdukiaKind = 'eguneko_edukia' | 'gaurko_istoria';
 
+const normalizeKorrikaEdukiaKind = (raw: unknown): KorrikaEdukiaKind => {
+  const value = String(raw ?? 'eguneko_edukia').trim().toLowerCase();
+  if (value === 'gaurko_istoria' || value === 'gaurko_istorioa') {
+    return 'gaurko_istoria';
+  }
+  return 'eguneko_edukia';
+};
+
 export type KorrikaEdukia = {
   day: number;
   title: string;
@@ -415,9 +423,7 @@ export const getEdukiak = async (
       const day = Number(dayRaw);
       const title = String(titleRaw ?? `Eguna ${day}`);
       const content = String(contentRaw ?? '').trim();
-      const rawKind = String(kindRaw ?? 'eguneko_edukia').trim();
-      const kind: KorrikaEdukiaKind =
-        rawKind === 'gaurko_istoria' ? 'gaurko_istoria' : 'eguneko_edukia';
+      const kind = normalizeKorrikaEdukiaKind(kindRaw);
 
       if (!Number.isFinite(day) || day < 0 || day > daysCount || !content || kind !== targetKind) return null;
       return { day, title, content, kind };
