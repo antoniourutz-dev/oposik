@@ -14,7 +14,9 @@
     "supabase:db:push": "npx supabase db push",
     "supabase:functions:serve": "npx supabase functions serve --env-file .env.supabase",
     "supabase:functions:deploy:login": "npx supabase functions deploy login-with-username --no-verify-jwt",
-    "supabase:deploy:username-auth": "npm run supabase:db:push && npm run supabase:functions:deploy:login"
+    "supabase:functions:deploy:daily-push": "npx supabase functions deploy daily-push-reminders --no-verify-jwt",
+    "supabase:deploy:username-auth": "npm run supabase:db:push && npm run supabase:functions:deploy:login",
+    "supabase:deploy:push-reminders": "npm run supabase:db:push && npm run supabase:functions:deploy:daily-push"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.48.1",

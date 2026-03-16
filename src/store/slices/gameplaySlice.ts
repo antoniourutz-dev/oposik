@@ -2,7 +2,7 @@ import { StateCreator } from 'zustand';
 import { GameState, PlayMode, Question, Player } from '../../types';
 
 export interface GameplaySlice {
-    currentTab: 'home' | 'history' | 'ranking' | 'profile';
+    currentTab: 'home' | 'history' | 'ranking' | 'edukiak';
     gameState: GameState;
     playMode: PlayMode;
     dayIndex: number;
@@ -14,7 +14,7 @@ export interface GameplaySlice {
     currentPlayerIdx: number;
     tempPlayerNames: string[];
 
-    setCurrentTab: (tab: 'home' | 'history' | 'ranking' | 'profile') => void;
+    setCurrentTab: (tab: 'home' | 'history' | 'ranking' | 'edukiak') => void;
     setGameState: (state: GameState) => void;
     setPlayMode: (mode: PlayMode) => void;
     setDayIndex: (idx: number) => void;

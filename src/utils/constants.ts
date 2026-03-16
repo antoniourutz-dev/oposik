@@ -17,6 +17,10 @@ export const QUESTIONS_PER_DAY = 12;
 export const QUESTIONS_PER_CATEGORY = 2;
 export const SECONDS_PER_QUESTION = 20;
 export const DEFAULT_CHALLENGE_START_DATE = '2026-02-14';
+export const FIRST_DAY_START_HOUR = 15;
+export const FIRST_DAY_START_MINUTE = 30;
+export const FOLLOWING_DAYS_START_HOUR = 0;
+export const FOLLOWING_DAYS_START_MINUTE = 1;
 export const LEGACY_ADMIN_USERS = ['admin', 'k_admin'];
 export const DAY_OPTIONS = Array.from({ length: DAYS_COUNT }, (_, idx) => idx);
 

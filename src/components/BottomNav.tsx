@@ -1,10 +1,10 @@
 import React from 'react';
-import { Home, CalendarClock, Trophy, User } from 'lucide-react';
+import { Home, CalendarClock, Trophy, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 type BottomNavProps = {
-    currentTab: 'home' | 'history' | 'ranking' | 'profile';
-    onChangeTab: (tab: 'home' | 'history' | 'ranking' | 'profile') => void;
+    currentTab: 'home' | 'history' | 'ranking' | 'edukiak';
+    onChangeTab: (tab: 'home' | 'history' | 'ranking' | 'edukiak') => void;
 };
 
 const BottomNav: React.FC<BottomNavProps> = React.memo(({ currentTab, onChangeTab }) => {
@@ -12,7 +12,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({ currentTab, onChangeTa
         { id: 'home', icon: Home, label: 'Hasiera' },
         { id: 'history', icon: CalendarClock, label: 'Ibilbidea' },
         { id: 'ranking', icon: Trophy, label: 'Sailkapena' },
-        { id: 'profile', icon: User, label: 'Profila' }
+        { id: 'edukiak', icon: BookOpen, label: 'Edukiak' }
     ] as const;
 
     return (

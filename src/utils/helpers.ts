@@ -1,6 +1,13 @@
 import { StoredAnswerRow } from '../services/korrikaApi';
 import { UserAnswer } from '../types';
-import { PROGRESS_STORAGE_PREFIX } from './constants';
+import {
+    DAYS_COUNT,
+    FIRST_DAY_START_HOUR,
+    FIRST_DAY_START_MINUTE,
+    FOLLOWING_DAYS_START_HOUR,
+    FOLLOWING_DAYS_START_MINUTE,
+    PROGRESS_STORAGE_PREFIX
+} from './constants';
 
 export const getLocalDateKey = (dateInput?: string | Date) => {
     const d = dateInput ? new Date(dateInput) : new Date();
@@ -17,6 +24,44 @@ export const formatCountdown = (ms: number) => {
     const seconds = String(totalSeconds % 60).padStart(2, '0');
     return `${hours}:${minutes}:${seconds}`;
 };
+
+const parseLocalDateString = (value: string) => {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+};
+
+export const getChallengeDayUnlockAt = (challengeStartDate: string, dayIndex: number) => {
+    const unlockAt = parseLocalDateString(challengeStartDate);
+    unlockAt.setDate(unlockAt.getDate() + dayIndex);
+
+    if (dayIndex === 0) {
+        unlockAt.setHours(FIRST_DAY_START_HOUR, FIRST_DAY_START_MINUTE, 0, 0);
+        return unlockAt;
+    }
+
+    unlockAt.setHours(FOLLOWING_DAYS_START_HOUR, FOLLOWING_DAYS_START_MINUTE, 0, 0);
+    return unlockAt;
+};
+
+export const getCurrentChallengeDayIndex = (
+    challengeStartDate: string,
+    now: Date,
+    daysCount = DAYS_COUNT
+) => {
+    for (let dayIndex = daysCount - 1; dayIndex >= 0; dayIndex -= 1) {
+        if (now.getTime() >= getChallengeDayUnlockAt(challengeStartDate, dayIndex).getTime()) {
+            return dayIndex;
+        }
+    }
+
+    return -1;
+};
+
+export const hasChallengeWindowEnded = (
+    challengeStartDate: string,
+    now: Date,
+    daysCount = DAYS_COUNT
+) => now.getTime() >= getChallengeDayUnlockAt(challengeStartDate, daysCount).getTime();
 
 export const getUserProgressStorageKey = (userId: string) => `${PROGRESS_STORAGE_PREFIX}_${userId}`;
 

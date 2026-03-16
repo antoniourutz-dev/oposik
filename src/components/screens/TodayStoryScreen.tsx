@@ -111,7 +111,7 @@ const TodayStoryScreen: React.FC<TodayStoryScreenProps> = React.memo(({ storyDay
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-sky-700">
               <Sparkles size={12} />
-              Gaurko istoria
+              Gaurko istorioa
             </div>
             <h2 className="mt-3 text-3xl font-black uppercase italic tracking-tight text-slate-900">
               Irakurri gaurko pasartea

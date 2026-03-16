@@ -4,50 +4,56 @@ import { Trophy, ArrowLeft, CheckCircle2, XCircle, AlertCircle } from 'lucide-re
 import { useAppStore } from '../../store/useAppStore';
 import { GameState } from '../../types';
 import { useShallow } from 'zustand/react/shallow';
+import { DAYS_COUNT } from '../../utils/constants';
 
 type ResultsFeedback = {
   text: string;
   emoji: string;
 };
 
+const FINAL_DAY_FEEDBACK: ResultsFeedback = {
+  text: 'Eskerrik asko jokatzeagatik. Gustatu zaizu? Bihar ikusiko duzu zenbatgarren geratu zaren sailkapen orokorrean. Eta gogoratu, parte hartzea eta Korrikari buruz gehiago jakitea zen erronka! Beraz, bejondeizula!',
+  emoji: '🏁'
+};
+
 const FEEDBACK_PERFECT = [
-  { text: "Zuzenean lekukoa hartzera!", emoji: '🏆' },
+  { text: "Zuzenean lekukoa hartzera joan zaitez, merezi duzu eta!", emoji: '🏆' },
   { text: "AEK-ko irakaslea zara edo zer?", emoji: '🤓' },
   { text: "Bikain! Euskaltzaindiak deituko dizu laster.", emoji: '👑' },
-  { text: "Txapeldun! Ez dugu hitzik.", emoji: '🤩' },
-  { text: "Hobeezina! KORRIKAren hurrengo leloa zuk asmatu.", emoji: '✍️' }
+  { text: "Txapeldun! Zu bai zu!", emoji: '🤩' },
+  { text: "Hobeezina! KORRIKAren hurrengo leloa zuk asmatu beharko zenuke.", emoji: '✍️' }
 ];
 
 const FEEDBACK_GOOD = [
   { text: "Oso ondo! Bihar gehiago.", emoji: '🏃' },
   { text: "Aupa zu! Ia-ia perfektua.", emoji: '🔥' },
   { text: "Maila itzela erakutsi duzu!", emoji: '💪' },
-  { text: "Zein ondo! Lekukoa eramateko prest.", emoji: '🙌' },
+  { text: "Zein ondo! Lekukoa eramateko prest zaude.", emoji: '🙌' },
   { text: "Ez zara makala, ez horixe!", emoji: '😏' }
 ];
 
 const FEEDBACK_AVERAGE = [
   { text: "Ertaina. Jarraitu trebatzen.", emoji: '🤝' },
-  { text: "Tira, tira... badago zer hobetu.", emoji: '😅' },
-  { text: "Gutxienez euskaltegian eman zenuen izena.", emoji: '😬' },
-  { text: "Beno, erdi-ipurdika ibili zara.", emoji: '🧐' },
-  { text: "Edukia irakurri duzu behintzat?", emoji: '👀' }
+  { text: "Tira, tira... badago zer hobetua.", emoji: '😅' },
+  { text: "Bederen euskaltegian eman zenuen izena.", emoji: '😬' },
+  { text: "Bueno, erdipurdika ibili zara.", emoji: '🧐' },
+  { text: "Edukia behintzat irakurri duzu?", emoji: '👀' }
 ];
 
 const FEEDBACK_BAD = [
-  { text: "Bihar saiatu berriz, mesedez.", emoji: '😢' },
-  { text: "Uy, uy, uy... euskaltegira bueltatu beharko duzu.", emoji: '🤦' },
+  { text: "Bihar saiatu berriz, otoi.", emoji: '😢' },
+  { text: "Ai, ai, ai... euskaltegira bueltatu beharko duzu.", emoji: '🤦' },
   { text: "Hau marka hau... galduta zabiltza.", emoji: '🤷' },
-  { text: "Ez zaitez despistatu, bihar hobeto egin behar da.", emoji: '⚠️' },
-  { text: "Lagun, KORRIKAn furgonetatik ez zara jaitsi.", emoji: '🚐' }
+  { text: "Ez zaitez despistatu, bihar hobeto egingo duzu.", emoji: '⚠️' },
+  { text: "Lagun, KORRIKAko furgonetatik ez zara jaitsi behintzat.", emoji: '🚐' }
 ];
 
 const FEEDBACK_ZERO = [
-  { text: "Bat ere ez? Serio?", emoji: '💀' },
+  { text: "Bat bera ere ez? Benetan?", emoji: '💀' },
   { text: "Amonak hobeto egingo luke begiak itxita.", emoji: '👵' },
   { text: "Hau negargarria da... esnatu!", emoji: '🥶' },
   { text: "Txantxetan ari zara, ezta?", emoji: '🤡' },
-  { text: "Zeroski totala. Zoaz euskaltegira orain bertan!", emoji: '🚨' }
+  { text: "Zero zero patatero. Zoaz euskaltegira oraintxe, AEKra, jakina!", emoji: '🚨' }
 ];
 
 const getResultFeedback = (score: number, totalQuestions: number): ResultsFeedback => {
@@ -73,6 +79,7 @@ const ResultsScreen: React.FC = React.memo(() => {
   const {
     players,
     currentPlayerIdx,
+    dayIndex,
     reviewDayIndex,
     progress,
     sequentialSimulationProgress,
@@ -82,6 +89,7 @@ const ResultsScreen: React.FC = React.memo(() => {
   } = useAppStore(useShallow((state) => ({
     players: state.players,
     currentPlayerIdx: state.currentPlayerIdx,
+    dayIndex: state.dayIndex,
     reviewDayIndex: state.reviewDayIndex,
     progress: state.progress,
     sequentialSimulationProgress: state.sequentialSimulationProgress,
@@ -106,8 +114,13 @@ const ResultsScreen: React.FC = React.memo(() => {
   const resultsScore = reviewedDay?.score ?? (players[currentPlayerIdx]?.score ?? 0);
   const resultsTotal = Math.max(resultsAnswers.length, 1);
 
+  const isFinalDayResult = reviewDayIndex === null && dayIndex === DAYS_COUNT - 1;
+
   // Usamos useMemo para que la frase aleatoria no cambie constantemente si React re-renderiza el componente visualmente.
-  const resultsFeedback = React.useMemo(() => getResultFeedback(resultsScore, resultsTotal), [resultsScore, resultsTotal]);
+  const resultsFeedback = React.useMemo(
+    () => (isFinalDayResult ? FINAL_DAY_FEEDBACK : getResultFeedback(resultsScore, resultsTotal)),
+    [isFinalDayResult, resultsScore, resultsTotal]
+  );
 
   const successRatio = Math.round(((resultsScore || 0) / Math.max(resultsTotal, 1)) * 100);
   const isPerfect = successRatio === 100;
@@ -160,7 +173,7 @@ const ResultsScreen: React.FC = React.memo(() => {
                 <span className="text-2xl sm:text-3xl font-bold opacity-50"> / {resultsTotal}</span>
               </p>
               <div className={`text-sm sm:text-base font-black px-4 py-1.5 rounded-full ${isGood ? 'bg-pink-200 text-pink-700' : 'bg-slate-200 text-slate-600'} mb-1 sm:mb-2`}>
-                %{successRatio} Zuzena
+                % {successRatio} zuzena
               </div>
             </div>
 

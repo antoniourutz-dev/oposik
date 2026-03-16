@@ -211,6 +211,9 @@ const SupervisorScreen: React.FC<SupervisorScreenProps> = React.memo((props) => 
               <p className="mt-3 text-sm font-medium text-slate-600">
                 Hemen ezartzen da 11 eguneko erronka noiz hasten den jokalari guztientzat.
               </p>
+              <p className="mt-2 text-sm font-medium text-rose-600">
+                Data berria gordetzean, hasiera hori baino lehenagoko emaitzak ezabatuko dira sailkapena eta ibilbidea berrabiarazteko.
+              </p>
               <p className="mt-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
                 Uneko hasiera-data: {challengeStartDate}
               </p>

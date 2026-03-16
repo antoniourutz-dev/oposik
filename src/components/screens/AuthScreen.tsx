@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Lock, User, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, AlertCircle } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { GameState } from '../../types';
 import { loginWithUsername } from '../../services/authApi';
@@ -54,19 +54,6 @@ const AuthScreen: React.FC = React.memo(() => {
     } finally {
       setLoadingAuth(false);
     }
-  };
-
-  const handleDevBypass = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setUser({
-      id: 'dev-bypass-id',
-      app_metadata: { provider: 'email' },
-      user_metadata: { name: 'admin' },
-      aud: 'authenticated',
-      created_at: new Date().toISOString()
-    } as any);
-    setCurrentTab('home');
-    setGameState(GameState.HOME);
   };
 
   return (
@@ -179,16 +166,6 @@ const AuthScreen: React.FC = React.memo(() => {
             </span>
           </motion.button>
 
-          {import.meta.env.DEV && (
-            <button
-              onClick={handleDevBypass}
-              type="button"
-              className="w-full mt-4 bg-slate-50/80 text-slate-500 border border-slate-200 py-3 rounded-[1.25rem] font-bold text-[11px] sm:text-xs hover:bg-slate-100 hover:text-slate-700 transition-all flex items-center justify-center gap-1.5"
-            >
-              <AlertTriangle size={14} className="text-amber-500" />
-              Sartu Simulagailuan (Dev)
-            </button>
-          )}
         </form>
       </motion.div>
       <motion.p

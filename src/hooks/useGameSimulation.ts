@@ -1,15 +1,17 @@
 import { useCallback, useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { GameState } from '../types';
-import { saveGlobalStartDate } from '../services/korrikaApi';
-import { writeLocalCache, removeLocalCache } from '../utils/localCache';
+import { adminSetChallengeStartDate } from '../services/adminApi';
+import { writeLocalCache } from '../utils/localCache';
 import {
-    GLOBAL_CONFIG_TABLE,
-    START_DATE_CONFIG_KEY,
     START_DATE_CACHE_KEY,
     DEFAULT_CHALLENGE_START_DATE,
-    DAYS_COUNT
+    DAYS_COUNT,
+    LEADERBOARDS_CACHE_KEY,
+    PROGRESS_STORAGE_PREFIX,
+    USER_DAILY_PLAYS_CACHE_PREFIX
 } from '../utils/constants';
+import { getChallengeDayUnlockAt } from '../utils/helpers';
 import { useShallow } from 'zustand/react/shallow';
 
 export const useGameSimulation = (
@@ -22,8 +24,10 @@ export const useGameSimulation = (
         setChallengeStartDate, setAdminStartDateInput, setReviewDayIndex, setIsSimulationRun,
         setPlayMode, setDayIndex, setActiveQuestions, setPlayers, setCurrentPlayerIdx,
         setCurrentQuestionIdx, setGameState, setSequentialSimulationActive, setSequentialSimulationDay,
-        setSequentialSimulationProgress
+        setSequentialSimulationProgress, setProgress, setUserDailyPlays, setLeaderboardRows,
+        fetchLeaderboards, fetchUserDailyPlays, user
     } = useAppStore(useShallow((state) => ({
+        user: state.user,
         challengeStartDate: state.challengeStartDate,
         adminStartDateInput: state.adminStartDateInput,
         sequentialSimulationActive: state.sequentialSimulationActive,
@@ -41,16 +45,34 @@ export const useGameSimulation = (
         setGameState: state.setGameState,
         setSequentialSimulationActive: state.setSequentialSimulationActive,
         setSequentialSimulationDay: state.setSequentialSimulationDay,
-        setSequentialSimulationProgress: state.setSequentialSimulationProgress
+        setSequentialSimulationProgress: state.setSequentialSimulationProgress,
+        setProgress: state.setProgress,
+        setUserDailyPlays: state.setUserDailyPlays,
+        setLeaderboardRows: state.setLeaderboardRows,
+        fetchLeaderboards: state.fetchLeaderboards,
+        fetchUserDailyPlays: state.fetchUserDailyPlays
     })));
 
     const simulationToday = useMemo(() => {
         if (!sequentialSimulationActive) return null;
-        const d = new Date(`${challengeStartDate}T00:00:00`);
-        d.setDate(d.getDate() + sequentialSimulationDay);
-        d.setHours(0, 0, 0, 0);
-        return d;
+        return getChallengeDayUnlockAt(challengeStartDate, sequentialSimulationDay);
     }, [sequentialSimulationActive, sequentialSimulationDay, challengeStartDate]);
+
+    const resetChallengeBrowserData = useCallback(() => {
+        setProgress([]);
+        setUserDailyPlays([]);
+        setLeaderboardRows([]);
+        localStorage.removeItem(LEADERBOARDS_CACHE_KEY);
+
+        Object.keys(localStorage).forEach((key) => {
+            if (
+                key.startsWith(`${PROGRESS_STORAGE_PREFIX}_`) ||
+                key.startsWith(`${USER_DAILY_PLAYS_CACHE_PREFIX}_`)
+            ) {
+                localStorage.removeItem(key);
+            }
+        });
+    }, [setLeaderboardRows, setProgress, setUserDailyPlays]);
 
     const saveChallengeStartDate = useCallback(async (setSavingAdminConfig: (saving: boolean) => void) => {
         if (!isAdmin) return;
@@ -58,34 +80,60 @@ export const useGameSimulation = (
         if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
         try {
             setSavingAdminConfig(true);
-            await saveGlobalStartDate(GLOBAL_CONFIG_TABLE, START_DATE_CONFIG_KEY, value);
-            setChallengeStartDate(value);
-            writeLocalCache(START_DATE_CACHE_KEY, value);
+            const resetBeforeIso = getChallengeDayUnlockAt(value, 0).toISOString();
+            const result = await adminSetChallengeStartDate(value, resetBeforeIso);
+            setChallengeStartDate(result.saved_start_date);
+            setAdminStartDateInput(result.saved_start_date);
+            writeLocalCache(START_DATE_CACHE_KEY, result.saved_start_date);
+            resetChallengeBrowserData();
+            await Promise.all([
+                fetchLeaderboards(true),
+                user?.id ? fetchUserDailyPlays(user.id, true) : Promise.resolve()
+            ]);
         } catch (err) {
             console.error('Error saving global start date:', err);
         } finally {
             setSavingAdminConfig(false);
         }
-    }, [adminStartDateInput, isAdmin, setChallengeStartDate]);
+    }, [
+        adminStartDateInput,
+        fetchLeaderboards,
+        fetchUserDailyPlays,
+        isAdmin,
+        resetChallengeBrowserData,
+        setAdminStartDateInput,
+        setChallengeStartDate,
+        user?.id
+    ]);
 
     const resetChallengeStartDate = useCallback(async (setSavingAdminConfig: (saving: boolean) => void) => {
         if (!isAdmin) return;
         try {
             setSavingAdminConfig(true);
-            await saveGlobalStartDate(
-                GLOBAL_CONFIG_TABLE,
-                START_DATE_CONFIG_KEY,
-                DEFAULT_CHALLENGE_START_DATE
-            );
-            setChallengeStartDate(DEFAULT_CHALLENGE_START_DATE);
-            setAdminStartDateInput(DEFAULT_CHALLENGE_START_DATE);
-            removeLocalCache(START_DATE_CACHE_KEY);
+            const resetBeforeIso = getChallengeDayUnlockAt(DEFAULT_CHALLENGE_START_DATE, 0).toISOString();
+            const result = await adminSetChallengeStartDate(DEFAULT_CHALLENGE_START_DATE, resetBeforeIso);
+            setChallengeStartDate(result.saved_start_date);
+            setAdminStartDateInput(result.saved_start_date);
+            writeLocalCache(START_DATE_CACHE_KEY, result.saved_start_date);
+            resetChallengeBrowserData();
+            await Promise.all([
+                fetchLeaderboards(true),
+                user?.id ? fetchUserDailyPlays(user.id, true) : Promise.resolve()
+            ]);
         } catch (err) {
             console.error('Error resetting global start date:', err);
         } finally {
             setSavingAdminConfig(false);
         }
-    }, [isAdmin, setChallengeStartDate, setAdminStartDateInput]);
+    }, [
+        fetchLeaderboards,
+        fetchUserDailyPlays,
+        isAdmin,
+        resetChallengeBrowserData,
+        setAdminStartDateInput,
+        setChallengeStartDate,
+        user?.id
+    ]);
 
     const startSimulationDay = useCallback((idx: number) => {
         if (!isAdmin) return;

@@ -2,6 +2,7 @@ import { StateCreator } from 'zustand';
 import { DailyProgress } from '../../types';
 import { GameResultRow, UserDailyPlayRow, getLeaderboards, getUserDailyPlays } from '../../services/korrikaApi';
 import { readLocalCache, writeLocalCache } from '../../utils/localCache';
+import { getChallengeDayUnlockAt } from '../../utils/helpers';
 import {
     LEADERBOARDS_CACHE_KEY, LEADERBOARDS_CACHE_TTL_MS,
     USER_DAILY_PLAYS_CACHE_PREFIX, USER_DAILY_PLAYS_CACHE_TTL_MS,
@@ -9,6 +10,7 @@ import {
 } from '../../utils/constants';
 import { reqCache } from '../apiCache';
 import { AuthSlice } from './authSlice';
+import { GameDataSlice } from './gameDataSlice';
 
 export interface ProgressSlice {
     progress: DailyProgress[];
@@ -36,7 +38,20 @@ export interface ProgressSlice {
     fetchUserDailyPlays: (userIdParam?: string, force?: boolean) => Promise<void>;
 }
 
-export const createProgressSlice: StateCreator<ProgressSlice & AuthSlice, [], [], ProgressSlice> = (set, get) => ({
+const isOnOrAfterChallengeStart = (playedAt: string | null, challengeStartDate: string) => {
+    if (!playedAt) return false;
+    const playedAtTs = new Date(playedAt).getTime();
+    if (!Number.isFinite(playedAtTs)) return false;
+    return playedAtTs >= getChallengeDayUnlockAt(challengeStartDate, 0).getTime();
+};
+
+const filterLeaderboardRowsByChallengeStart = (rows: GameResultRow[], challengeStartDate: string) =>
+    rows.filter((row) => isOnOrAfterChallengeStart(row.played_at, challengeStartDate));
+
+const filterUserDailyPlaysByChallengeStart = (rows: UserDailyPlayRow[], challengeStartDate: string) =>
+    rows.filter((row) => isOnOrAfterChallengeStart(row.played_at, challengeStartDate));
+
+export const createProgressSlice: StateCreator<ProgressSlice & AuthSlice & GameDataSlice, [], [], ProgressSlice> = (set, get) => ({
     progress: [],
     userDailyPlays: [],
 
@@ -59,10 +74,12 @@ export const createProgressSlice: StateCreator<ProgressSlice & AuthSlice, [], []
     setSequentialSimulationProgress: (prog) => set((s) => ({ sequentialSimulationProgress: typeof prog === 'function' ? prog(s.sequentialSimulationProgress) : prog })),
 
     fetchLeaderboards: async (force = false) => {
+        const challengeStartDate = get().challengeStartDate;
         if (!force) {
             const cachedRows = readLocalCache<GameResultRow[]>(LEADERBOARDS_CACHE_KEY, LEADERBOARDS_CACHE_TTL_MS);
             if (cachedRows) {
-                set({ leaderboardRows: cachedRows });
+                const filteredCachedRows = filterLeaderboardRowsByChallengeStart(cachedRows, challengeStartDate);
+                set({ leaderboardRows: filteredCachedRows });
                 reqCache.leaderboardsFetchedAt = Date.now();
                 return;
             }
@@ -75,13 +92,15 @@ export const createProgressSlice: StateCreator<ProgressSlice & AuthSlice, [], []
             try {
                 set({ loadingRanking: true });
                 const rows = await getLeaderboards(DAYS_COUNT);
-                set({ leaderboardRows: rows });
-                writeLocalCache(LEADERBOARDS_CACHE_KEY, rows);
+                const filteredRows = filterLeaderboardRowsByChallengeStart(rows, get().challengeStartDate);
+                set({ leaderboardRows: filteredRows });
+                writeLocalCache(LEADERBOARDS_CACHE_KEY, filteredRows);
                 reqCache.leaderboardsFetchedAt = Date.now();
             } catch (err) {
                 console.error('Error fetching leaderboards:', err);
                 const cachedRows = readLocalCache<GameResultRow[]>(LEADERBOARDS_CACHE_KEY, LEADERBOARDS_CACHE_TTL_MS);
-                set({ leaderboardRows: cachedRows || [] });
+                const filteredCachedRows = filterLeaderboardRowsByChallengeStart(cachedRows || [], get().challengeStartDate);
+                set({ leaderboardRows: filteredCachedRows });
             } finally {
                 set({ loadingRanking: false });
             }
@@ -99,10 +118,12 @@ export const createProgressSlice: StateCreator<ProgressSlice & AuthSlice, [], []
         }
 
         const cacheKey = `${USER_DAILY_PLAYS_CACHE_PREFIX}_${targetUserId}`;
+        const challengeStartDate = get().challengeStartDate;
         if (!force) {
             const cachedRows = readLocalCache<UserDailyPlayRow[]>(cacheKey, USER_DAILY_PLAYS_CACHE_TTL_MS);
             if (cachedRows) {
-                set({ userDailyPlays: cachedRows });
+                const filteredCachedRows = filterUserDailyPlaysByChallengeStart(cachedRows, challengeStartDate);
+                set({ userDailyPlays: filteredCachedRows });
                 reqCache.userDailyPlaysFetchedAt.set(targetUserId, Date.now());
                 return;
             }
@@ -117,15 +138,17 @@ export const createProgressSlice: StateCreator<ProgressSlice & AuthSlice, [], []
         const request = (async () => {
             try {
                 const rows = await getUserDailyPlays(targetUserId, DAYS_COUNT);
-                writeLocalCache(cacheKey, rows);
+                const filteredRows = filterUserDailyPlaysByChallengeStart(rows, get().challengeStartDate);
+                writeLocalCache(cacheKey, filteredRows);
                 reqCache.userDailyPlaysFetchedAt.set(targetUserId, Date.now());
                 if (get().user?.id !== targetUserId) return;
-                set({ userDailyPlays: rows });
+                set({ userDailyPlays: filteredRows });
             } catch (err) {
                 console.error('Error fetching user daily plays:', err);
                 const cachedRows = readLocalCache<UserDailyPlayRow[]>(cacheKey, USER_DAILY_PLAYS_CACHE_TTL_MS);
                 if (get().user?.id !== targetUserId) return;
-                set({ userDailyPlays: cachedRows || [] });
+                const filteredCachedRows = filterUserDailyPlaysByChallengeStart(cachedRows || [], get().challengeStartDate);
+                set({ userDailyPlays: filteredCachedRows });
             }
         })();
 

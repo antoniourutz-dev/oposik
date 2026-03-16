@@ -26,6 +26,11 @@ type AdminDeleteResultsResult = {
   deleted_rows: number;
 };
 
+type AdminSetChallengeStartDateResult = {
+  saved_start_date: string;
+  deleted_rows: number;
+};
+
 const generateUUID = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -153,5 +158,27 @@ export const adminClearUserGameResults = async (
 
   return {
     deleted_rows: toNumber((data as AdminDeleteResultsResult | null)?.deleted_rows)
+  };
+};
+
+export const adminSetChallengeStartDate = async (
+  startDate: string,
+  resetBeforeIso: string
+) => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('admin_set_challenge_start_date', {
+      p_start_date: startDate,
+      p_reset_before: resetBeforeIso
+    })
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(mapAccountApiError(error));
+  }
+
+  return {
+    saved_start_date: String((data as AdminSetChallengeStartDateResult | null)?.saved_start_date ?? startDate),
+    deleted_rows: toNumber((data as AdminSetChallengeStartDateResult | null)?.deleted_rows)
   };
 };

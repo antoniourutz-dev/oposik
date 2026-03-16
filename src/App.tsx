@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { User } from '@supabase/supabase-js';
 import { getSafeSupabaseSession, missingSupabaseEnvVars, supabase, supabaseConfigError } from './supabase';
 import { GameState, Question, DailyProgress, UserAnswer, Player, PlayMode, QuizData } from './types';
@@ -18,8 +19,9 @@ const TurnTransitionScreen = React.lazy(() => import('./components/screens/TurnT
 const ResultsScreen = React.lazy(() => import('./components/screens/ResultsScreen'));
 const RankingScreen = React.lazy(() => import('./components/screens/RankingScreen'));
 const SupervisorScreen = React.lazy(() => import('./components/screens/SupervisorScreen'));
-const AccountPanel = React.lazy(() => import('./components/screens/AccountPanel'));
+const EdukiakArchiveScreen = React.lazy(() => import('./components/screens/EdukiakArchiveScreen'));
 const HistoryScreen = React.lazy(() => import('./components/screens/HistoryScreen'));
+const AccountPanel = React.lazy(() => import('./components/screens/AccountPanel'));
 
 const SuspenseSpinner = () => (
   <div className="flex-1 w-full h-full flex flex-col items-center justify-center p-8">
@@ -81,6 +83,7 @@ import {
   USER_DAILY_PLAYS_CACHE_TTL_MS
 } from './utils/constants';
 import {
+  getChallengeDayUnlockAt,
   getLocalDateKey,
   formatCountdown,
   getUserProgressStorageKey,
@@ -91,6 +94,7 @@ import {
 } from './utils/helpers';
 
 type LeaderboardView = 'DAILY' | 'GENERAL';
+type AccountOverlayView = 'actions' | 'username' | null;
 
 type ProfileStats = {
   commits: number;
@@ -110,6 +114,7 @@ import { useAppStore } from './store/useAppStore';
 import { useGameProgress } from './hooks/useGameProgress';
 import { useGameSimulation } from './hooks/useGameSimulation';
 import { useGameplay } from './hooks/useGameplay';
+import { usePushReminderNotifications } from './hooks/usePushReminderNotifications';
 import { useAppProfiler } from './hooks/useAppProfiler';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -221,6 +226,8 @@ const App: React.FC = () => {
   const [simulationEnabled, setSimulationEnabled] = useState(false);
   const [simulationDayIndex, setSimulationDayIndex] = useState(0);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
+  const [accountOverlayView, setAccountOverlayView] = useState<AccountOverlayView>(null);
+  const [requestingReminderPermission, setRequestingReminderPermission] = useState(false);
 
   const progressStorageKey = useMemo(
     () => (user?.id ? getUserProgressStorageKey(user.id) : null),
@@ -237,11 +244,12 @@ const App: React.FC = () => {
   const simulationTodayForProgress = useMemo(() => {
     if (!sequentialSimulationActive) return null;
 
-    const nextSimulationDate = new Date(`${challengeStartDate}T00:00:00`);
-    nextSimulationDate.setDate(nextSimulationDate.getDate() + sequentialSimulationDay);
-    nextSimulationDate.setHours(0, 0, 0, 0);
-    return nextSimulationDate;
+    return getChallengeDayUnlockAt(challengeStartDate, sequentialSimulationDay);
   }, [challengeStartDate, sequentialSimulationActive, sequentialSimulationDay]);
+  const currentNowForProgress = useMemo(
+    () => simulationTodayForProgress ?? new Date(nowTs),
+    [nowTs, simulationTodayForProgress]
+  );
 
   const profilingDemoEnabled = useMemo(() => {
     if (typeof window === 'undefined' || !import.meta.env.DEV) return false;
@@ -254,8 +262,8 @@ const App: React.FC = () => {
   const profilingAutomationEnabled = profilingEnabled && profilingDemoEnabled && profilingAutoplayEnabled;
 
   const refreshPostAuthData = useCallback(async (targetUserId: string) => {
+    await fetchGlobalStartDate(true);
     await Promise.all([
-      fetchGlobalStartDate(true),
       fetchRegisteredPlayers(true),
       fetchEdukiak(true),
       fetchGaurkoIstoriak(true),
@@ -269,19 +277,12 @@ const App: React.FC = () => {
     if (gameState !== GameState.HOME) return;
     if (sequentialSimulationActive) return;
 
-    const startTs = new Date(`${challengeStartDate}T00:00:00`).getTime();
-    if (Date.now() >= startTs) return;
-
     setNowTs(Date.now());
     const intervalId = window.setInterval(() => {
-      const currentTs = Date.now();
-      setNowTs(currentTs);
-      if (currentTs >= startTs) {
-        clearInterval(intervalId);
-      }
+      setNowTs(Date.now());
     }, 1000);
     return () => clearInterval(intervalId);
-  }, [gameState, sequentialSimulationActive, challengeStartDate]);
+  }, [gameState, sequentialSimulationActive]);
 
   useEffect(() => {
     localStorage.setItem(SIMULATION_STORAGE_KEY, simulationEnabled ? '1' : '0');
@@ -404,11 +405,91 @@ const App: React.FC = () => {
       localStorage.removeItem(progressStorageKey);
     }
   }, [profilingDemoEnabled, progressStorageKey]);
+  const handleGoHome = useCallback(() => {
+    setReviewDayIndex(null);
+    setShowWelcomeScreen(false);
+    setCurrentTab('home');
+    setGameState(GameState.HOME);
+  }, [setCurrentTab, setGameState, setReviewDayIndex]);
 
+  const handleOpenAccountActions = useCallback(() => {
+    setUsernameChangeError(null);
+    setUsernameChangeNotice(null);
+    setAccountOverlayView('actions');
+  }, [setUsernameChangeError, setUsernameChangeNotice]);
 
+  const handleCloseAccountOverlay = useCallback(() => {
+    setAccountOverlayView(null);
+    setUsernameChangeError(null);
+    setUsernameChangeNotice(null);
+    if (accountIdentity?.current_username) {
+      setPendingUsername(accountIdentity.current_username);
+    } else {
+      setPendingUsername('');
+    }
+  }, [accountIdentity?.current_username, setPendingUsername, setUsernameChangeError, setUsernameChangeNotice]);
+
+  const handleOpenUsernameEditor = useCallback(() => {
+    setUsernameChangeError(null);
+    setUsernameChangeNotice(null);
+    if (accountIdentity?.current_username) {
+      setPendingUsername(accountIdentity.current_username);
+    }
+    setAccountOverlayView('username');
+  }, [accountIdentity?.current_username, setPendingUsername, setUsernameChangeError, setUsernameChangeNotice]);
+
+  useEffect(() => {
+    if (!accountOverlayView) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleCloseAccountOverlay();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [accountOverlayView, handleCloseAccountOverlay]);
+
+  const {
+    currentUsername,
+    userDisplayName,
+    isAdmin,
+    currentChallengeDayIndex,
+    effectiveDailyProgress,
+    nextAvailableDay
+  } = useGameProgress(currentNowForProgress);
+  const {
+    canRequestReminderPermission,
+    requestReminderPermission,
+    disconnectPushReminders
+  } = usePushReminderNotifications({ user });
+
+  const {
+    initGame,
+    handleNextQuestion,
+    handleCountdownComplete,
+    generateQuestions,
+    validatingDailyStart
+  } = useGameplay(userDisplayName, isAdmin, nextAvailableDay);
+
+  const {
+    startSimulationDay,
+    saveChallengeStartDate,
+    resetChallengeStartDate,
+    startSequentialSimulation,
+    stopSequentialSimulation
+  } = useGameSimulation(isAdmin, userDisplayName, generateQuestions);
 
   const performLogout = useCallback(async () => {
+    try {
+      await disconnectPushReminders();
+    } catch (error) {
+      console.error('Could not disable push reminders during logout', error);
+    }
+
     await supabase.auth.signOut();
+    setAccountOverlayView(null);
     setUser(null);
     setAccountIdentity(null);
     setGameState(GameState.AUTH);
@@ -427,6 +508,8 @@ const App: React.FC = () => {
     setSequentialSimulationDay(0);
     setSequentialSimulationProgress([]);
   }, [
+    disconnectPushReminders,
+    setAccountOverlayView,
     setAccountIdentity,
     setCurrentTab,
     setDailyPlayLockMessage,
@@ -446,13 +529,6 @@ const App: React.FC = () => {
     setUsernameHistory
   ]);
 
-  const handleGoHome = useCallback(() => {
-    setReviewDayIndex(null);
-    setShowWelcomeScreen(false);
-    setCurrentTab('home');
-    setGameState(GameState.HOME);
-  }, [setCurrentTab, setGameState, setReviewDayIndex]);
-
   const handleLogout = useCallback(() => {
     if (!window.confirm('Saioa itxi eta jokotik atera nahi duzu?')) {
       return;
@@ -460,31 +536,6 @@ const App: React.FC = () => {
 
     void performLogout();
   }, [performLogout]);
-
-  const {
-    currentUsername,
-    userDisplayName,
-    isAdmin,
-    currentChallengeDayIndex,
-    effectiveDailyProgress,
-    nextAvailableDay
-  } = useGameProgress(simulationTodayForProgress);
-
-  const {
-    initGame,
-    handleNextQuestion,
-    handleCountdownComplete,
-    generateQuestions,
-    validatingDailyStart
-  } = useGameplay(userDisplayName, isAdmin, nextAvailableDay);
-
-  const {
-    startSimulationDay,
-    saveChallengeStartDate,
-    resetChallengeStartDate,
-    startSequentialSimulation,
-    stopSequentialSimulation
-  } = useGameSimulation(isAdmin, userDisplayName, generateQuestions);
 
   const handleStartDailyPlay = useCallback(() => {
     void initGame('SOLO', 'DAILY');
@@ -494,17 +545,34 @@ const App: React.FC = () => {
     setReviewDayIndex(idx);
     setGameState(GameState.RESULTS);
   }, [setReviewDayIndex, setGameState]);
+  const handleEnableReminders = useCallback(async () => {
+    setRequestingReminderPermission(true);
+    try {
+      await requestReminderPermission();
+    } catch (error) {
+      console.error('Could not enable push reminders', error);
+    } finally {
+      setRequestingReminderPermission(false);
+    }
+  }, [requestReminderPermission]);
 
   const showDailyPlayButton = nextAvailableDay >= 0 || nextAvailableDay === -4 || nextAvailableDay === -1 || nextAvailableDay === -2;
   const dailyPlayButtonDisabled = validatingDailyStart || nextAvailableDay < 0;
 
-  const challengeStartTs = useMemo(() => new Date(`${challengeStartDate}T00:00:00`).getTime(), [challengeStartDate]);
-  const effectiveNowTs = simulationTodayForProgress ? simulationTodayForProgress.getTime() : nowTs;
+  const challengeStartTs = useMemo(
+    () => getChallengeDayUnlockAt(challengeStartDate, 0).getTime(),
+    [challengeStartDate]
+  );
+  const effectiveNowTs = currentNowForProgress.getTime();
   const timeUntilStart = Math.max(0, challengeStartTs - effectiveNowTs);
 
   const completedDayIndexes = useMemo(
     () => effectiveDailyProgress.map((day, idx) => (day?.completed ? idx : -1)).filter((idx) => idx >= 0),
     [effectiveDailyProgress]
+  );
+  const visibleContentDayIndex = useMemo(
+    () => (currentChallengeDayIndex < 0 ? 0 : currentChallengeDayIndex),
+    [currentChallengeDayIndex]
   );
 
   const needsUsernameSetup = !!(user && !loadingAccount && accountIdentity && usernameHistory.length === 0);
@@ -531,7 +599,7 @@ const App: React.FC = () => {
     setShowWelcomeScreen(false);
   }, [welcomeStorageKey, setCurrentTab]);
 
-  const handleBottomNavChange = useCallback((tab: 'home' | 'history' | 'ranking' | 'profile') => {
+  const handleBottomNavChange = useCallback((tab: 'home' | 'history' | 'ranking' | 'edukiak') => {
     if (gameState === GameState.RESULTS && reviewDayIndex !== null) {
       setReviewDayIndex(null);
       setGameState(GameState.HOME);
@@ -577,9 +645,9 @@ const App: React.FC = () => {
           {user && gameState !== GameState.AUTH && (
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={handleOpenAccountActions}
               className="absolute right-0 rounded-full bg-white/20 px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider max-w-[35%] truncate text-center hover:bg-white/30 transition-colors active:scale-95"
-              title="Saioa itxi"
+              title="Kontu aukerak"
             >
               {userDisplayName}
             </button>
@@ -621,11 +689,14 @@ const App: React.FC = () => {
                   dailyPlayButtonDisabled={dailyPlayButtonDisabled}
                   validatingDailyStart={validatingDailyStart}
                   nextAvailableDay={nextAvailableDay}
-                  currentChallengeDayIndex={currentChallengeDayIndex}
+                  currentChallengeDayIndex={visibleContentDayIndex}
                   timeUntilStart={timeUntilStart}
                   formatCountdown={formatCountdown}
                   dailyPlayLockMessage={dailyPlayLockMessage}
                   isAdmin={isAdmin}
+                  showReminderPrompt={canRequestReminderPermission}
+                  enablingReminders={requestingReminderPermission}
+                  onEnableReminders={handleEnableReminders}
                   onOpenGaurkoIstoria={() => {
                     void fetchGaurkoIstoriak(true);
                     setCurrentTab('home');
@@ -654,9 +725,12 @@ const App: React.FC = () => {
                 <RankingScreen />
               )}
 
-              {currentTab === 'profile' && renderWithProfiler(
-                'AccountPanel',
-                <AccountPanel />
+              {currentTab === 'edukiak' && renderWithProfiler(
+                'EdukiakArchiveScreen',
+                <EdukiakArchiveScreen
+                  currentChallengeDayIndex={currentChallengeDayIndex}
+                  nextAvailableDay={nextAvailableDay}
+                />
               )}
             </div>
           )}
@@ -665,7 +739,7 @@ const App: React.FC = () => {
             renderWithProfiler(
               'TodayStoryScreen',
               <TodayStoryScreen
-                storyDayIndex={currentChallengeDayIndex}
+                storyDayIndex={visibleContentDayIndex}
                 onBack={() => {
                   setCurrentTab('home');
                   setGameState(GameState.HOME);
@@ -742,6 +816,95 @@ const App: React.FC = () => {
       <footer className="w-full py-3 sm:py-4 text-center opacity-40 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] bg-gray-50 px-2">
         AEK - KORRIKA
       </footer>
+      <AnimatePresence>
+        {accountOverlayView && user && gameState !== GameState.AUTH && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/45 px-4 pb-4 pt-20 backdrop-blur-[2px]"
+            onClick={handleCloseAccountOverlay}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+              className="w-full max-w-xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {accountOverlayView === 'actions' ? (
+                <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/96 p-5 shadow-[0_30px_70px_-30px_rgba(15,23,42,0.55)]">
+                  <div className="mb-5 flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.22em] text-pink-500">
+                        Kontua
+                      </p>
+                      <h2 className="mt-2 text-2xl font-black uppercase italic text-slate-800">
+                        {userDisplayName}
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCloseAccountOverlay}
+                      className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-200"
+                    >
+                      Itxi
+                    </button>
+                  </div>
+
+                  <div className="grid gap-3">
+                    <button
+                      type="button"
+                      onClick={handleOpenUsernameEditor}
+                      className="rounded-[1.6rem] border border-emerald-200 bg-emerald-50/80 px-5 py-4 text-left shadow-sm transition-transform transition-shadow hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]"
+                    >
+                      <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-500">
+                        Aukera 1
+                      </p>
+                      <p className="mt-2 text-base font-black text-slate-800">
+                        Erabiltzaile izena aldatu
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">
+                        Lehen Profila atalean zegoen aldaketa bera.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="rounded-[1.6rem] border border-rose-200 bg-rose-50/80 px-5 py-4 text-left shadow-sm transition-transform transition-shadow hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]"
+                    >
+                      <p className="text-[11px] font-black uppercase tracking-[0.2em] text-rose-500">
+                        Aukera 2
+                      </p>
+                      <p className="mt-2 text-base font-black text-slate-800">
+                        Atera aplikaziotik
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">
+                        Saioa ixteko berrespena eskatuko da lehenengo.
+                      </p>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-[2rem] bg-transparent">
+                  <div className="mb-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCloseAccountOverlay}
+                      className="rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-slate-600 shadow-sm transition-colors hover:bg-white"
+                    >
+                      Itxi
+                    </button>
+                  </div>
+                  <AccountPanel />
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {profilingEnabled && (
         <aside className="fixed right-2 bottom-2 z-50 w-[min(22rem,92vw)] rounded-2xl border border-gray-200 bg-white/95 shadow-xl backdrop-blur p-3">
           <p className="text-[10px] font-black uppercase tracking-widest text-pink-600">Profilagailua aktibo</p>

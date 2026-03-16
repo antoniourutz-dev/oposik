@@ -45,12 +45,14 @@ Variables opcionales:
 ```bash
 VITE_LOGIN_WITH_USERNAME_FUNCTION_URL=https://tu-proyecto.supabase.co/functions/v1/login-with-username
 VITE_ENABLE_LEGACY_USERNAME_LOGIN_FALLBACK=1
+VITE_WEB_PUSH_PUBLIC_KEY=tu_clave_publica_vapid
 ```
 
 Notas:
 
 - `VITE_LOGIN_WITH_USERNAME_FUNCTION_URL` permite apuntar a una funcion distinta de la URL por defecto de Supabase.
 - `VITE_ENABLE_LEGACY_USERNAME_LOGIN_FALLBACK=1` solo tiene sentido como via de transicion o para desarrollo local.
+- `VITE_WEB_PUSH_PUBLIC_KEY` es necesaria para activar recordatorios push fiables en produccion o preview.
 
 ## Desarrollo
 
@@ -77,12 +79,14 @@ npm run supabase:link
 npm run supabase:config:push
 npm run supabase:db:push
 npm run supabase:functions:deploy:login
+npm run supabase:functions:deploy:daily-push
 ```
 
 Atajos utiles:
 
 ```bash
 npm run supabase:deploy:username-auth
+npm run supabase:deploy:push-reminders
 npm run rotate:internal-auth-emails
 ```
 
@@ -91,6 +95,7 @@ npm run rotate:internal-auth-emails
 - El schema `app` debe estar expuesto en la API de Supabase para que funcionen las APIs de cuenta y administracion.
 - `supabase/config.toml` ya contempla `api.schemas = ["public", "storage", "graphql_public", "app"]`.
 - La migracion mas reciente para utilidades de consola admin esta en `supabase/migrations/20260314120000_admin_console_tools.sql`.
+- Para los recordatorios push hay que configurar `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, `WEB_PUSH_SUBJECT` y `DAILY_PUSH_REMINDER_CRON_SECRET` en Edge Functions, y guardar en Vault los secretos `project_url` y `daily_push_reminder_cron_secret` para el job programado.
 - El script `rotate:internal-auth-emails` necesita `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en el entorno.
 
 ## Estructura rapida

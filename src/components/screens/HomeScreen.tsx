@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, BookOpen, Play, Trophy, Lock, Star, Shield } from 'lucide-react';
+import { ArrowRight, Bell, BookOpen, Clock3, Play, Trophy, Lock, Star, Shield } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -64,7 +64,7 @@ const EdukiaCard: React.FC<EdukiaCardProps> = React.memo(({ contentDayIndex, onO
               className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-sky-700 transition-all hover:border-sky-300 hover:bg-sky-100"
             >
               <BookOpen size={16} />
-              {loadingGaurkoIstoriak ? 'Kargatzen...' : activeStory ? 'Gaurko istoria' : 'Istoria irakurri'}
+              {loadingGaurkoIstoriak ? 'Kargatzen...' : activeStory ? 'Gaurko istorioa' : 'Istorioa irakurri'}
               <ArrowRight size={15} />
             </button>
           </div>
@@ -94,6 +94,9 @@ type HomeScreenExtractedProps = {
   formatCountdown: (ms: number) => string;
   dailyPlayLockMessage: string | null;
   isAdmin: boolean;
+  showReminderPrompt: boolean;
+  enablingReminders: boolean;
+  onEnableReminders: () => void;
   onOpenSupervisor: () => void;
   onOpenGaurkoIstoria: () => void;
   startSequentialSimulation: () => void;
@@ -117,20 +120,14 @@ const HomeScreen: React.FC<HomeScreenExtractedProps> = React.memo((props) => {
   };
 
   return (
-    <div className="flex-1 w-full max-w-2xl mx-auto flex flex-col items-center pt-2 sm:pt-6 pb-24 px-4 sm:px-6 relative z-10">
+    <div className="flex-1 w-full max-w-2xl mx-auto flex flex-col items-center pt-[22px] sm:pt-6 pb-24 px-4 sm:px-6 relative z-10">
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="w-full flex flex-col items-center space-y-6"
+        className="w-full flex flex-col items-center space-y-[22px]"
       >
 
-
-        {/* Tarjeta de Contenido Educativo */}
-        <EdukiaCard
-          contentDayIndex={props.currentChallengeDayIndex}
-          onOpenGaurkoIstoria={props.onOpenGaurkoIstoria}
-        />
 
         {/* Panel de Botón Jugar Gigante */}
         <motion.section variants={itemVariants} className="w-full">
@@ -139,15 +136,19 @@ const HomeScreen: React.FC<HomeScreenExtractedProps> = React.memo((props) => {
               <button
                 onClick={props.onStartDailyPlay}
                 disabled={props.dailyPlayButtonDisabled}
-                className="relative group overflow-hidden w-full korrika-bg-gradient text-white px-4 py-6 rounded-3xl font-black text-xl sm:text-2xl leading-none uppercase italic shadow-[0_10px_30px_var(--color-korrika-glow)] hover:scale-[1.02] transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
+                className="relative group overflow-hidden w-full min-h-[58px] rounded-3xl px-4 py-4 font-black text-lg sm:text-xl leading-none uppercase italic text-white korrika-bg-gradient shadow-[0_18px_34px_-18px_rgba(236,72,153,0.58)] transition-[transform,box-shadow,filter] duration-300 ease-out hover:scale-[1.01] hover:shadow-[0_22px_40px_-18px_rgba(236,72,153,0.68)] active:scale-[0.985] active:shadow-[0_12px_24px_-16px_rgba(236,72,153,0.5)] disabled:opacity-50 disabled:scale-100 disabled:shadow-none touch-manipulation"
               >
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out" />
                 <span className="relative z-10 flex items-center justify-center gap-3">
-                  <Play className="fill-current" />
+                  {props.nextAvailableDay === -4 ? (
+                    <Clock3 className="shrink-0" size={20} />
+                  ) : (
+                    <Play className="fill-current shrink-0" size={20} />
+                  )}
                   {props.validatingDailyStart
                     ? 'Egiaztatzen...'
                     : props.nextAvailableDay === -4
-                      ? `Erronka hasteko: ${props.formatCountdown(props.timeUntilStart)}`
+                      ? `Erronka hasiko da: ${props.formatCountdown(props.timeUntilStart)}`
                       : props.nextAvailableDay === -1 || props.nextAvailableDay === -2
                         ? 'Gaurko saioa egina'
                         : `${props.nextAvailableDay + 1}. eguneko jolasa hasi`}
@@ -169,6 +170,43 @@ const HomeScreen: React.FC<HomeScreenExtractedProps> = React.memo((props) => {
             </div>
           )}
         </motion.section>
+
+        {props.showReminderPrompt && (
+          <motion.section variants={itemVariants} className="w-full">
+            <div className="rounded-[1.75rem] border border-sky-200 bg-sky-50/80 p-4 shadow-[0_16px_38px_-30px_rgba(14,165,233,0.38)]">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-sky-600 shadow-sm">
+                  <Bell size={18} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-sky-600">
+                    Oroigarria
+                  </p>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-slate-700">
+                    10:00etan jakinarazpena jaso dezakezu, baldin eta eguneko saioa oraindik egin ez baduzu.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={props.onEnableReminders}
+                disabled={props.enablingReminders}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-sky-700 disabled:opacity-60"
+              >
+                <Bell size={15} />
+                {props.enablingReminders ? 'Aktibatzen...' : 'Aktibatu oroigarriak'}
+              </button>
+            </div>
+          </motion.section>
+        )}
+
+
+        {/* Tarjeta de Contenido Educativo */}
+        <EdukiaCard
+          contentDayIndex={props.currentChallengeDayIndex}
+          onOpenGaurkoIstoria={props.onOpenGaurkoIstoria}
+        />
 
 
 

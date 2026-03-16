@@ -7,7 +7,7 @@ type WelcomeScreenProps = {
 };
 
 const MESSAGE_LINES = [
-  'ONGI ETORRI! KORRIKAREN INGURUKO JOLAS XUME HONETARA',
+  'ONGI ETORRI KORRIKAREN INGURUKO JOLAS XUME HONETARA!',
   'Eutsi hamaika egunez!',
   'Parte hartu, ikasi eta gozatu.'
 ];
@@ -124,7 +124,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = React.memo(({ onContinue }) 
               <div className="relative">
                 <p className="text-[11px] font-black uppercase tracking-[0.24em] text-pink-200">Prest?</p>
                 <h3 className="mt-3 text-2xl font-black uppercase leading-tight">
-                  Zure korrika gaur hasten da
+                  Zure korrika gaur hasiko da
                 </h3>
                 <p className="mt-3 text-sm leading-relaxed text-slate-300">
                   Egun bakoitza etapa bat da. Eutsi erritmoari, ikasi bidean eta iritsi helmugara indartsu.

@@ -102,6 +102,9 @@ const RankingScreen: React.FC = React.memo(() => {
     return buildRanking(leaderboardRows, registeredPlayers).map((entry, index) => ({
       ...entry,
       position: index + 1
+    })).filter((entry) => entry.games > 0).map((entry, index) => ({
+      ...entry,
+      position: index + 1
     }));
   }, [isCompetitionResults, leaderboardRows, players, registeredPlayers]);
 

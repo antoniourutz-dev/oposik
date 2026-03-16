@@ -1,11 +1,17 @@
 import { useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { getLocalDateKey, mapStoredAnswersToUserAnswers } from '../utils/helpers';
+import {
+    getCurrentChallengeDayIndex,
+    getChallengeDayUnlockAt,
+    getLocalDateKey,
+    hasChallengeWindowEnded,
+    mapStoredAnswersToUserAnswers
+} from '../utils/helpers';
 import { normalizeUsername } from '../services/accountApi';
 import { DAYS_COUNT, LEGACY_ADMIN_USERS } from '../utils/constants';
 import { useShallow } from 'zustand/react/shallow';
 
-export const useGameProgress = (simulationToday: Date | null) => {
+export const useGameProgress = (referenceNow: Date) => {
     const {
         user,
         accountIdentity,
@@ -38,22 +44,32 @@ export const useGameProgress = (simulationToday: Date | null) => {
 
     const userDisplayName = currentUsername.toUpperCase();
     const isAdmin = Boolean(accountIdentity?.is_admin) || LEGACY_ADMIN_USERS.includes(currentUsername);
+    const challengeStartTs = useMemo(
+        () => getChallengeDayUnlockAt(challengeStartDate, 0).getTime(),
+        [challengeStartDate]
+    );
 
     const currentChallengeDayIndex = useMemo(() => {
-        const today = simulationToday ? new Date(simulationToday) : new Date();
-        today.setHours(0, 0, 0, 0);
-        const start = new Date(`${challengeStartDate}T00:00:00`);
-        const elapsedDays = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        if (elapsedDays < 0) return 0;
-        if (elapsedDays >= DAYS_COUNT) return DAYS_COUNT - 1;
-        return elapsedDays;
-    }, [challengeStartDate, simulationToday]);
+        const now = new Date(referenceNow);
+        const unlockedDayIndex = getCurrentChallengeDayIndex(challengeStartDate, now, DAYS_COUNT);
+        if (unlockedDayIndex < 0) return -1;
+        return Math.min(unlockedDayIndex, DAYS_COUNT - 1);
+    }, [challengeStartDate, referenceNow]);
 
     const effectiveDailyProgress = useMemo(() => {
         if (sequentialSimulationActive) return sequentialSimulationProgress;
 
-        const merged = [...progress];
+        const merged: typeof progress = [];
+        progress.forEach((entry) => {
+            if (!entry?.completed) return;
+            const playedAtTs = new Date(entry.date).getTime();
+            if (!Number.isFinite(playedAtTs) || playedAtTs < challengeStartTs) return;
+            merged[entry.dayIndex] = entry;
+        });
+
         userDailyPlays.forEach((play) => {
+            const playedAtTs = new Date(play.played_at).getTime();
+            if (!Number.isFinite(playedAtTs) || playedAtTs < challengeStartTs) return;
             const existing = merged[play.day_index];
             const serverAnswers = mapStoredAnswersToUserAnswers(play.answers ?? []);
             const existingAnswers = existing?.answers ?? [];
@@ -69,28 +85,25 @@ export const useGameProgress = (simulationToday: Date | null) => {
             };
         });
         return merged;
-    }, [progress, sequentialSimulationActive, sequentialSimulationProgress, userDailyPlays]);
+    }, [challengeStartTs, progress, sequentialSimulationActive, sequentialSimulationProgress, userDailyPlays]);
 
     const nextAvailableDay = useMemo(() => {
-        const today = simulationToday ? new Date(simulationToday) : new Date();
-        today.setHours(0, 0, 0, 0);
+        const now = new Date(referenceNow);
         const sourceProgress = effectiveDailyProgress;
 
-        const start = new Date(`${challengeStartDate}T00:00:00`);
-        const todayIndex = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        if (currentChallengeDayIndex < 0) return -4;
+        if (hasChallengeWindowEnded(challengeStartDate, now, DAYS_COUNT)) return -5;
 
-        if (todayIndex < 0) return -4;
-        if (todayIndex >= DAYS_COUNT) return -5;
-        const todayProgress = sourceProgress[todayIndex];
+        const todayProgress = sourceProgress[currentChallengeDayIndex];
         if (todayProgress?.completed) {
             const playedDate = getLocalDateKey(todayProgress.date);
-            const todayDate = getLocalDateKey(today);
+            const todayDate = getLocalDateKey(now);
             if (playedDate === todayDate) return -2;
             return -1;
         }
 
-        return todayIndex;
-    }, [effectiveDailyProgress, challengeStartDate, simulationToday]);
+        return currentChallengeDayIndex;
+    }, [challengeStartDate, currentChallengeDayIndex, effectiveDailyProgress, referenceNow]);
 
     return {
         currentUsername,
