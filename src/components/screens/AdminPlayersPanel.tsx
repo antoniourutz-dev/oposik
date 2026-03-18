@@ -1,28 +1,32 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  AlertCircle,
   CalendarDays,
-  CheckCircle2,
   History,
   PencilLine,
   RefreshCw,
   Search,
   Shield,
   Trash2,
+  UserPlus,
   Users
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store/useAppStore';
 import {
+  AdminCreateUserResult,
   AdminUserDirectoryEntry,
   adminChangeUsername,
   adminClearUserGameResults,
+  adminCreateUser,
+  adminDeleteUser,
   getAdminUsers,
   getAdminUsernameTimeline
 } from '../../services/adminApi';
 import { UsernameHistoryEntry } from '../../services/accountApi';
 import { DAYS_COUNT } from '../../utils/constants';
+
+const MIN_ADMIN_PASSWORD_LENGTH = 3;
 
 const formatAdminDate = (value: string | null) => {
   if (!value) return 'Ez dago datarik';
@@ -42,33 +46,50 @@ const getTimelineSourceLabel = (entry: UsernameHistoryEntry) => {
   return 'Sistemak erregistratua';
 };
 
+const getDirectoryEntryLabel = (entry: AdminUserDirectoryEntry) =>
+  (entry.current_username || entry.auth_email || entry.user_id).toUpperCase();
+
+const getDirectoryEntryTitle = (entry: AdminUserDirectoryEntry) =>
+  (entry.current_username || 'Izenik gabe').toUpperCase();
+
 const AdminPlayersPanel: React.FC = React.memo(() => {
   const {
     user,
+    fetchRegisteredPlayers,
     fetchLeaderboards,
     fetchUserDailyPlays
   } = useAppStore(useShallow((state) => ({
     user: state.user,
+    fetchRegisteredPlayers: state.fetchRegisteredPlayers,
     fetchLeaderboards: state.fetchLeaderboards,
     fetchUserDailyPlays: state.fetchUserDailyPlays
   })));
 
   const [searchInput, setSearchInput] = useState('');
+  const [createUsernameInput, setCreateUsernameInput] = useState('');
+  const [createPasswordInput, setCreatePasswordInput] = useState('');
+  const [createActionError, setCreateActionError] = useState<string | null>(null);
+  const [createActionNotice, setCreateActionNotice] = useState<string | null>(null);
   const [directory, setDirectory] = useState<AdminUserDirectoryEntry[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<UsernameHistoryEntry[]>([]);
   const [renameInput, setRenameInput] = useState('');
   const [deleteScope, setDeleteScope] = useState<'all' | string>('all');
+  const [creatingUser, setCreatingUser] = useState(false);
   const [loadingDirectory, setLoadingDirectory] = useState(false);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [savingRename, setSavingRename] = useState(false);
   const [deletingResults, setDeletingResults] = useState(false);
+  const [deletingUserAccount, setDeletingUserAccount] = useState(false);
   const [directoryError, setDirectoryError] = useState<string | null>(null);
   const [timelineError, setTimelineError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
-  const loadDirectory = useCallback(async (searchValue: string) => {
+  const loadDirectory = useCallback(async (
+    searchValue: string,
+    preferredSelectedUserId: string | null = null
+  ) => {
     setLoadingDirectory(true);
     setDirectoryError(null);
 
@@ -76,6 +97,12 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
       const nextEntries = await getAdminUsers(searchValue, 100);
       setDirectory(nextEntries);
       setSelectedUserId((current) => {
+        if (
+          preferredSelectedUserId &&
+          nextEntries.some((entry) => entry.user_id === preferredSelectedUserId)
+        ) {
+          return preferredSelectedUserId;
+        }
         if (current && nextEntries.some((entry) => entry.user_id === current)) {
           return current;
         }
@@ -123,6 +150,10 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
     [directory, selectedUserId]
   );
   const isOwnAccountSelected = Boolean(selectedUser && user?.id === selectedUser.user_id);
+  const isAdminAccountSelected = Boolean(selectedUser?.is_admin);
+  const selectedUserLabel = selectedUser ? getDirectoryEntryLabel(selectedUser) : '';
+  const createPasswordTooShort =
+    createPasswordInput.length > 0 && createPasswordInput.length < MIN_ADMIN_PASSWORD_LENGTH;
 
   useEffect(() => {
     setRenameInput(selectedUser?.current_username ?? '');
@@ -137,10 +168,43 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
   };
 
   const handleRefresh = async () => {
-      await loadDirectory(searchInput);
-      if (selectedUserId) {
-        await loadTimeline(selectedUserId);
-      }
+    await loadDirectory(searchInput);
+    if (selectedUserId) {
+      await loadTimeline(selectedUserId);
+    }
+  };
+
+  const handleCreateUser = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (
+      !createUsernameInput.trim() ||
+      !createPasswordInput.trim() ||
+      createPasswordInput.length < MIN_ADMIN_PASSWORD_LENGTH
+    ) {
+      return;
+    }
+
+    setCreatingUser(true);
+    setCreateActionError(null);
+    setCreateActionNotice(null);
+
+    try {
+      const result: AdminCreateUserResult = await adminCreateUser(createUsernameInput, createPasswordInput);
+      setCreateUsernameInput('');
+      setCreatePasswordInput('');
+      setCreateActionNotice(`${result.current_username.toUpperCase()} kontua sortu da.`);
+      setSearchInput('');
+      await Promise.all([
+        loadDirectory('', result.user_id),
+        loadTimeline(result.user_id),
+        fetchRegisteredPlayers(true),
+        fetchLeaderboards(true)
+      ]);
+    } catch (error) {
+      setCreateActionError(error instanceof Error ? error.message : 'Ezin izan da kontua sortu.');
+    } finally {
+      setCreatingUser(false);
+    }
   };
 
   const handleRename = async (event: React.FormEvent) => {
@@ -154,12 +218,13 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
     try {
       const result = await adminChangeUsername(selectedUser.user_id, renameInput, 'admin_console');
       await Promise.all([
-        loadDirectory(searchInput),
+        loadDirectory(searchInput, selectedUser.user_id),
         loadTimeline(selectedUser.user_id),
+        fetchRegisteredPlayers(true),
         fetchLeaderboards(true)
       ]);
       setActionNotice(
-        `${result.old_username.toUpperCase()} -> ${result.new_username.toUpperCase()}`
+        `${(result.old_username || 'hasierakoa').toUpperCase()} -> ${result.new_username.toUpperCase()}`
       );
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Ezin izan da izena aldatu.');
@@ -174,8 +239,8 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
     const targetDayIndex = deleteScope === 'all' ? null : Number(deleteScope);
     const confirmationMessage =
       targetDayIndex === null
-        ? `${selectedUser.current_username.toUpperCase()} erabiltzailearen emaitza guztiak ezabatu nahi dituzu?`
-        : `${selectedUser.current_username.toUpperCase()} erabiltzailearen ${targetDayIndex + 1}. eguneko emaitza ezabatu nahi duzu?`;
+        ? `${selectedUserLabel} erabiltzailearen emaitza guztiak ezabatu nahi dituzu?`
+        : `${selectedUserLabel} erabiltzailearen ${targetDayIndex + 1}. eguneko emaitza ezabatu nahi duzu?`;
 
     if (!window.confirm(confirmationMessage)) {
       return;
@@ -200,6 +265,40 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!selectedUser || isOwnAccountSelected || isAdminAccountSelected) return;
+
+    if (
+      !window.confirm(
+        `${selectedUserLabel} kontua eta haren sarbidea ezabatu nahi dituzu? Ekintza hau ezin da desegin.`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingUserAccount(true);
+    setActionError(null);
+    setActionNotice(null);
+
+    try {
+      const result = await adminDeleteUser(selectedUser.user_id);
+      await Promise.all([
+        loadDirectory(searchInput),
+        fetchRegisteredPlayers(true),
+        fetchLeaderboards(true)
+      ]);
+      setActionNotice(
+        result.warning
+          ? `${selectedUserLabel} kontua ezabatu da. ${result.warning}`
+          : `${(result.current_username || selectedUserLabel).toUpperCase()} kontua ezabatu da.`
+      );
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Ezin izan da kontua ezabatu.');
+    } finally {
+      setDeletingUserAccount(false);
+    }
+  };
+
   return (
     <div className="grid gap-5 xl:grid-cols-[0.95fr_1.35fr]">
       <motion.section
@@ -219,6 +318,71 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
           </div>
         </div>
 
+        <div className="mt-5 rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4">
+          <div className="flex items-center gap-2">
+            <UserPlus size={18} className="text-emerald-600" />
+            <h4 className="text-sm font-black uppercase tracking-[0.18em] text-emerald-900">
+              Kontu berria sortu
+            </h4>
+          </div>
+          <p className="mt-2 text-sm font-medium text-emerald-800">
+            Administratzaileak hemendik sortu ditzake Supabasen saio berriak, erabiltzaile izenarekin eta pasahitzarekin.
+          </p>
+
+          <form onSubmit={handleCreateUser} className="mt-4 space-y-3">
+            <input
+              type="text"
+              value={createUsernameInput}
+              onChange={(event) => setCreateUsernameInput(event.target.value)}
+              placeholder="Erabiltzaile izena"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-colors focus:border-emerald-400"
+            />
+            <input
+              type="password"
+              value={createPasswordInput}
+              onChange={(event) => setCreatePasswordInput(event.target.value)}
+              placeholder="Pasahitza"
+              className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-colors focus:border-emerald-400"
+            />
+            {createPasswordTooShort && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                Pasahitzak gutxienez 3 karaktere izan behar ditu.
+              </div>
+            )}
+            {(createActionError || createActionNotice) && (
+              <div
+                className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
+                  createActionError
+                    ? 'border-rose-200 bg-rose-50 text-rose-700'
+                    : 'border-emerald-200 bg-emerald-100 text-emerald-800'
+                }`}
+              >
+                {createActionError || createActionNotice}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={
+                creatingUser ||
+                !createUsernameInput.trim() ||
+                !createPasswordInput.trim() ||
+                createPasswordInput.length < MIN_ADMIN_PASSWORD_LENGTH
+              }
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-[11px] font-black uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {creatingUser ? <RefreshCw size={16} className="animate-spin" /> : <UserPlus size={16} />}
+              Kontua sortu
+            </button>
+          </form>
+
+          <p className="mt-3 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-700/70">
+            Pasahitzak gutxienez 3 karaktere izan behar ditu.
+          </p>
+        </div>
+
         <form onSubmit={handleSearchSubmit} className="mt-5 flex gap-2">
           <label className="relative flex-1">
             <Search
@@ -229,7 +393,7 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
               type="text"
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Erabiltzaile izena bilatu"
+              placeholder="Erabiltzaile izena, emaila edo ID-a bilatu"
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm font-bold text-slate-700 outline-none transition-colors focus:border-sky-400"
             />
           </label>
@@ -289,7 +453,10 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-base font-black text-slate-900">
-                      {entry.current_username.toUpperCase()}
+                      {getDirectoryEntryTitle(entry)}
+                    </p>
+                    <p className="mt-1 truncate text-xs font-semibold text-slate-500">
+                      {entry.auth_email || entry.user_id}
                     </p>
                     <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
                       {entry.played_days} egun jokatuak
@@ -301,6 +468,16 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-wider">
+                  {entry.is_admin && (
+                    <span className="rounded-full bg-sky-100 px-2.5 py-1 text-sky-700">
+                      admin
+                    </span>
+                  )}
+                  {!entry.current_username && (
+                    <span className="rounded-full bg-slate-200 px-2.5 py-1 text-slate-600">
+                      izenik gabe
+                    </span>
+                  )}
                   <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
                     {entry.rename_count} izen-aldaketa
                   </span>
@@ -340,8 +517,11 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
                   Kontu aktiboa
                 </p>
                 <h3 className="mt-1 text-2xl font-black text-slate-900">
-                  {selectedUser.current_username.toUpperCase()}
+                  {getDirectoryEntryTitle(selectedUser)}
                 </h3>
+                <p className="mt-2 text-sm font-medium text-slate-600">
+                  Saio-emaila: {selectedUser.auth_email || 'Ez dago datarik'}
+                </p>
                 <p className="mt-2 text-sm font-medium text-slate-600">
                   Sortua: {formatAdminDate(selectedUser.created_at)}
                 </p>
@@ -360,12 +540,23 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
                 <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-slate-600 shadow-sm">
                   {selectedUser.status}
                 </span>
+                {selectedUser.is_admin && (
+                  <span className="rounded-full bg-sky-100 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-sky-700 shadow-sm">
+                    admin
+                  </span>
+                )}
               </div>
             </div>
 
             {isOwnAccountSelected && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
                 Zure kontua hautatu duzu. Zure izena aldatzeko, erabili Profila atala. Emaitzak ezabatzeko admin-ekintza hau desgaituta dago.
+              </div>
+            )}
+
+            {!isOwnAccountSelected && selectedUser.is_admin && (
+              <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
+                Administratzaile kontuak ikus daitezke eta eguneratu daitezke, baina ez dira panel honetatik ezabatzen.
               </div>
             )}
 
@@ -489,18 +680,20 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
                   <div className="flex items-center gap-2">
                     <PencilLine size={18} className="text-fuchsia-600" />
                     <h4 className="text-sm font-black uppercase tracking-[0.18em] text-slate-800">
-                      Izena aldatu
+                      {selectedUser.current_username ? 'Izena aldatu' : 'Izena esleitu'}
                     </h4>
                   </div>
                   <p className="mt-2 text-sm font-medium text-slate-500">
-                    Administrazioz egindako aldaketak historian markatuta geratzen dira.
+                    {selectedUser.current_username
+                      ? 'Administrazioz egindako aldaketak historian markatuta geratzen dira.'
+                      : 'Kontu honek ez badu erabiltzaile izenik, hemendik lehenengoa esleitu dezakezu.'}
                   </p>
                   <input
                     type="text"
                     value={renameInput}
                     onChange={(event) => setRenameInput(event.target.value)}
                     disabled={savingRename || isOwnAccountSelected}
-                    placeholder="Erabiltzaile izen berria"
+                    placeholder={selectedUser.current_username ? 'Erabiltzaile izen berria' : 'Erabiltzaile izena esleitu'}
                     className="mt-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-colors focus:border-fuchsia-400 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                   <button
@@ -509,7 +702,7 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
                     className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-fuchsia-600 px-4 py-3 text-[11px] font-black uppercase tracking-wider text-white transition-colors hover:bg-fuchsia-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {savingRename ? <RefreshCw size={16} className="animate-spin" /> : <PencilLine size={16} />}
-                    Izena eguneratu
+                    {selectedUser.current_username ? 'Izena eguneratu' : 'Izena esleitu'}
                   </button>
                 </form>
 
@@ -551,6 +744,27 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
                   >
                     {deletingResults ? <RefreshCw size={16} className="animate-spin" /> : <Trash2 size={16} />}
                     Emaitzak ezabatu
+                  </button>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-rose-300 bg-white p-4 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <Trash2 size={18} className="text-rose-700" />
+                    <h4 className="text-sm font-black uppercase tracking-[0.18em] text-rose-800">
+                      Kontua ezabatu
+                    </h4>
+                  </div>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    Kontua, saioa eta profilaren erregistro nagusiak ezabatzen ditu. Eragiketa hau ezin da desegin.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteUser}
+                    disabled={deletingUserAccount || isOwnAccountSelected || isAdminAccountSelected}
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-700 px-4 py-3 text-[11px] font-black uppercase tracking-wider text-white transition-colors hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deletingUserAccount ? <RefreshCw size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    Kontua ezabatu
                   </button>
                 </div>
 

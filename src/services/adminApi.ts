@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { getSafeSupabaseSession, supabase, supabaseAnonKey, supabaseUrl } from '../supabase';
 import {
   UsernameChangeResult,
   UsernameHistoryEntry,
@@ -9,7 +9,9 @@ import {
 
 export type AdminUserDirectoryEntry = {
   user_id: string;
-  current_username: string;
+  current_username: string | null;
+  auth_email: string | null;
+  is_admin: boolean;
   status: string;
   created_at: string | null;
   updated_at: string | null;
@@ -22,6 +24,19 @@ export type AdminUserDirectoryEntry = {
   last_played_at: string | null;
 };
 
+export type AdminCreateUserResult = {
+  user_id: string;
+  current_username: string;
+  auth_email: string | null;
+  created_at: string | null;
+};
+
+export type AdminDeleteUserResult = {
+  user_id: string;
+  current_username: string | null;
+  warning: string | null;
+};
+
 type AdminDeleteResultsResult = {
   deleted_rows: number;
 };
@@ -30,6 +45,10 @@ type AdminSetChallengeStartDateResult = {
   saved_start_date: string;
   deleted_rows: number;
 };
+
+const getAdminUserManagementFunctionUrl = () =>
+  import.meta.env.VITE_ADMIN_USER_MANAGEMENT_FUNCTION_URL ||
+  `${supabaseUrl}/functions/v1/admin-user-management`;
 
 const generateUUID = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -54,9 +73,47 @@ const toStringArray = (value: unknown) => {
     .filter(Boolean);
 };
 
+const toNullableString = (value: unknown) => {
+  const normalized = String(value ?? '').trim();
+  return normalized ? normalized : null;
+};
+
+const invokeAdminUserManagement = async <T>(payload: Record<string, unknown>) => {
+  const session = await getSafeSupabaseSession();
+
+  if (!session?.access_token) {
+    throw new Error('Saioa iraungi da. Hasi berriro saioa.');
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(getAdminUserManagementFunctionUrl(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch {
+    throw new Error('Ezin izan da administrazio zerbitzuarekin konektatu.');
+  }
+
+  const result = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+
+  if (!response.ok) {
+    throw new Error(String(result?.message ?? 'Ezin izan da administrazio ekintza osatu.'));
+  }
+
+  return (result ?? {}) as T;
+};
+
 const mapAdminDirectoryEntry = (value: Record<string, unknown>): AdminUserDirectoryEntry => ({
   user_id: String(value.user_id ?? ''),
-  current_username: String(value.current_username ?? ''),
+  current_username: toNullableString(value.current_username),
+  auth_email: toNullableString(value.auth_email),
+  is_admin: Boolean(value.is_admin),
   status: String(value.status ?? 'active'),
   created_at: value.created_at ? String(value.created_at) : null,
   updated_at: value.updated_at ? String(value.updated_at) : null,
@@ -84,7 +141,7 @@ export const getAdminUsers = async (search = '', limit = 80) => {
 
   return ((data ?? []) as Array<Record<string, unknown>>)
     .map(mapAdminDirectoryEntry)
-    .filter((entry) => entry.user_id && entry.current_username);
+    .filter((entry) => Boolean(entry.user_id));
 };
 
 export const getAdminUsernameTimeline = async (userId: string) => {
@@ -134,10 +191,41 @@ export const adminChangeUsername = async (
 
   return {
     user_id: String(result.out_user_id ?? ''),
-    old_username: String(result.out_old_username ?? ''),
+    old_username: toNullableString(result.out_old_username),
     new_username: String(result.out_new_username ?? ''),
     changed_at: String(result.out_changed_at ?? '')
   } as UsernameChangeResult;
+};
+
+export const adminCreateUser = async (
+  username: string,
+  password: string
+) => {
+  const result = await invokeAdminUserManagement<AdminCreateUserResult>({
+    action: 'create_user',
+    username,
+    password
+  });
+
+  return {
+    user_id: String(result.user_id ?? ''),
+    current_username: String(result.current_username ?? ''),
+    auth_email: toNullableString(result.auth_email),
+    created_at: toNullableString(result.created_at)
+  } as AdminCreateUserResult;
+};
+
+export const adminDeleteUser = async (userId: string) => {
+  const result = await invokeAdminUserManagement<AdminDeleteUserResult>({
+    action: 'delete_user',
+    userId
+  });
+
+  return {
+    user_id: String(result.user_id ?? userId),
+    current_username: toNullableString(result.current_username),
+    warning: toNullableString(result.warning)
+  } as AdminDeleteUserResult;
 };
 
 export const adminClearUserGameResults = async (

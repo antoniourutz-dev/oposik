@@ -21,7 +21,7 @@ export const FIRST_DAY_START_HOUR = 15;
 export const FIRST_DAY_START_MINUTE = 30;
 export const FOLLOWING_DAYS_START_HOUR = 0;
 export const FOLLOWING_DAYS_START_MINUTE = 1;
-export const LEGACY_ADMIN_USERS = ['admin', 'k_admin'];
+export const LEGACY_ADMIN_USERS = ['admin', 'k_admin', 'anto'];
 export const DAY_OPTIONS = Array.from({ length: DAYS_COUNT }, (_, idx) => idx);
 
 export const QUIZ_CACHE_TTL_MS = 1000 * 60 * 60 * 12;

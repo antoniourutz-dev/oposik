@@ -14,8 +14,10 @@
     "supabase:db:push": "npx supabase db push",
     "supabase:functions:serve": "npx supabase functions serve --env-file .env.supabase",
     "supabase:functions:deploy:login": "npx supabase functions deploy login-with-username --no-verify-jwt",
+    "supabase:functions:deploy:admin-user-management": "npx supabase functions deploy admin-user-management --no-verify-jwt",
     "supabase:functions:deploy:daily-push": "npx supabase functions deploy daily-push-reminders --no-verify-jwt",
     "supabase:deploy:username-auth": "npm run supabase:db:push && npm run supabase:functions:deploy:login",
+    "supabase:deploy:admin-tools": "npm run supabase:db:push && npm run supabase:functions:deploy:admin-user-management",
     "supabase:deploy:push-reminders": "npm run supabase:db:push && npm run supabase:functions:deploy:daily-push"
   },
   "dependencies": {

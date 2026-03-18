@@ -72,7 +72,7 @@ const AccountPanel: React.FC = React.memo(() => {
       const result = await changeMyUsername(pendingUsername.trim());
       await Promise.all([fetchAccountIdentity(), fetchRegisteredPlayers(true)]);
       setUsernameChangeNotice(
-        `${result.old_username.toUpperCase()} \u2192 ${result.new_username.toUpperCase()}`
+        `${(result.old_username || 'hasierakoa').toUpperCase()} \u2192 ${result.new_username.toUpperCase()}`
       );
       setPendingUsername('');
     } catch (err: any) {

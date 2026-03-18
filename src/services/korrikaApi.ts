@@ -268,9 +268,23 @@ const normalizePlayerName = (row: Record<string, unknown>) => {
 export const getRegisteredPlayers = async () => {
   const names = new Set<string>();
 
-  // Evita el Spam 404 si estamos en local sin backend definido real apuntado a tablas válidas.
-  if (import.meta.env.DEV) {
-    return ['ADMIN', 'JOKALARI_TEST'];
+  try {
+    const { data, error } = await supabase
+      .schema('app')
+      .rpc('list_registered_players');
+
+    if (!error) {
+      ((data ?? []) as Array<Record<string, unknown>>)
+        .map((row) => String(row.username ?? '').trim().toUpperCase())
+        .filter(Boolean)
+        .forEach((name) => names.add(name));
+
+      if (names.size > 0) {
+        return [...names];
+      }
+    }
+  } catch {
+    // fallback to legacy sources below
   }
 
   for (const source of PLAYER_SOURCES) {

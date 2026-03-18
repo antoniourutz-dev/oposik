@@ -21,7 +21,7 @@ export type UsernameHistoryEntry = {
 
 export type UsernameChangeResult = {
   user_id: string;
-  old_username: string;
+  old_username: string | null;
   new_username: string;
   changed_at: string;
 };
@@ -155,7 +155,7 @@ export const changeMyUsername = async (nextUsernameInput: string) => {
 
   return {
     user_id: result.out_user_id,
-    old_username: result.out_old_username,
+    old_username: result.out_old_username ?? null,
     new_username: result.out_new_username,
     changed_at: result.out_changed_at,
   } as UsernameChangeResult;
