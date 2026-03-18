@@ -15,6 +15,7 @@ export type AdminUserDirectoryEntry = {
   status: string;
   created_at: string | null;
   updated_at: string | null;
+  last_sign_in_at: string | null;
   previous_usernames: string[];
   rename_count: number;
   self_service_change_count: number;
@@ -117,6 +118,7 @@ const mapAdminDirectoryEntry = (value: Record<string, unknown>): AdminUserDirect
   status: String(value.status ?? 'active'),
   created_at: value.created_at ? String(value.created_at) : null,
   updated_at: value.updated_at ? String(value.updated_at) : null,
+  last_sign_in_at: value.last_sign_in_at ? String(value.last_sign_in_at) : null,
   previous_usernames: toStringArray(value.previous_usernames),
   rename_count: toNumber(value.rename_count),
   self_service_change_count: toNumber(value.self_service_change_count),

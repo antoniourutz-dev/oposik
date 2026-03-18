@@ -458,6 +458,9 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
                     <p className="mt-1 truncate text-xs font-semibold text-slate-500">
                       {entry.auth_email || entry.user_id}
                     </p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-500">
+                      Azken sarrera: {formatAdminDate(entry.last_sign_in_at)}
+                    </p>
                     <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
                       {entry.played_days} egun jokatuak
                     </p>
@@ -524,6 +527,9 @@ const AdminPlayersPanel: React.FC = React.memo(() => {
                 </p>
                 <p className="mt-2 text-sm font-medium text-slate-600">
                   Sortua: {formatAdminDate(selectedUser.created_at)}
+                </p>
+                <p className="text-sm font-medium text-slate-600">
+                  Azken sarrera app-ean: {formatAdminDate(selectedUser.last_sign_in_at)}
                 </p>
                 <p className="text-sm font-medium text-slate-600">
                   Azken partida: {formatAdminDate(selectedUser.last_played_at)}
