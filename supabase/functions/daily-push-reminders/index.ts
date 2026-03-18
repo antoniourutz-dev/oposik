@@ -134,8 +134,8 @@ const sendReminder = async (row: DueReminderRow) => {
     title: 'KORRIKA zure zain dago',
     body: 'Oraindik ez duzu gaurko saioa egin. Zatoz eta ekin gaurko erronkari.',
     tag: `korrika-reminder-${row.reminder_day_key}`,
-    icon: '/korrika_icon_set/icon-192x192.png',
-    badge: '/korrika_icon_set/icon-128x128.png',
+    icon: '/korrika_icon_set/icon_192.png',
+    badge: '/korrika_icon_set/icon_128.png',
     data: {
       url: '/',
       dayIndex: row.day_index,

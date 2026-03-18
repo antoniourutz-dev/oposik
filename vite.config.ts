@@ -16,13 +16,13 @@ const pwaManifest = {
   lang: 'eu',
   icons: [
     {
-      src: '/korrika_icon_set/icon-192x192.png',
+      src: '/korrika_icon_set/icon_192.png',
       sizes: '192x192',
       type: 'image/png',
       purpose: 'any maskable'
     },
     {
-      src: '/korrika_icon_set/icon-512x512.png',
+      src: '/korrika_icon_set/icon_512.png',
       sizes: '512x512',
       type: 'image/png',
       purpose: 'any maskable'

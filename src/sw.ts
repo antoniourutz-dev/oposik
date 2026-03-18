@@ -20,8 +20,8 @@ type ReminderNotificationPayload = {
   data?: Record<string, unknown>;
 };
 
-const DEFAULT_NOTIFICATION_ICON = '/korrika_icon_set/icon-192x192.png';
-const DEFAULT_NOTIFICATION_BADGE = '/korrika_icon_set/icon-128x128.png';
+const DEFAULT_NOTIFICATION_ICON = '/korrika_icon_set/icon_192.png';
+const DEFAULT_NOTIFICATION_BADGE = '/korrika_icon_set/icon_128.png';
 const DEFAULT_NOTIFICATION_URL = '/';
 
 self.skipWaiting();
