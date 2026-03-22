@@ -186,13 +186,6 @@ const parseStoredAnswers = (raw: unknown): StoredAnswerRow[] => {
     .filter((item): item is StoredAnswerRow => Boolean(item));
 };
 
-const shouldTreatAsOneBased = (dayValues: number[], daysCount: number) => {
-  if (dayValues.length === 0) return false;
-  const hasZeroBasedMarker = dayValues.some((value) => value === 0);
-  if (hasZeroBasedMarker) return false;
-  return dayValues.every((value) => value >= 1 && value <= daysCount);
-};
-
 type PlayersSource = {
   table: string;
   columns: string[];
@@ -350,14 +343,10 @@ export const getLeaderboards = async (daysCount = 11) => {
   if (error) throw error;
 
   const rawRows = (data ?? []) as Array<Record<string, unknown>>;
-  const rawDayValues = rawRows
-    .map((row) => parseDayIndex(row.day_index))
-    .filter((value): value is number => value !== null);
-  const oneBased = shouldTreatAsOneBased(rawDayValues, daysCount);
 
   return rawRows.map((row) => {
     const parsedDay = parseDayIndex(row.day_index);
-    const normalizedDay = parsedDay === null ? null : oneBased ? parsedDay - 1 : parsedDay;
+    const normalizedDay = parsedDay === null ? null : parsedDay;
 
     return {
       user_id: row.user_id ? String(row.user_id) : null,
@@ -394,17 +383,13 @@ export const getUserDailyPlays = async (userId: string, daysCount: number) => {
     total_questions: unknown;
     answers: unknown;
   }>;
-  const rawDayValues = rows
-    .map((row) => parseDayIndex(row.day_index))
-    .filter((value): value is number => value !== null);
-  const oneBased = shouldTreatAsOneBased(rawDayValues, daysCount);
   const uniqueByDay = new Map<number, UserDailyPlayRow>();
 
   rows.forEach((row) => {
     if (!row.played_at) return;
     const parsedDay = parseDayIndex(row.day_index);
     if (parsedDay === null) return;
-    const dayIdx = oneBased ? parsedDay - 1 : parsedDay;
+    const dayIdx = parsedDay;
     if (dayIdx < 0 || dayIdx >= daysCount) return;
     if (!uniqueByDay.has(dayIdx)) {
       uniqueByDay.set(dayIdx, {

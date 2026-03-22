@@ -5,6 +5,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { GameState } from '../../types';
 import { useShallow } from 'zustand/react/shallow';
 import { DAYS_COUNT } from '../../utils/constants';
+import { useGameProgress } from '../../hooks/useGameProgress';
 
 type ResultsFeedback = {
   text: string;
@@ -76,13 +77,12 @@ const getResultFeedback = (score: number, totalQuestions: number): ResultsFeedba
 };
 
 const ResultsScreen: React.FC = React.memo(() => {
+  const reviewReferenceNow = React.useMemo(() => new Date(), []);
   const {
     players,
     currentPlayerIdx,
     dayIndex,
     reviewDayIndex,
-    progress,
-    sequentialSimulationProgress,
     setGameState,
     setReviewDayIndex,
     setIsSimulationRun
@@ -91,12 +91,11 @@ const ResultsScreen: React.FC = React.memo(() => {
     currentPlayerIdx: state.currentPlayerIdx,
     dayIndex: state.dayIndex,
     reviewDayIndex: state.reviewDayIndex,
-    progress: state.progress,
-    sequentialSimulationProgress: state.sequentialSimulationProgress,
     setGameState: state.setGameState,
     setReviewDayIndex: state.setReviewDayIndex,
     setIsSimulationRun: state.setIsSimulationRun
   })));
+  const { effectiveDailyProgress } = useGameProgress(reviewReferenceNow);
 
   const handleBack = () => {
     setReviewDayIndex(null);
@@ -107,11 +106,12 @@ const ResultsScreen: React.FC = React.memo(() => {
   const backLabel = reviewDayIndex !== null ? 'Itzuli ibilbidera' : 'Itzuli hasierara';
 
   // Determinar de dónde sacar los resultados basados en si estamos revisando el histórico o el fin de partida.
-  const activeProgressArr = sequentialSimulationProgress.length > 0 ? sequentialSimulationProgress : progress;
-  const reviewedDay = reviewDayIndex !== null && reviewDayIndex >= 0 ? activeProgressArr[reviewDayIndex] : undefined;
+  const reviewedDay =
+    reviewDayIndex !== null && reviewDayIndex >= 0 ? effectiveDailyProgress[reviewDayIndex] : undefined;
+  const livePlayerResults = reviewDayIndex === null ? players[currentPlayerIdx] : undefined;
 
-  const resultsAnswers = reviewedDay?.answers ?? (players[currentPlayerIdx]?.answers ?? []);
-  const resultsScore = reviewedDay?.score ?? (players[currentPlayerIdx]?.score ?? 0);
+  const resultsAnswers = reviewedDay?.answers ?? (livePlayerResults?.answers ?? []);
+  const resultsScore = reviewedDay?.score ?? (livePlayerResults?.score ?? 0);
   const resultsTotal = Math.max(resultsAnswers.length, 1);
 
   const isFinalDayResult = reviewDayIndex === null && dayIndex === DAYS_COUNT - 1;
