@@ -84,7 +84,7 @@ const QuizScreen: React.FC<QuizScreenProps> = React.memo(
     totalQuestions,
     onAnswer,
     timerKey,
-    secondsPerQuestion = 20
+    secondsPerQuestion = 30
   }) => {
     const { players, currentPlayerIdx } = useAppStore(useShallow((state) => ({
       players: state.players,
