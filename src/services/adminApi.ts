@@ -1,4 +1,6 @@
-import { getSafeSupabaseSession, supabase, supabaseAnonKey, supabaseUrl } from '../supabase';
+import { DEFAULT_CURRICULUM } from '../practiceConfig';
+import { getSafeSupabaseSession, supabase } from '../supabaseClient';
+import { supabaseAnonKey, supabaseUrl } from '../supabaseConfig';
 import {
   UsernameChangeResult,
   UsernameHistoryEntry,
@@ -74,7 +76,6 @@ type AdminSetChallengeStartDateResult = {
   saved_start_date: string;
   deleted_rows: number;
 };
-
 const getAdminUserManagementFunctionUrl = () =>
   import.meta.env.VITE_ADMIN_USER_MANAGEMENT_FUNCTION_URL ||
   `${supabaseUrl}/functions/v1/admin-user-management`;
@@ -216,11 +217,12 @@ export const getAdminUsernameTimeline = async (userId: string) => {
   return (data ?? []) as UsernameHistoryEntry[];
 };
 
-export const getAdminPracticeProfile = async (userId: string) => {
+export const getAdminPracticeProfile = async (userId: string, curriculum = DEFAULT_CURRICULUM) => {
   const { data, error } = await supabase
     .schema('app')
-    .rpc('admin_get_practice_profile', {
-      p_user_id: userId
+    .rpc('admin_get_practice_profile_for_curriculum', {
+      p_user_id: userId,
+      p_curriculum: curriculum
     })
     .maybeSingle();
 
@@ -231,12 +233,17 @@ export const getAdminPracticeProfile = async (userId: string) => {
   return data ? mapAdminPracticeProfile(data as Record<string, unknown>) : null;
 };
 
-export const getAdminRecentPracticeSessions = async (userId: string, limit = 8) => {
+export const getAdminRecentPracticeSessions = async (
+  userId: string,
+  limit = 8,
+  curriculum = DEFAULT_CURRICULUM
+) => {
   const { data, error } = await supabase
     .schema('app')
-    .rpc('admin_get_recent_practice_sessions', {
+    .rpc('admin_get_recent_practice_sessions_for_curriculum', {
       p_user_id: userId,
-      p_limit: limit
+      p_limit: limit,
+      p_curriculum: curriculum
     });
 
   if (error) {
@@ -245,7 +252,12 @@ export const getAdminRecentPracticeSessions = async (userId: string, limit = 8) 
 
   return ((data ?? []) as Array<Record<string, unknown>>).map((entry) => ({
     id: String(entry.session_id ?? ''),
-    mode: entry.mode === 'weakest' ? 'weakest' : 'standard',
+    mode:
+      entry.mode === 'weakest'
+        ? 'weakest'
+        : entry.mode === 'random'
+          ? 'random'
+          : 'standard',
     title: String(entry.title ?? 'Sesion'),
     startedAt: String(entry.started_at ?? ''),
     finishedAt: String(entry.finished_at ?? ''),
@@ -255,12 +267,17 @@ export const getAdminRecentPracticeSessions = async (userId: string, limit = 8) 
   }));
 };
 
-export const getAdminWeakPracticeQuestions = async (userId: string, limit = 5) => {
+export const getAdminWeakPracticeQuestions = async (
+  userId: string,
+  limit = 5,
+  curriculum = DEFAULT_CURRICULUM
+) => {
   const { data, error } = await supabase
     .schema('app')
-    .rpc('admin_get_weak_practice_questions', {
+    .rpc('admin_get_weak_practice_questions_for_curriculum', {
       p_user_id: userId,
-      p_limit: limit
+      p_limit: limit,
+      p_curriculum: curriculum
     });
 
   if (error) {

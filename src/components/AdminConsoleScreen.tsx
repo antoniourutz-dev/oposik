@@ -11,6 +11,7 @@ import {
   getAdminUsers,
   getAdminWeakPracticeQuestions
 } from '../services/adminApi';
+import { DEFAULT_CURRICULUM, PRACTICE_BATCH_SIZE } from '../practiceConfig';
 import { PracticeSessionSummary } from '../practiceTypes';
 
 const formatDate = (value: string | null) => {
@@ -76,9 +77,9 @@ const AdminConsoleScreen: React.FC = () => {
 
     try {
       const [nextProfile, nextSessions, nextWeakQuestions] = await Promise.all([
-        getAdminPracticeProfile(userId),
-        getAdminRecentPracticeSessions(userId, 8),
-        getAdminWeakPracticeQuestions(userId, 5)
+        getAdminPracticeProfile(userId, DEFAULT_CURRICULUM),
+        getAdminRecentPracticeSessions(userId, 8, DEFAULT_CURRICULUM),
+        getAdminWeakPracticeQuestions(userId, 5, DEFAULT_CURRICULUM)
       ]);
 
       setProfile(nextProfile);
@@ -306,7 +307,7 @@ const AdminConsoleScreen: React.FC = () => {
               <div className="rounded-[1.1rem] bg-slate-50 px-4 py-3.5">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Siguiente bloque</p>
                 <p className="mt-1.5 text-2xl font-black text-slate-950">
-                  {Math.floor((profile?.next_standard_batch_start_index ?? 0) / 20) + 1}
+                  {Math.floor((profile?.next_standard_batch_start_index ?? 0) / PRACTICE_BATCH_SIZE) + 1}
                 </p>
               </div>
             </div>

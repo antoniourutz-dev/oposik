@@ -1,151 +1,110 @@
-import { supabase } from '../supabase';
-import { OptionKey, PracticeQuestion } from '../practiceTypes';
+import { DEFAULT_CURRICULUM } from '../practiceConfig';
+import { supabase } from '../supabaseClient';
+import {
+  PracticeCatalogSummary,
+  PracticeQuestion,
+  WeakQuestionInsight
+} from '../practiceTypes';
+import { mapQuestion, mapWeakQuestionInsight, readNumber } from './preguntasMappers';
 
-const OPTION_KEYS: OptionKey[] = ['a', 'b', 'c', 'd'];
+const QUESTIONS_PAGE_SIZE = 500;
 
-const OPTION_FIELD_ALIASES: Record<OptionKey, string[]> = {
-  a: ['opcion_a', 'option_a', 'respuesta_a', 'a'],
-  b: ['opcion_b', 'option_b', 'respuesta_b', 'b'],
-  c: ['opcion_c', 'option_c', 'respuesta_c', 'c'],
-  d: ['opcion_d', 'option_d', 'respuesta_d', 'd']
-};
+export const getPracticeCatalogSummary = async (
+  curriculum = DEFAULT_CURRICULUM
+): Promise<PracticeCatalogSummary> => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('get_practice_catalog_summary', {
+      p_curriculum: curriculum
+    })
+    .maybeSingle();
 
-const readText = (value: unknown) => {
-  if (value === null || value === undefined) return null;
-  const normalized = String(value).trim();
-  return normalized || null;
-};
-
-const readNumber = (value: unknown) => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return Math.trunc(value);
-  }
-
-  const normalized = readText(value);
-  if (!normalized) return null;
-
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
-};
-
-const normalizeComparable = (value: string) =>
-  value
-    .normalize('NFKC')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-
-const pickFirstText = (row: Record<string, unknown>, fieldNames: string[]) => {
-  for (const fieldName of fieldNames) {
-    const value = readText(row[fieldName]);
-    if (value) return value;
-  }
-
-  return null;
-};
-
-const extractOptionsFromObject = (rawOptions: unknown) => {
-  if (!rawOptions || typeof rawOptions !== 'object' || Array.isArray(rawOptions)) {
-    return null;
-  }
-
-  const source = rawOptions as Record<string, unknown>;
-  const entries = OPTION_KEYS.map((key) => [key, readText(source[key])] as const);
-  if (entries.some(([, value]) => !value)) {
-    return null;
-  }
-
-  return Object.fromEntries(entries) as Record<OptionKey, string>;
-};
-
-const extractOptions = (row: Record<string, unknown>) => {
-  const nestedOptions =
-    extractOptionsFromObject(row.opciones) ??
-    extractOptionsFromObject(row.options);
-
-  if (nestedOptions) {
-    return nestedOptions;
-  }
-
-  const entries = OPTION_KEYS.map((key) => [
-    key,
-    pickFirstText(row, OPTION_FIELD_ALIASES[key])
-  ] as const);
-
-  if (entries.some(([, value]) => !value)) {
-    return null;
-  }
-
-  return Object.fromEntries(entries) as Record<OptionKey, string>;
-};
-
-const mapNumericOption = (value: number): OptionKey | null => {
-  const index = Math.trunc(value) - 1;
-  return OPTION_KEYS[index] ?? null;
-};
-
-const extractCorrectOption = (
-  row: Record<string, unknown>,
-  options: Record<OptionKey, string>
-): OptionKey | null => {
-  const rawCorrectValue =
-    row.respuesta_correcta ??
-    row.correct_option ??
-    row.correct_answer ??
-    row.respuesta ??
-    row.answer;
-
-  if (typeof rawCorrectValue === 'number' && Number.isFinite(rawCorrectValue)) {
-    return mapNumericOption(rawCorrectValue);
-  }
-
-  const correctText = readText(rawCorrectValue);
-  if (!correctText) {
-    return null;
-  }
-
-  const normalizedCorrect = normalizeComparable(correctText);
-  if (OPTION_KEYS.includes(normalizedCorrect as OptionKey)) {
-    return normalizedCorrect as OptionKey;
-  }
-
-  const numericCandidate = Number(correctText);
-  if (Number.isFinite(numericCandidate)) {
-    return mapNumericOption(numericCandidate);
-  }
-
-  return (
-    OPTION_KEYS.find((key) => normalizeComparable(options[key]) === normalizedCorrect) ?? null
-  );
-};
-
-const mapQuestion = (row: Record<string, unknown>): PracticeQuestion | null => {
-  const statement = pickFirstText(row, ['pregunta', 'question_text', 'enunciado', 'texto', 'question']);
-  const options = extractOptions(row);
-
-  if (!statement || !options) {
-    return null;
-  }
-
-  const correctOption = extractCorrectOption(row, options);
-  if (!correctOption) {
-    return null;
+  if (error) {
+    throw error;
   }
 
   return {
-    id: readText(row.id) ?? crypto.randomUUID(),
-    number: readNumber(row.numero ?? row.question_number ?? row.orden ?? row.order),
-    statement,
-    options,
-    correctOption,
-    category: pickFirstText(row, ['grupo', 'tipo', 'type', 'category', 'tema']),
-    explanation: pickFirstText(row, ['explicacion', 'explanation', 'justificacion'])
+    totalQuestions: readNumber((data as Record<string, unknown> | null)?.total_questions) ?? 0
   };
 };
 
+export const getStandardPracticeBatch = async (
+  batchStartIndex: number,
+  batchSize: number,
+  curriculum = DEFAULT_CURRICULUM
+) => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('get_standard_practice_batch', {
+      p_curriculum: curriculum,
+      p_batch_start_index: batchStartIndex,
+      p_batch_size: batchSize
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>)
+    .map((row) => {
+      const payload =
+        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+          ? (row.payload as Record<string, unknown>)
+          : null;
+      return payload ? mapQuestion(payload) : null;
+    })
+    .filter((question): question is PracticeQuestion => Boolean(question));
+};
+
+export const getWeakPracticeInsights = async (
+  curriculum = DEFAULT_CURRICULUM,
+  limit = 5
+) => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('get_weak_practice_batch', {
+      p_curriculum: curriculum,
+      p_limit: limit
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>)
+    .map(mapWeakQuestionInsight)
+    .filter((item): item is WeakQuestionInsight => Boolean(item));
+};
+
+export const getRandomPracticeBatch = async (
+  batchSize: number,
+  curriculum = DEFAULT_CURRICULUM
+) => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('get_random_practice_batch', {
+      p_curriculum: curriculum,
+      p_batch_size: batchSize
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>)
+    .map((row) => {
+      const payload =
+        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+          ? (row.payload as Record<string, unknown>)
+          : null;
+      return payload ? mapQuestion(payload) : null;
+    })
+    .filter((question): question is PracticeQuestion => Boolean(question));
+};
+
 export const getPracticeQuestions = async () => {
-  const runQuery = (orderField: string | null) => {
-    let query = supabase.from('preguntas').select('*').limit(1000);
+  const runQuery = (orderField: string | null, from: number, to: number) => {
+    let query = supabase.from('preguntas').select('*').range(from, to);
 
     if (orderField) {
       query = query.order(orderField, { ascending: true });
@@ -154,14 +113,40 @@ export const getPracticeQuestions = async () => {
     return query;
   };
 
-  let response = await runQuery('numero');
+  const fetchAllRows = async (orderField: string | null) => {
+    const rows: Array<Record<string, unknown>> = [];
+    let from = 0;
+
+    while (true) {
+      const to = from + QUESTIONS_PAGE_SIZE - 1;
+      const response = await runQuery(orderField, from, to);
+
+      if (response.error) {
+        return response;
+      }
+
+      const page = (response.data ?? []) as Array<Record<string, unknown>>;
+      rows.push(...page);
+
+      if (page.length < QUESTIONS_PAGE_SIZE) {
+        return {
+          data: rows,
+          error: null
+        };
+      }
+
+      from += QUESTIONS_PAGE_SIZE;
+    }
+  };
+
+  let response = await fetchAllRows('numero');
 
   if (response.error && /column .*numero/i.test(response.error.message)) {
-    response = await runQuery('id');
+    response = await fetchAllRows('id');
   }
 
   if (response.error && /column .*id/i.test(response.error.message)) {
-    response = await runQuery(null);
+    response = await fetchAllRows(null);
   }
 
   if (response.error) {

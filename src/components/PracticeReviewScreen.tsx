@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, BookOpenText, CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import { PracticeAnswer } from '../practiceTypes';
 
@@ -92,11 +91,8 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           const correctText = answer.question.options[correctKey];
 
           return (
-            <motion.article
+            <article
               key={`${answer.question.id}-${index}`}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03 }}
               className="overflow-hidden rounded-[1.35rem] border border-white/70 bg-white/75 p-4 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur"
             >
               <div className="flex flex-col gap-3">
@@ -165,7 +161,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                   </p>
                 </details>
               </div>
-            </motion.article>
+            </article>
           );
         })}
       </section>

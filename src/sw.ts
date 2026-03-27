@@ -2,6 +2,8 @@
 
 import { clientsClaim } from 'workbox-core';
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
 
 declare let self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{
@@ -23,11 +25,37 @@ type ReminderNotificationPayload = {
 const DEFAULT_NOTIFICATION_ICON = '/korrika_icon_set/icon_192.png';
 const DEFAULT_NOTIFICATION_BADGE = '/korrika_icon_set/icon_128.png';
 const DEFAULT_NOTIFICATION_URL = '/';
+const PRECACHE_BLOCKLIST = [
+  /^assets\/AdminConsoleScreen-.*\.js$/,
+  /^assets\/react-dom-.*\.js$/,
+  /^assets\/supabase-.*\.js$/,
+  /^korrika_icon_set\/icon_(16|32|48|64|72|96|144|152|180|256|384|1024)\.png$/
+];
 
 self.skipWaiting();
 clientsClaim();
 cleanupOutdatedCaches();
-precacheAndRoute(self.__WB_MANIFEST);
+precacheAndRoute(
+  self.__WB_MANIFEST.filter(
+    (entry) => !PRECACHE_BLOCKLIST.some((pattern) => pattern.test(entry.url))
+  )
+);
+
+registerRoute(
+  ({ url, request }) => url.origin === self.location.origin && request.destination === 'script',
+  new StaleWhileRevalidate({ cacheName: 'oposik-scripts' })
+);
+
+registerRoute(
+  ({ url, request }) => url.origin === self.location.origin && request.destination === 'style',
+  new StaleWhileRevalidate({ cacheName: 'oposik-styles' })
+);
+
+registerRoute(
+  ({ url, request }) =>
+    url.origin === self.location.origin && request.destination === 'image',
+  new CacheFirst({ cacheName: 'oposik-images' })
+);
 
 const parseReminderPayload = (raw: string | null): ReminderNotificationPayload => {
   if (!raw) return {};

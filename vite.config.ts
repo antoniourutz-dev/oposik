@@ -7,7 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 const pwaManifest = {
   name: 'Oposik',
   short_name: 'Oposik',
-  description: 'Practica oposiciones por bloques de 10 preguntas con estadisticas y repaso de errores.',
+  description: 'Practica oposiciones por bloques de 20 preguntas con estadisticas y repaso de errores.',
   start_url: '/',
   display: 'standalone' as const,
   background_color: '#f8fafc',
@@ -63,7 +63,13 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
+        globIgnores: [
+          'assets/AdminConsoleScreen-*.js',
+          'assets/react-dom-*.js',
+          'assets/supabase-*.js',
+          'korrika_icon_set/**'
+        ]
       },
       manifest: pwaManifest,
       devOptions: {
@@ -76,7 +82,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          react: ['react', 'react-dom'],
+          'react-dom': ['react', 'react-dom', 'react-dom/client'],
+          icons: ['lucide-react'],
           supabase: ['@supabase/supabase-js']
         }
       }
@@ -86,5 +93,9 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src')
     }
+  },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts']
   }
 });

@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "rotate:internal-auth-emails": "node scripts/rotate-internal-auth-emails.mjs",
     "supabase:login": "npx supabase login",
     "supabase:link": "npx supabase link",
@@ -22,13 +24,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "2.48.1",
-    "clsx": "^2.1.1",
-    "framer-motion": "^12.35.0",
     "lucide-react": "^0.577.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "tailwind-merge": "^3.5.0",
-    "zustand": "^5.0.11"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",
@@ -39,6 +37,7 @@
     "tailwindcss": "^4.2.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^3.2.4"
   }
 }

@@ -1,5 +1,5 @@
 export type OptionKey = 'a' | 'b' | 'c' | 'd';
-export type PracticeMode = 'standard' | 'weakest';
+export type PracticeMode = 'standard' | 'weakest' | 'random';
 
 export interface PracticeQuestion {
   id: string;
@@ -41,26 +41,6 @@ export interface PracticeSessionSummary {
   questionIds: string[];
 }
 
-export interface PracticePlayer {
-  id: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-  totalAnswered: number;
-  totalCorrect: number;
-  totalIncorrect: number;
-  totalSessions: number;
-  nextStandardBatchStartIndex: number;
-  questionStats: Record<string, PracticeQuestionStat>;
-  recentSessions: PracticeSessionSummary[];
-}
-
-export interface PracticeStore {
-  version: number;
-  activePlayerId: string;
-  players: Record<string, PracticePlayer>;
-}
-
 export interface PracticeProfile {
   userId: string;
   curriculum: string;
@@ -72,6 +52,10 @@ export interface PracticeProfile {
   lastStudiedAt: string | null;
 }
 
+export interface PracticeCatalogSummary {
+  totalQuestions: number;
+}
+
 export interface ActivePracticeSession {
   id: string;
   mode: PracticeMode;
@@ -79,7 +63,8 @@ export interface ActivePracticeSession {
   subtitle: string;
   questions: PracticeQuestion[];
   startedAt: string;
-  batchNumberLabel: string;
+  batchNumber: number;
+  totalBatches: number;
   batchStartIndex: number | null;
   continueLabel: string;
   nextStandardBatchStartIndex: number | null;

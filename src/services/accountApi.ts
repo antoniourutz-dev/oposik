@@ -1,5 +1,5 @@
 import type { PostgrestError } from '@supabase/supabase-js';
-import { supabase } from '../supabase';
+import { supabase } from '../supabaseClient';
 
 export type AccountIdentity = {
   user_id: string;

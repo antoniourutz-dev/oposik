@@ -1,95 +1,19 @@
-import { PracticeAnswer, PracticeProfile, PracticeQuestionStat, PracticeSessionSummary, CloudPracticeState, ActivePracticeSession } from '../practiceTypes';
-import { supabase } from '../supabase';
-import { mapAccountApiError } from './accountApi';
-
-const DEFAULT_CURRICULUM = 'general';
-
-const toNullableString = (value: unknown) => {
-  const normalized = String(value ?? '').trim();
-  return normalized ? normalized : null;
-};
-
-const toNumber = (value: unknown, fallback = 0) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-const isMissingPracticeBackend = (error: {
-  code?: string;
-  message?: string;
-  details?: string;
-  hint?: string;
-}) => {
-  const normalizedMessage = String(error.message ?? '').toLowerCase();
-  return (
-    error.code === 'PGRST106' ||
-    error.code === 'PGRST202' ||
-    error.code === 'PGRST205' ||
-    normalizedMessage.includes('practice_profile') ||
-    normalizedMessage.includes('practice_session') ||
-    normalizedMessage.includes('practice_question_stats') ||
-    normalizedMessage.includes('record_practice_session') ||
-    normalizedMessage.includes('get_my_practice_profile') ||
-    normalizedMessage.includes('schema cache')
-  );
-};
-
-const mapPracticeCloudError = (error: { code?: string; message?: string; details?: string; hint?: string }) => {
-  const mapped = mapAccountApiError(error);
-  if (!mapped.startsWith('Ezin izan da erabiltzaile izena aldatu')) {
-    return mapped;
-  }
-
-  if (isMissingPracticeBackend(error)) {
-    return 'Faltan las funciones RPC de progreso en Supabase. Aplica las migraciones antes de usar cuentas reales.';
-  }
-
-  return `No se ha podido sincronizar el progreso: ${error.message ?? 'error desconocido'}`;
-};
-
-const mapProfile = (value: Record<string, unknown> | null): PracticeProfile | null => {
-  if (!value) return null;
-
-  return {
-    userId: String(value.user_id ?? ''),
-    curriculum: String(value.curriculum ?? DEFAULT_CURRICULUM),
-    nextStandardBatchStartIndex: toNumber(value.next_standard_batch_start_index),
-    totalAnswered: toNumber(value.total_answered),
-    totalCorrect: toNumber(value.total_correct),
-    totalIncorrect: toNumber(value.total_incorrect),
-    totalSessions: toNumber(value.total_sessions),
-    lastStudiedAt: toNullableString(value.last_studied_at)
-  };
-};
-
-const mapSession = (value: Record<string, unknown>): PracticeSessionSummary => ({
-  id: String(value.session_id ?? value.id ?? ''),
-  mode: value.mode === 'weakest' ? 'weakest' : 'standard',
-  title: String(value.title ?? 'Sesion'),
-  startedAt: String(value.started_at ?? value.startedAt ?? ''),
-  finishedAt: String(value.finished_at ?? value.finishedAt ?? ''),
-  score: toNumber(value.score),
-  total: toNumber(value.total),
-  questionIds: []
-});
-
-const mapQuestionStat = (value: Record<string, unknown>): PracticeQuestionStat => ({
-  questionId: String(value.question_id ?? value.questionId ?? ''),
-  questionNumber: value.question_number === null || value.question_number === undefined ? null : toNumber(value.question_number, 0),
-  statement: String(value.statement ?? value.question_statement ?? ''),
-  category: toNullableString(value.category),
-  explanation: toNullableString(value.explanation),
-  attempts: toNumber(value.attempts),
-  correctAttempts: toNumber(value.correct_attempts),
-  incorrectAttempts: toNumber(value.incorrect_attempts),
-  lastAnsweredAt: String(value.last_answered_at ?? value.lastAnsweredAt ?? ''),
-  lastIncorrectAt: toNullableString(value.last_incorrect_at ?? value.lastIncorrectAt)
-});
+import { PracticeAnswer, CloudPracticeState, ActivePracticeSession } from '../practiceTypes';
+import { DEFAULT_CURRICULUM } from '../practiceConfig';
+import { supabase } from '../supabaseClient';
+import {
+  mapPracticeCloudError,
+  mapProfile,
+  mapQuestionStat,
+  mapSession
+} from './practiceCloudMappers';
 
 export const getMyPracticeState = async (curriculum = DEFAULT_CURRICULUM): Promise<CloudPracticeState> => {
   const { data: profileData, error: profileError } = await supabase
     .schema('app')
-    .rpc('get_my_practice_profile')
+    .rpc('get_my_practice_profile_for_curriculum', {
+      p_curriculum: curriculum
+    })
     .maybeSingle();
 
   if (profileError) {
@@ -140,7 +64,7 @@ export const recordPracticeSessionInCloud = async (
     p_finished_at: new Date().toISOString(),
     p_score: answers.filter((answer) => answer.isCorrect).length,
     p_total: answers.length,
-    p_batch_number: Number(session.batchNumberLabel.split('/')[0]) || null,
+    p_batch_number: session.batchNumber || null,
     p_batch_size: session.questions.length,
     p_batch_start_index: session.batchStartIndex,
     p_next_standard_batch_start_index: session.nextStandardBatchStartIndex ?? 0,

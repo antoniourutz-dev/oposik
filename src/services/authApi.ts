@@ -1,4 +1,5 @@
-import { supabase, supabaseAnonKey, supabaseUrl } from '../supabase';
+import { supabase } from '../supabaseClient';
+import { supabaseAnonKey, supabaseUrl } from '../supabaseConfig';
 
 type LoginFunctionResponse = {
   access_token: string;

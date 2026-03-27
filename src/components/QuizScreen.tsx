@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import { AlertCircle, Check, X } from 'lucide-react';
 import { OptionKey, PracticeAnswer, PracticeQuestion } from '../practiceTypes';
 
 type QuizScreenProps = {
+  title: string;
   question: PracticeQuestion;
   questionIndex: number;
   totalQuestions: number;
@@ -15,6 +15,7 @@ type QuizScreenProps = {
 };
 
 const QuizScreen: React.FC<QuizScreenProps> = ({
+  title,
   question,
   questionIndex,
   totalQuestions,
@@ -53,7 +54,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
       <div className="mb-4 flex flex-col gap-3 rounded-[1.6rem] border border-slate-800/60 bg-[linear-gradient(135deg,#0f172a_0%,#13233f_62%,#1d4ed8_100%)] p-4 text-white shadow-[0_28px_72px_-42px_rgba(15,23,42,0.9)] sm:flex-row sm:items-end sm:justify-between sm:p-5">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.24em] text-amber-300">
-            Bloque {batchNumber} de {totalBatches}
+            {title}
           </p>
           <h2 className="mt-1.5 text-xl font-black text-white sm:text-2xl">
             Pregunta {questionIndex + 1} de {totalQuestions}
@@ -65,10 +66,10 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
               {question.category}
             </span>
           )}
-          <button
-            type="button"
-            onClick={onEndSession}
-            disabled={selectedKey !== null}
+            <button
+              type="button"
+              onClick={onEndSession}
+              disabled={selectedKey !== null}
             className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-white/15 disabled:opacity-45"
           >
             Terminar
@@ -93,10 +94,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         ))}
       </div>
 
-      <motion.section
+      <section
         key={question.id}
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
         className="flex flex-1 flex-col"
       >
         <div className="relative overflow-hidden rounded-[1.7rem] border border-white/70 bg-white/84 p-5 shadow-[0_24px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur sm:p-7">
@@ -117,11 +116,9 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
             const isOtherSelected = selectedKey !== null && !isSelected && !isCorrectOption;
 
             return (
-              <motion.button
+              <button
                 key={key}
                 type="button"
-                whileHover={selectedKey ? undefined : { y: -2 }}
-                whileTap={selectedKey ? undefined : { scale: 0.99 }}
                 onClick={() => {
                   if (answeredRef.current) return;
                   answeredRef.current = true;
@@ -133,14 +130,14 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                   }, 850);
                 }}
                 disabled={selectedKey !== null}
-                className={`flex w-full items-center gap-3 rounded-[1.35rem] border px-4 py-3.5 text-left transition-all sm:gap-4 sm:px-5 sm:py-4 ${
+                className={`flex w-full items-center gap-3 rounded-[1.35rem] border px-4 py-3.5 text-left transition-all duration-150 sm:gap-4 sm:px-5 sm:py-4 ${
                   isCorrectOption
                     ? 'border-emerald-400 bg-emerald-50 shadow-[0_16px_35px_-24px_rgba(16,185,129,0.45)] ring-2 ring-emerald-200'
                     : isWrongSelected
                       ? 'border-rose-400 bg-rose-50 shadow-[0_16px_35px_-24px_rgba(244,63,94,0.4)] ring-2 ring-rose-200'
                     : isOtherSelected
                       ? 'border-slate-200 bg-white/50 opacity-50'
-                      : 'border-white/70 bg-white/80 hover:border-amber-200 hover:bg-white'
+                      : 'border-white/70 bg-white/80 hover:-translate-y-0.5 hover:border-amber-200 hover:bg-white active:translate-y-0 active:scale-[0.99]'
                 }`}
               >
                 <span
@@ -171,11 +168,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                 >
                   {value}
                 </span>
-              </motion.button>
+              </button>
             );
           })}
         </div>
-      </motion.section>
+      </section>
     </div>
   );
 };

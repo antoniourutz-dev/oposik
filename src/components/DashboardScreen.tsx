@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import {
   ArrowRight,
   Brain,
@@ -12,9 +12,10 @@ import {
   UserRound
 } from 'lucide-react';
 import { MainTab } from './BottomDock';
-import AdminConsoleScreen from './AdminConsoleScreen';
 import { AccountIdentity } from '../services/accountApi';
 import { PracticeProfile, PracticeSessionSummary, WeakQuestionInsight } from '../practiceTypes';
+
+const AdminConsoleScreen = lazy(() => import('./AdminConsoleScreen'));
 
 type DashboardScreenProps = {
   activeTab: MainTab;
@@ -28,6 +29,7 @@ type DashboardScreenProps = {
   weakQuestions: WeakQuestionInsight[];
   weakCategories: Array<{ category: string; incorrectAttempts: number; attempts: number }>;
   onStartRecommended: () => void;
+  onStartRandom: () => void;
   onStartFromBeginning: () => void;
   onStartWeakReview: () => void;
   onReloadQuestions: () => void;
@@ -78,6 +80,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   weakQuestions,
   weakCategories,
   onStartRecommended,
+  onStartRandom,
   onStartFromBeginning,
   onStartWeakReview,
   onReloadQuestions,
@@ -113,6 +116,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 <span className="mt-1 block text-lg font-black">Continuar</span>
               </span>
               <ArrowRight size={18} />
+            </button>
+
+            <button
+              type="button"
+              onClick={onStartRandom}
+              className="inline-flex items-center justify-between rounded-[1.25rem] border border-white/15 bg-white/10 px-4 py-3.5 text-left text-white transition-colors hover:bg-white/15"
+            >
+              <span>
+                <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-slate-300">Aleatorio</span>
+                <span className="mt-1 block text-lg font-black">20 mezcladas</span>
+              </span>
+              <Layers3 size={18} />
             </button>
 
             <button
@@ -161,6 +176,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
               >
                 <span className="text-sm font-black text-slate-900">Sincronizar preguntas</span>
                 <RotateCcw size={18} className="text-slate-400" />
+              </button>
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="inline-flex items-center justify-between rounded-[1.1rem] border border-slate-200 bg-white px-4 py-3.5 text-left"
+              >
+                <span className="text-sm font-black text-slate-900">Cerrar sesion</span>
+                <LogOut size={18} className="text-slate-400" />
               </button>
             </div>
           </SectionCard>
@@ -263,6 +286,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             >
               <Layers3 size={16} />
               Bloque 1
+            </button>
+            <button
+              type="button"
+              onClick={onStartRandom}
+              className="inline-flex items-center justify-center gap-2 rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3.5 text-sm font-black uppercase tracking-[0.14em] text-slate-700"
+            >
+              <Layers3 size={16} />
+              Aleatorio
             </button>
           </div>
         </SectionCard>
@@ -370,7 +401,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
       {identity.is_admin ? (
         <SectionCard title="Panel admin" hint="Gestion de alumnos y analitica">
-          <AdminConsoleScreen />
+          <Suspense
+            fallback={
+              <p className="text-sm font-medium text-slate-500">
+                Cargando panel de administracion...
+              </p>
+            }
+          >
+            <AdminConsoleScreen />
+          </Suspense>
         </SectionCard>
       ) : null}
     </div>
