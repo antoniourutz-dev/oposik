@@ -5,15 +5,15 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const pwaManifest = {
-  name: 'KORRIKA - 11 Eguneko Erronka',
-  short_name: 'KORRIKA',
-  description: 'Euskararen aldeko lasterketari buruzko galdetegi interaktiboa.',
+  name: 'Oposik',
+  short_name: 'Oposik',
+  description: 'Practica oposiciones por bloques de 10 preguntas con estadisticas y repaso de errores.',
   start_url: '/',
   display: 'standalone' as const,
-  background_color: '#e91e63',
-  theme_color: '#e91e63',
+  background_color: '#f8fafc',
+  theme_color: '#0f172a',
   orientation: 'portrait' as const,
-  lang: 'eu',
+  lang: 'es',
   icons: [
     {
       src: '/korrika_icon_set/icon_192.png',

@@ -1,58 +1,62 @@
-# Korrika PWA
+# OposikApp
 
-Aplicacion web tipo PWA para un reto de 11 dias inspirado en Korrika. La app desbloquea una partida diaria, muestra contenido asociado a cada jornada, guarda progreso y ranking en Supabase e incluye una consola de administracion para supervisar el reto.
+Aplicacion web tipo PWA para preparar oposiciones en castellano. La app carga preguntas desde Supabase, permite practicar por bloques de 10, revisar cada respuesta con explicacion y guardar estadisticas locales por jugador para detectar puntos debiles.
 
-## Funcionalidades
+## Estado actual
 
-- Flujo de bienvenida para nuevos usuarios.
-- Login con `username + password` sobre Supabase.
-- Fallback legacy en desarrollo mientras se despliega la Edge Function de login.
-- Reto diario de 11 dias con bloqueo por fecha y contador.
-- Ranking general y diario.
-- Historial y gestion de cuenta.
-- Consola admin para:
-  - cambiar la fecha global de inicio del reto,
-  - lanzar simulaciones por dia o secuenciales,
-  - inspeccionar el banco de preguntas,
-  - buscar jugadores, renombrarlos y limpiar resultados.
+- Practica secuencial por bloques de 10 preguntas.
+- Revision de bloque con respuesta correcta y explicacion desplegable.
+- Persistencia local por jugador en el navegador.
+- Selector de jugador, creacion y renombrado.
+- Dashboard con:
+  - precision global,
+  - sesiones realizadas,
+  - bloque recomendado para continuar,
+  - top 5 preguntas mas falladas,
+  - grupos tematicos mas debiles,
+  - historial reciente.
+- Modo de repaso de preguntas mas falladas.
+- Integracion con Supabase para leer la tabla `preguntas`.
+- Build de produccion verificada con Vite.
 
 ## Stack
 
 - React 19
 - TypeScript
 - Vite
-- Zustand
 - Framer Motion
 - Supabase
+- Tailwind CSS v4
 
 ## Requisitos
 
 - Node.js 20 o superior
 - npm
-- Un proyecto de Supabase con acceso a Auth, Database y Edge Functions
+- Un proyecto de Supabase con la tabla `public.preguntas`
 
 ## Configuracion local
 
-Crea un archivo `.env.local` con al menos estas variables:
+Crea un archivo `.env.local` con:
 
 ```bash
 VITE_SUPABASE_URL=tu_url_de_supabase
-VITE_SUPABASE_ANON_KEY=tu_anon_key
+VITE_SUPABASE_ANON_KEY=tu_clave_publica
 ```
 
-Variables opcionales:
+La tabla `preguntas` debe ser legible con esa clave publica y contener, como minimo, estos campos:
 
-```bash
-VITE_LOGIN_WITH_USERNAME_FUNCTION_URL=https://tu-proyecto.supabase.co/functions/v1/login-with-username
-VITE_ENABLE_LEGACY_USERNAME_LOGIN_FALLBACK=1
-VITE_WEB_PUSH_PUBLIC_KEY=tu_clave_publica_vapid
+```text
+id
+numero
+pregunta
+opcion_a
+opcion_b
+opcion_c
+opcion_d
+respuesta_correcta
+explicacion
+grupo
 ```
-
-Notas:
-
-- `VITE_LOGIN_WITH_USERNAME_FUNCTION_URL` permite apuntar a una funcion distinta de la URL por defecto de Supabase.
-- `VITE_ENABLE_LEGACY_USERNAME_LOGIN_FALLBACK=1` solo tiene sentido como via de transicion o para desarrollo local.
-- `VITE_WEB_PUSH_PUBLIC_KEY` es necesaria para activar recordatorios push fiables en produccion o preview.
 
 ## Desarrollo
 
@@ -68,45 +72,19 @@ npm run build
 npm run preview
 ```
 
-## Despliegue de Supabase
+## Persistencia actual
 
-Los artefactos de base de datos, configuracion y funciones viven en `supabase/`.
+Las estadisticas de jugador y el historial de sesiones se guardan en `localStorage` del navegador. Esto permite:
 
-```bash
-copy .env.supabase.example .env.supabase
-npm run supabase:login
-npm run supabase:link
-npm run supabase:config:push
-npm run supabase:db:push
-npm run supabase:functions:deploy:login
-npm run supabase:functions:deploy:daily-push
-```
+- continuar por el siguiente bloque recomendado,
+- ver las 5 preguntas mas falladas,
+- revisar grupos con mayor tasa de error,
+- mantener varios jugadores en el mismo dispositivo.
 
-Atajos utiles:
+## Siguientes pasos recomendados para produccion real
 
-```bash
-npm run supabase:deploy:username-auth
-npm run supabase:deploy:push-reminders
-npm run rotate:internal-auth-emails
-```
-
-## Notas de backend
-
-- El schema `app` debe estar expuesto en la API de Supabase para que funcionen las APIs de cuenta y administracion.
-- `supabase/config.toml` ya contempla `api.schemas = ["public", "storage", "graphql_public", "app"]`.
-- La migracion mas reciente para utilidades de consola admin esta en `supabase/migrations/20260314120000_admin_console_tools.sql`.
-- Para los recordatorios push hay que configurar `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, `WEB_PUSH_SUBJECT` y `DAILY_PUSH_REMINDER_CRON_SECRET` en Edge Functions, y guardar en Vault los secretos `project_url` y `daily_push_reminder_cron_secret` para el job programado.
-- El script `rotate:internal-auth-emails` necesita `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en el entorno.
-
-## Estructura rapida
-
-```text
-src/
-  components/screens/   pantallas principales
-  hooks/                logica de juego y progreso
-  services/             acceso a Supabase y APIs
-  store/                estado global con Zustand
-supabase/
-  migrations/           migraciones SQL
-  functions/            edge functions
-```
+- Mover estadisticas e historial de jugador a Supabase para sincronizacion entre dispositivos.
+- Añadir autenticacion real de alumno.
+- Crear una tabla de intentos y otra de progreso por jugador.
+- Sustituir los iconos actuales por branding propio de OposikApp.
+- Incorporar tests de integracion para flujos de practica y persistencia.

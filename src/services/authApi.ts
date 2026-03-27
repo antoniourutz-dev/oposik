@@ -13,7 +13,7 @@ const getLoginFunctionUrl = () =>
 
 const buildLegacyInternalEmail = (usernameInput: string) => {
   const normalized = usernameInput.trim().toLowerCase();
-  return normalized.includes('@') ? normalized : `${normalized}@korrika.app`;
+  return normalized.includes('@') ? normalized : `${normalized}@oposik.app`;
 };
 
 const canUseLegacyFallback =
@@ -28,8 +28,8 @@ const signInWithLegacyEmail = async (username: string, password: string) => {
   if (error || !data.session) {
     throw new Error(
       error?.message?.includes('Invalid login credentials')
-        ? 'Kodea edo pasahitza okerra da. Ziurtatu ondo idatzi dituzula.'
-        : error?.message || 'Ezin izan da saioa hasi. Saiatu berriro.'
+        ? 'Usuario o contrasena incorrectos. Revisa tus datos.'
+        : error?.message || 'No se ha podido iniciar sesion. Intentalo de nuevo.'
     );
   }
 
@@ -43,7 +43,7 @@ const tryLegacyFallback = async (username: string, password: string, prefixMessa
     const legacyMessage =
       legacyError instanceof Error
         ? legacyError.message
-        : 'Ezin izan da saioa hasi. Saiatu berriro.';
+        : 'No se ha podido iniciar sesion. Intentalo de nuevo.';
 
     throw new Error(`${prefixMessage} ${legacyMessage}`);
   }
@@ -69,18 +69,17 @@ export const loginWithUsername = async (username: string, password: string) => {
         return await tryLegacyFallback(
           username,
           password,
-          'Username bidezko login zerbitzua ez dago prest oraindik. Fallback lokala ere huts egin du:'
+          'El servicio de acceso por usuario no esta disponible todavia. El acceso alternativo tambien ha fallado:'
         );
       }
+
       throw new Error(
-        'Ez dago username bidezko login zerbitzua martxan. Desplegatu login-with-username funtzioa.'
+        'No esta desplegado el servicio de acceso por usuario. Publica la funcion `login-with-username`.'
       );
     }
 
     if (!response.ok || !payload?.access_token || !payload.refresh_token) {
-      throw new Error(
-        payload?.message || 'Kodea edo pasahitza okerra da. Ziurtatu ondo idatzi dituzula.'
-      );
+      throw new Error(payload?.message || 'Usuario o contrasena incorrectos. Revisa tus datos.');
     }
 
     const { data, error } = await supabase.auth.setSession({
@@ -89,7 +88,7 @@ export const loginWithUsername = async (username: string, password: string) => {
     });
 
     if (error || !data.session) {
-      throw new Error('Ezin izan da saioa hasi. Saiatu berriro.');
+      throw new Error('No se ha podido iniciar sesion. Intentalo de nuevo.');
     }
 
     return data.session;
@@ -102,7 +101,7 @@ export const loginWithUsername = async (username: string, password: string) => {
       return await tryLegacyFallback(
         username,
         password,
-        'Username bidezko login zerbitzua ez dago erabilgarri une honetan. Fallback lokala ere huts egin du:'
+        'El servicio de acceso por usuario no esta disponible en este momento. El acceso alternativo tambien ha fallado:'
       );
     }
 
@@ -111,7 +110,7 @@ export const loginWithUsername = async (username: string, password: string) => {
     }
 
     throw new Error(
-      'Username bidezko login zerbitzua ez dago erabilgarri. Desplegatu login-with-username funtzioa.'
+      'El servicio de acceso por usuario no esta disponible. Publica la funcion `login-with-username`.'
     );
   }
 };

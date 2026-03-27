@@ -20,9 +20,37 @@ export type AdminUserDirectoryEntry = {
   rename_count: number;
   self_service_change_count: number;
   admin_change_count: number;
-  played_days: number;
-  total_points: number;
-  last_played_at: string | null;
+  total_sessions: number;
+  total_answered: number;
+  total_correct: number;
+  total_incorrect: number;
+  accuracy: number;
+  last_studied_at: string | null;
+};
+
+export type AdminUserPracticeProfile = {
+  user_id: string;
+  curriculum: string;
+  next_standard_batch_start_index: number;
+  total_answered: number;
+  total_correct: number;
+  total_incorrect: number;
+  total_sessions: number;
+  accuracy: number;
+  last_studied_at: string | null;
+};
+
+export type AdminWeakPracticeQuestion = {
+  question_id: string;
+  question_number: number | null;
+  statement: string;
+  category: string | null;
+  explanation: string | null;
+  attempts: number;
+  correct_attempts: number;
+  incorrect_attempts: number;
+  last_answered_at: string;
+  last_incorrect_at: string | null;
 };
 
 export type AdminCreateUserResult = {
@@ -123,10 +151,38 @@ const mapAdminDirectoryEntry = (value: Record<string, unknown>): AdminUserDirect
   rename_count: toNumber(value.rename_count),
   self_service_change_count: toNumber(value.self_service_change_count),
   admin_change_count: toNumber(value.admin_change_count),
-  played_days: toNumber(value.played_days),
-  total_points: toNumber(value.total_points),
-  last_played_at: value.last_played_at ? String(value.last_played_at) : null
+  total_sessions: toNumber(value.total_sessions),
+  total_answered: toNumber(value.total_answered),
+  total_correct: toNumber(value.total_correct),
+  total_incorrect: toNumber(value.total_incorrect),
+  accuracy: toNumber(value.accuracy),
+  last_studied_at: value.last_studied_at ? String(value.last_studied_at) : null
 });
+
+const mapAdminPracticeProfile = (value: Record<string, unknown>) => ({
+  user_id: String(value.user_id ?? ''),
+  curriculum: String(value.curriculum ?? 'general'),
+  next_standard_batch_start_index: toNumber(value.next_standard_batch_start_index),
+  total_answered: toNumber(value.total_answered),
+  total_correct: toNumber(value.total_correct),
+  total_incorrect: toNumber(value.total_incorrect),
+  total_sessions: toNumber(value.total_sessions),
+  accuracy: toNumber(value.accuracy),
+  last_studied_at: toNullableString(value.last_studied_at)
+}) satisfies AdminUserPracticeProfile;
+
+const mapAdminWeakQuestion = (value: Record<string, unknown>) => ({
+  question_id: String(value.question_id ?? ''),
+  question_number: value.question_number === null || value.question_number === undefined ? null : toNumber(value.question_number),
+  statement: String(value.statement ?? ''),
+  category: toNullableString(value.category),
+  explanation: toNullableString(value.explanation),
+  attempts: toNumber(value.attempts),
+  correct_attempts: toNumber(value.correct_attempts),
+  incorrect_attempts: toNumber(value.incorrect_attempts),
+  last_answered_at: String(value.last_answered_at ?? ''),
+  last_incorrect_at: toNullableString(value.last_incorrect_at)
+}) satisfies AdminWeakPracticeQuestion;
 
 export const getAdminUsers = async (search = '', limit = 80) => {
   const normalizedSearch = normalizeUsername(search);
@@ -158,6 +214,60 @@ export const getAdminUsernameTimeline = async (userId: string) => {
   }
 
   return (data ?? []) as UsernameHistoryEntry[];
+};
+
+export const getAdminPracticeProfile = async (userId: string) => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('admin_get_practice_profile', {
+      p_user_id: userId
+    })
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(mapAccountApiError(error));
+  }
+
+  return data ? mapAdminPracticeProfile(data as Record<string, unknown>) : null;
+};
+
+export const getAdminRecentPracticeSessions = async (userId: string, limit = 8) => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('admin_get_recent_practice_sessions', {
+      p_user_id: userId,
+      p_limit: limit
+    });
+
+  if (error) {
+    throw new Error(mapAccountApiError(error));
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map((entry) => ({
+    id: String(entry.session_id ?? ''),
+    mode: entry.mode === 'weakest' ? 'weakest' : 'standard',
+    title: String(entry.title ?? 'Sesion'),
+    startedAt: String(entry.started_at ?? ''),
+    finishedAt: String(entry.finished_at ?? ''),
+    score: toNumber(entry.score),
+    total: toNumber(entry.total),
+    questionIds: []
+  }));
+};
+
+export const getAdminWeakPracticeQuestions = async (userId: string, limit = 5) => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('admin_get_weak_practice_questions', {
+      p_user_id: userId,
+      p_limit: limit
+    });
+
+  if (error) {
+    throw new Error(mapAccountApiError(error));
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map(mapAdminWeakQuestion);
 };
 
 export const adminChangeUsername = async (

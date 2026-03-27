@@ -33,7 +33,7 @@ const jsonResponse = (status: number, body: Record<string, unknown>) =>
 
 const normalizeUsername = (value: string) => value.trim().toLowerCase();
 const isValidUsername = (value: string) => USERNAME_RE.test(normalizeUsername(value));
-const buildInternalEmail = (username: string) => `${username}@korrika.app`;
+const buildInternalEmail = (username: string) => `${username}@oposik.app`;
 
 const getActorClient = (authorizationHeader: string) =>
   createClient(supabaseUrl, supabaseAnonKey, {
@@ -55,7 +55,10 @@ const getActorUser = async (authorizationHeader: string) => {
   return { actorClient, user };
 };
 
-const ensureActorIsAdmin = async (actorClient: ReturnType<typeof getActorClient>, userId: string) => {
+const ensureActorIsAdmin = async (
+  actorClient: ReturnType<typeof getActorClient>,
+  userId: string
+) => {
   const { data, error } = await actorClient
     .schema('app')
     .rpc('is_admin', { p_user_id: userId });
@@ -77,7 +80,6 @@ const cleanupCreatedUser = async (userId: string) => {
 };
 
 const cleanupUserReferencesBeforeDelete = async (actorId: string, userId: string) => {
-  // Preserve foreign-key integrity if this user appears as actor in historical records.
   const profileRefsPromise = adminClient
     .schema('app')
     .from('user_profiles')
@@ -182,7 +184,6 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 };
 
 const createUser = async (
-  actorId: string,
   actorClient: ReturnType<typeof getActorClient>,
   payload: CreateUserPayload
 ) => {
@@ -191,13 +192,13 @@ const createUser = async (
 
   if (!isValidUsername(username)) {
     return jsonResponse(400, {
-      message: 'Formato baliogabea. Erabili 3-32 karaktere: a-z, 0-9 eta _.'
+      message: 'Formato invalido. Usa entre 3 y 32 caracteres: a-z, 0-9 y _.'
     });
   }
 
   if (password.length < MIN_PASSWORD_LENGTH) {
     return jsonResponse(400, {
-      message: 'Pasahitzak gutxienez 3 karaktere izan behar ditu.'
+      message: 'La contrasena debe tener al menos 3 caracteres.'
     });
   }
 
@@ -217,9 +218,10 @@ const createUser = async (
         ? 409
         : 400,
       {
-        message: normalizedMessage.includes('already been registered') || normalizedMessage.includes('duplicate')
-          ? 'Erabiltzaile hori dagoeneko erabilita edo erreserbatuta dago.'
-          : createError?.message || 'Ezin izan da kontua sortu.'
+        message:
+          normalizedMessage.includes('already been registered') || normalizedMessage.includes('duplicate')
+            ? 'Ese usuario ya esta en uso o reservado.'
+            : createError?.message || 'No se ha podido crear la cuenta.'
       }
     );
   }
@@ -253,8 +255,8 @@ const createUser = async (
       normalizedMessage.includes('username_already_taken') ? 409 : 400,
       {
         message: normalizedMessage.includes('username_already_taken')
-          ? 'Erabiltzaile hori dagoeneko erabilita edo erreserbatuta dago.'
-          : usernameError?.message || 'Ezin izan zaio erabiltzaile izena esleitu kontu berriari.'
+          ? 'Ese usuario ya esta en uso o reservado.'
+          : usernameError?.message || 'No se ha podido asignar el usuario a la cuenta nueva.'
       }
     );
   }
@@ -276,13 +278,13 @@ const deleteUser = async (
 
   if (!userId) {
     return jsonResponse(400, {
-      message: 'Helburuko jokalaria ez da aurkitu.'
+      message: 'No se ha encontrado el usuario indicado.'
     });
   }
 
   if (userId === actorId) {
     return jsonResponse(400, {
-      message: 'Zure kontua ezin duzu ezabatu administrazio paneletik.'
+      message: 'No puedes borrar tu propia cuenta desde el panel de administracion.'
     });
   }
 
@@ -304,7 +306,7 @@ const deleteUser = async (
 
   if (targetAdminRole?.user_id) {
     return jsonResponse(400, {
-      message: 'Administratzaile kontuak ezin dira ezabatu panel honetatik.'
+      message: 'Las cuentas admin no se pueden borrar desde este panel.'
     });
   }
 
@@ -313,7 +315,7 @@ const deleteUser = async (
   } catch (cleanupError) {
     const message = getErrorMessage(
       cleanupError,
-      'Ezin izan dira jokalariaren datuak ezabatzeko prestatu.'
+      'No se han podido preparar los datos del usuario para su eliminacion.'
     );
     return jsonResponse(400, { message });
   }
@@ -332,8 +334,8 @@ const deleteUser = async (
       normalizedMessage.includes('not found') ? 404 : 400,
       {
         message: normalizedMessage.includes('not found')
-          ? 'Helburuko jokalaria ez da aurkitu.'
-          : deleteAuthError.message || 'Ezin izan da kontua ezabatu.'
+          ? 'No se ha encontrado el usuario indicado.'
+          : deleteAuthError.message || 'No se ha podido borrar la cuenta.'
       }
     );
   }
@@ -356,7 +358,7 @@ Deno.serve(async (request) => {
 
   const authorizationHeader = request.headers.get('Authorization');
   if (!authorizationHeader) {
-    return jsonResponse(401, { message: 'Saioa ez da baliozkoa. Hasi berriro saioa.' });
+    return jsonResponse(401, { message: 'La sesion no es valida. Vuelve a iniciar sesion.' });
   }
 
   try {
@@ -365,26 +367,26 @@ Deno.serve(async (request) => {
     await ensureActorIsAdmin(actorClient, user.id);
 
     if (payload.action === 'create_user') {
-      return await createUser(user.id, actorClient, payload);
+      return await createUser(actorClient, payload);
     }
 
     if (payload.action === 'delete_user') {
       return await deleteUser(user.id, actorClient, payload);
     }
 
-    return jsonResponse(400, { message: 'Ekintza baliogabea da.' });
+    return jsonResponse(400, { message: 'Accion no valida.' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown_error';
 
     if (message === 'not_authenticated') {
-      return jsonResponse(401, { message: 'Saioa ez da baliozkoa. Hasi berriro saioa.' });
+      return jsonResponse(401, { message: 'La sesion no es valida. Vuelve a iniciar sesion.' });
     }
 
     if (message === 'forbidden') {
-      return jsonResponse(403, { message: 'Ez duzu baimenik ekintza hau egiteko.' });
+      return jsonResponse(403, { message: 'No tienes permisos para realizar esta accion.' });
     }
 
     console.error('admin-user-management error', error);
-    return jsonResponse(500, { message: 'Ezin izan da administrazio ekintza osatu.' });
+    return jsonResponse(500, { message: 'No se ha podido completar la accion de administracion.' });
   }
 });

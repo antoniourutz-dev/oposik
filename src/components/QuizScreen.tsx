@@ -1,231 +1,183 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Timer, Check, AlertCircle } from 'lucide-react';
-import { useAppStore } from '../store/useAppStore';
-import { Question } from '../types';
-import { useShallow } from 'zustand/react/shallow';
+import { AlertCircle, Check, X } from 'lucide-react';
+import { OptionKey, PracticeAnswer, PracticeQuestion } from '../practiceTypes';
 
 type QuizScreenProps = {
-  question: Question;
+  question: PracticeQuestion;
   questionIndex: number;
   totalQuestions: number;
-  onAnswer: (selectedOption: string | null) => void;
-  timerKey: string;
-  secondsPerQuestion?: number;
+  batchNumber: number;
+  totalBatches: number;
+  answers: PracticeAnswer[];
+  onAnswer: (selectedOption: OptionKey) => void;
+  onEndSession: () => void;
 };
 
-type QuestionTimerProps = {
-  timerKey: string;
-  secondsPerQuestion: number;
-  onTimeout: () => void;
-};
-
-const QuestionTimer: React.FC<QuestionTimerProps> = React.memo(({ timerKey, secondsPerQuestion, onTimeout }) => {
-  const [timer, setTimer] = useState(secondsPerQuestion);
-  const timeoutTriggeredRef = useRef(false);
+const QuizScreen: React.FC<QuizScreenProps> = ({
+  question,
+  questionIndex,
+  totalQuestions,
+  batchNumber,
+  totalBatches,
+  answers,
+  onAnswer,
+  onEndSession
+}) => {
+  const answeredRef = useRef(false);
+  const answerTimeoutRef = useRef<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<OptionKey | null>(null);
+  const [revealedCorrectKey, setRevealedCorrectKey] = useState<OptionKey | null>(null);
 
   useEffect(() => {
-    timeoutTriggeredRef.current = false;
-    setTimer(secondsPerQuestion);
-  }, [timerKey, secondsPerQuestion]);
+    answeredRef.current = false;
+    setSelectedKey(null);
+    setRevealedCorrectKey(null);
+  }, [question.id]);
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setTimer((prev) => {
-        if (prev <= 1) {
-          if (!timeoutTriggeredRef.current) {
-            timeoutTriggeredRef.current = true;
-            onTimeout();
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(intervalId);
-  }, [onTimeout, timerKey]);
-
-  const isLowTime = timer <= 5;
-  const progressRatio = timer / secondsPerQuestion;
-
-  return (
-    <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shrink-0">
-      <svg className="absolute inset-0 w-full h-full -rotate-90 filter drop-shadow-sm">
-        <circle
-          cx="50%" cy="50%" r="45%"
-          className="fill-none stroke-white/50 stroke-[4]"
-        />
-        <circle
-          cx="50%" cy="50%" r="45%"
-          className={`fill-none stroke-[4] transition-all duration-1000 ease-linear ${isLowTime ? 'stroke-red-500 shadow-red-500' : 'stroke-pink-500 shadow-pink-500'}`}
-          strokeDasharray="100"
-          strokeDashoffset={100 - (progressRatio * 100)}
-          pathLength="100"
-        />
-      </svg>
-      <motion.div
-        animate={isLowTime ? { scale: [1, 1.1, 1] } : {}}
-        transition={{ repeat: Infinity, duration: 0.5 }}
-        className={`bg-white/90 backdrop-blur-md shadow-inner w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-base font-black ${isLowTime ? 'text-red-600' : 'text-slate-800'}`}
-      >
-        {timer}
-      </motion.div>
-    </div>
-  );
-});
-
-QuestionTimer.displayName = 'QuestionTimer';
-
-const QuizScreen: React.FC<QuizScreenProps> = React.memo(
-  ({
-    question,
-    questionIndex,
-    totalQuestions,
-    onAnswer,
-    timerKey,
-    secondsPerQuestion = 30
-  }) => {
-    const { players, currentPlayerIdx } = useAppStore(useShallow((state) => ({
-      players: state.players,
-      currentPlayerIdx: state.currentPlayerIdx
-    })));
-    const playerName = players[currentPlayerIdx]?.name ?? 'Jokalaria';
-    const answeredRef = useRef(false);
-    const [selectedKey, setSelectedKey] = useState<string | null>(null);
-
-    useEffect(() => {
-      answeredRef.current = false;
-      setSelectedKey(null);
-    }, [timerKey]);
-
-    const optionEntries = useMemo(() => Object.entries(question.opciones), [question]);
-    const handleTimeout = useCallback(() => {
-      if (answeredRef.current) return;
-      answeredRef.current = true;
-      onAnswer(null);
-    }, [onAnswer]);
-
-    // Variantes Framer para las tarjetas de preguntas
-    const containerVariants = {
-      hidden: { opacity: 0 },
-      show: {
-        opacity: 1,
-        transition: { staggerChildren: 0.05 }
+    return () => {
+      if (answerTimeoutRef.current !== null) {
+        window.clearTimeout(answerTimeoutRef.current);
       }
     };
+  }, []);
 
-    const itemVariants = {
-      hidden: { opacity: 0, y: 10, scale: 0.98 },
-      show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 400, damping: 25 } }
-    };
+  const optionEntries = useMemo(
+    () => Object.entries(question.options) as Array<[OptionKey, string]>,
+    [question.options]
+  );
 
-    return (
-      <div className="flex-1 flex flex-col w-full max-w-2xl mx-auto py-4 px-4 sm:px-6 relative z-10 overflow-hidden">
-        {/* Encabezado e Información */}
-        <div className="flex justify-between items-center gap-4 mb-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-end mb-2">
-              <span className="text-xs font-black uppercase tracking-widest text-slate-500 truncate">{playerName}</span>
-              <span className="text-[10px] sm:text-xs font-bold text-pink-500 uppercase px-2 py-0.5 rounded-md bg-pink-100/90 shadow-sm truncate text-right border border-pink-200">{question.categoryName}</span>
-            </div>
-            {/* Barra de Progreso Mejorada */}
-            <div className="flex gap-1.5 h-2 w-full">
-              {Array.from({ length: totalQuestions }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`flex-1 rounded-full transition-colors duration-300 ${i === questionIndex
-                    ? 'bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.5)] scale-110'
-                    : i < questionIndex
-                      ? 'bg-emerald-400 opacity-60'
-                      : 'bg-white/60 shadow-inner'
-                    }`}
-                />
-              ))}
-            </div>
-          </div>
-          <QuestionTimer
-            timerKey={timerKey}
-            secondsPerQuestion={secondsPerQuestion}
-            onTimeout={handleTimeout}
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-0 py-3 sm:px-2 lg:px-4">
+      <div className="mb-4 flex flex-col gap-3 rounded-[1.6rem] border border-slate-800/60 bg-[linear-gradient(135deg,#0f172a_0%,#13233f_62%,#1d4ed8_100%)] p-4 text-white shadow-[0_28px_72px_-42px_rgba(15,23,42,0.9)] sm:flex-row sm:items-end sm:justify-between sm:p-5">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.24em] text-amber-300">
+            Bloque {batchNumber} de {totalBatches}
+          </p>
+          <h2 className="mt-1.5 text-xl font-black text-white sm:text-2xl">
+            Pregunta {questionIndex + 1} de {totalQuestions}
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          {question.category && (
+            <span className="inline-flex items-center self-start rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white">
+              {question.category}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onEndSession}
+            disabled={selectedKey !== null}
+            className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-white/15 disabled:opacity-45"
+          >
+            Terminar
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-6 flex gap-2">
+        {Array.from({ length: totalQuestions }).map((_, index) => (
+          <div
+            key={index}
+            className={`h-2 flex-1 rounded-full transition-colors ${
+              index === questionIndex
+                ? 'bg-amber-500'
+                : answers[index]
+                  ? answers[index].isCorrect
+                    ? 'bg-emerald-400'
+                    : 'bg-rose-500'
+                  : 'bg-white/80'
+            }`}
           />
+        ))}
+      </div>
+
+      <motion.section
+        key={question.id}
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-1 flex-col"
+      >
+        <div className="relative overflow-hidden rounded-[1.7rem] border border-white/70 bg-white/84 p-5 shadow-[0_24px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur sm:p-7">
+          <div className="absolute right-0 top-0 p-4 text-amber-200/30">
+            <AlertCircle size={72} />
+          </div>
+          <h3 className="relative z-10 text-lg font-black leading-7 text-slate-900 sm:text-2xl sm:leading-10">
+            {question.statement}
+          </h3>
         </div>
 
-        {/* Caja de Pregunta y Respuestas */}
-        <motion.div
-          key={timerKey}
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-          className="flex-1 flex flex-col min-h-0 w-full"
-        >
-          {/* Cuestión */}
-          <motion.div variants={itemVariants} className="glassmorphism rounded-[2rem] p-6 sm:p-8 mb-4 sm:mb-6 flex-shrink-0 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-5 text-slate-800">
-              <AlertCircle size={80} />
-            </div>
-            <h3 className="text-lg sm:text-xl md:text-2xl font-black text-slate-800 leading-snug lg:leading-normal relative z-10">
-              "{question.pregunta}"
-            </h3>
-          </motion.div>
+        <div className="mt-4 grid gap-3 sm:gap-4">
+          {optionEntries.map(([key, value]) => {
+            const isSelected = selectedKey === key;
+            const isCorrectOption = revealedCorrectKey === key;
+            const isWrongSelected =
+              selectedKey !== null && selectedKey === key && revealedCorrectKey !== key;
+            const isOtherSelected = selectedKey !== null && !isSelected && !isCorrectOption;
 
-          {/* Opciones */}
-          <div
-            className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 overflow-y-auto overflow-x-hidden pb-6 custom-scrollbar"
-            style={{ overflowAnchor: 'none' }}
-          >
-            {optionEntries.map(([key, value]) => {
-              const isSelected = selectedKey === key;
-              const isOtherSelected = selectedKey !== null && !isSelected;
-
-              return (
-                <motion.button
-                  variants={itemVariants}
-                  key={key}
-                  type="button"
-                  onClick={(event) => {
-                    if (answeredRef.current) return;
-                    answeredRef.current = true;
-                    event.currentTarget.blur();
-                    setSelectedKey(key);
-                    // Añadir una ligera vibración al seleccionar si el dispositivo lo soporta
-                    if (navigator.vibrate) navigator.vibrate(50);
-
-                    setTimeout(() => {
-                      onAnswer(key);
-                    }, 400);
-                  }}
-                  disabled={selectedKey !== null}
-                  className={`group relative w-full text-left px-5 sm:px-6 py-4 rounded-3xl border shadow-sm transition-colors duration-200 flex items-center gap-4 ${isSelected
-                    ? "border-pink-500 bg-pink-50/90 shadow-[0_0_15px_rgba(236,72,153,0.18)] ring-2 ring-pink-200/70"
+            return (
+              <motion.button
+                key={key}
+                type="button"
+                whileHover={selectedKey ? undefined : { y: -2 }}
+                whileTap={selectedKey ? undefined : { scale: 0.99 }}
+                onClick={() => {
+                  if (answeredRef.current) return;
+                  answeredRef.current = true;
+                  setSelectedKey(key);
+                  setRevealedCorrectKey(question.correctOption);
+                  answerTimeoutRef.current = window.setTimeout(() => {
+                    answerTimeoutRef.current = null;
+                    onAnswer(key);
+                  }, 850);
+                }}
+                disabled={selectedKey !== null}
+                className={`flex w-full items-center gap-3 rounded-[1.35rem] border px-4 py-3.5 text-left transition-all sm:gap-4 sm:px-5 sm:py-4 ${
+                  isCorrectOption
+                    ? 'border-emerald-400 bg-emerald-50 shadow-[0_16px_35px_-24px_rgba(16,185,129,0.45)] ring-2 ring-emerald-200'
+                    : isWrongSelected
+                      ? 'border-rose-400 bg-rose-50 shadow-[0_16px_35px_-24px_rgba(244,63,94,0.4)] ring-2 ring-rose-200'
                     : isOtherSelected
-                      ? "border-white/20 bg-white/40 opacity-50 grayscale-[50%]"
-                      : "border-white/40 bg-white/70 backdrop-blur-md hover:shadow-lg hover:border-pink-300 hover:bg-white"
-                    }`}
+                      ? 'border-slate-200 bg-white/50 opacity-50'
+                      : 'border-white/70 bg-white/80 hover:border-amber-200 hover:bg-white'
+                }`}
+              >
+                <span
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg font-black ${
+                    isCorrectOption
+                      ? 'bg-emerald-500 text-white'
+                      : isWrongSelected
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-slate-100 text-slate-700'
+                  }`}
                 >
-                  <div className={`absolute top-0 left-0 w-1.5 h-full rounded-l-3xl transition-colors ${isSelected ? "bg-pink-500" : "bg-transparent group-hover:bg-pink-400"
-                    }`} />
+                  {isCorrectOption ? (
+                    <Check size={22} strokeWidth={3} />
+                  ) : isWrongSelected ? (
+                    <X size={22} strokeWidth={3} />
+                  ) : (
+                    key.toUpperCase()
+                  )}
+                </span>
+                <span
+                  className={`text-sm font-bold leading-6 sm:text-base sm:leading-7 ${
+                    isCorrectOption
+                      ? 'text-emerald-900'
+                      : isWrongSelected
+                        ? 'text-rose-900'
+                        : 'text-slate-800'
+                  }`}
+                >
+                  {value}
+                </span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </motion.section>
+    </div>
+  );
+};
 
-                  <span className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-black text-lg sm:text-xl shrink-0 transition-colors duration-200 ${isSelected
-                    ? "bg-pink-500 text-white shadow-md"
-                    : "bg-pink-50 text-pink-600 group-hover:bg-pink-100 group-hover:text-pink-700"
-                    }`}>
-                    {isSelected ? <Check strokeWidth={4} className="w-6 h-6 sm:w-8 sm:h-8" /> : key.toUpperCase()}
-                  </span>
-
-                  <span className={`font-bold text-base sm:text-lg leading-tight break-words pr-2 transition-colors ${isSelected ? "text-pink-800" : "text-slate-700"
-                    }`}>
-                    {value}
-                  </span>
-                </motion.button>
-              );
-            })}
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
-);
-
-QuizScreen.displayName = 'QuizScreen';
 export default QuizScreen;

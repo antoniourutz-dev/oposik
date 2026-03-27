@@ -22,7 +22,7 @@ const invalidCredentialsResponse = () =>
   new Response(
     JSON.stringify({
       code: 'INVALID_CREDENTIALS',
-      message: 'Kodea edo pasahitza okerra da. Ziurtatu ondo idatzi dituzula.'
+      message: 'Usuario o contraseña incorrectos. Revisa tus datos.'
     }),
     { status: 401, headers: corsHeaders }
   );
@@ -52,7 +52,7 @@ Deno.serve(async (request) => {
       .maybeSingle<{ user_id: string; internal_email: string }>();
 
     const internalEmail =
-      principal?.internal_email || `missing_${crypto.randomUUID()}@auth.korrika.invalid`;
+      principal?.internal_email || `missing_${crypto.randomUUID()}@auth.oposik.invalid`;
 
     const { data, error } = await authClient.auth.signInWithPassword({
       email: internalEmail,

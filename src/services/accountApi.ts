@@ -56,64 +56,64 @@ export const getMyUsernameHistory = async (limit = 10) => {
 
 export const mapAccountApiError = (error: Pick<PostgrestError, 'code' | 'message' | 'details' | 'hint'>) => {
   if (error.code === '23505') {
-    return 'Erabiltzaile hori dagoeneko erabilita edo erreserbatuta dago.';
+    return 'Ese usuario ya esta en uso o reservado.';
   }
   if (error.code === '22023') {
     const normalizedMessage = String(error.message || '').toLowerCase();
     if (normalizedMessage.includes('use_change_my_username_for_self')) {
-      return 'Zure izena aldatzeko, erabili Profila atala.';
+      return 'Para cambiar tu usuario, utiliza tu perfil.';
     }
     if (normalizedMessage.includes('cannot_clear_own_results_from_admin')) {
-      return 'Zure emaitzak ezabatzeko, ez erabili administrazio ekintza hau.';
+      return 'No puedes borrar tus propios resultados desde la administracion.';
     }
     if (normalizedMessage.includes('invalid_day_index')) {
-      return 'Egun baliogabea hautatu duzu.';
+      return 'Has seleccionado un dia no valido.';
     }
-    return 'Formato baliogabea. Erabili 3-32 karaktere: a-z, 0-9 eta _.';
+    return 'Formato invalido. Usa entre 3 y 32 caracteres: a-z, 0-9 y _.';
   }
   if (error.code === 'PGRST106') {
-    return 'Username backend-a ez dago prest: `app` schema ez dago APIan exposed. Exekutatu `supabase config push` edo gehitu `app` Dashboardean.';
+    return 'El backend de usuarios no esta listo: el esquema `app` no esta expuesto en la API. Ejecuta `supabase config push` o exponlo en el panel.';
   }
   if (error.code === 'PGRST202') {
-    return 'Username backend-a ez dago prest: falta da `change_my_username` RPC-a. Aplikatu migrazioak lehenengo.';
+    return 'El backend de usuarios no esta listo: falta la RPC `change_my_username`. Aplica las migraciones primero.';
   }
   if (error.code === 'PGRST301') {
-    return 'Saioa ez da baliozkoa. Hasi berriro saioa.';
+    return 'La sesion no es valida. Vuelve a iniciar sesion.';
   }
   if (error.code === '42501') {
-    return 'Saioa iraungi da. Hasi berriro saioa.';
+    return 'La sesion ha caducado. Vuelve a iniciar sesion.';
   }
   const normalizedMessage = String(error.message || '').toLowerCase();
   if (normalizedMessage.includes('invalid schema: app')) {
-    return 'Username backend-a ez dago prest: `app` schema ez dago APIan exposed. Exekutatu `supabase config push` edo gehitu `app` Dashboardean.';
+    return 'El backend de usuarios no esta listo: el esquema `app` no esta expuesto en la API. Ejecuta `supabase config push` o exponlo en el panel.';
   }
   if (normalizedMessage.includes('could not find the function')) {
-    return 'Username backend-a ez dago prest: falta da RPC funtzioa. Aplikatu migrazioak lehenengo.';
+    return 'El backend de usuarios no esta listo: falta una RPC necesaria. Aplica las migraciones primero.';
   }
   if (normalizedMessage.includes('permission denied for schema app')) {
-    return 'Username backend-ak ez dauka baimen egokirik. Berrikusi grants eta RLS politikak.';
+    return 'El backend de usuarios no tiene permisos suficientes. Revisa grants y politicas RLS.';
   }
   if (normalizedMessage.includes('username_unchanged')) {
-    return 'Hori da dagoeneko zure erabiltzaile izena.';
+    return 'Ese ya es tu usuario actual.';
   }
   if (normalizedMessage.includes('current_username_not_found')) {
-    return 'Ez da uneko erabiltzaile izena aurkitu. Jarri harremanetan administratzailearekin.';
+    return 'No se ha encontrado tu usuario actual. Contacta con administracion.';
   }
   if (normalizedMessage.includes('target_user_not_found')) {
-    return 'Helburuko jokalaria ez da aurkitu.';
+    return 'No se ha encontrado el usuario indicado.';
   }
   if (normalizedMessage.includes('forbidden')) {
-    return 'Ez duzu baimenik ekintza hau egiteko.';
+    return 'No tienes permisos para realizar esta accion.';
   }
   if (normalizedMessage.includes('cannot_clear_own_results_from_admin')) {
-    return 'Zure emaitzak ezabatzeko, ez erabili administrazio ekintza hau.';
+    return 'No puedes borrar tus propios resultados desde la administracion.';
   }
   if (normalizedMessage.includes('use_change_my_username_for_self')) {
-    return 'Zure izena aldatzeko, erabili Profila atala.';
+    return 'Para cambiar tu usuario, utiliza tu perfil.';
   }
 
-  console.error("Supabase RPC Error:", error);
-  return `Ezin izan da erabiltzaile izena aldatu: ${error.message} (Code: ${error.code})`;
+  console.error('Supabase RPC Error:', error);
+  return `No se ha podido completar la operacion: ${error.message} (Code: ${error.code})`;
 };
 
 const generateUUID = () => {
@@ -130,7 +130,7 @@ const generateUUID = () => {
 export const changeMyUsername = async (nextUsernameInput: string) => {
   const nextUsername = normalizeUsername(nextUsernameInput);
   if (!validateUsername(nextUsername)) {
-    throw new Error('Formato baliogabea. Erabili 3-32 karaktere: a-z, 0-9 eta _.');
+    throw new Error('Formato invalido. Usa entre 3 y 32 caracteres: a-z, 0-9 y _.');
   }
 
   const { data, error } = await supabase
@@ -148,7 +148,7 @@ export const changeMyUsername = async (nextUsernameInput: string) => {
   }
 
   if (!data) {
-    throw new Error('Erantzun hutsa jaso da zerbitzaritik (Data == null).');
+    throw new Error('El servidor ha devuelto una respuesta vacia.');
   }
 
   const result = data as any;

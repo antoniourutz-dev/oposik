@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 @theme {
-    --font-montserrat: 'Montserrat', sans-serif;
-    --color-korrika-pink: #e91e63;
-    --color-korrika-gradient-start: #e91e63;
-    --color-korrika-gradient-end: #9c27b0;
-    --color-korrika-glow: rgba(233, 30, 99, 0.4);
+    --font-montserrat: 'Manrope', sans-serif;
+    --color-korrika-pink: #0f172a;
+    --color-korrika-gradient-start: #0f172a;
+    --color-korrika-gradient-end: #2563eb;
+    --color-korrika-glow: rgba(37, 99, 235, 0.22);
 
     --animate-in: animate-in 0.5s ease-out;
 }
@@ -19,9 +19,10 @@ html {
 body {
     font-family: var(--font-montserrat);
     background-color: #f8fafc;
-    /* Color más premium de fondo (Slate-50) */
-    background-image: radial-gradient(at 0% 0%, hsla(335, 100%, 76%, 0.07) 0, transparent 50%),
-        radial-gradient(at 100% 100%, hsla(271, 78%, 55%, 0.07) 0, transparent 50%);
+    background-image:
+        radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.08) 0, transparent 45%),
+        radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.08) 0, transparent 45%),
+        linear-gradient(180deg, #fffdf8 0%, #f8fafc 48%, #f3f6fb 100%);
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     margin: 0;
@@ -36,13 +37,12 @@ body {
     flex-direction: column;
 }
 
-/* Utilidades Premium */
 @utility glassmorphism {
-    background: rgba(255, 255, 255, 0.65);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+    background: rgba(255, 255, 255, 0.68);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.18);
 }
 
 @utility korrika-pink {
@@ -55,7 +55,7 @@ body {
 
 @utility korrika-bg-gradient {
     background: linear-gradient(135deg, var(--color-korrika-gradient-start) 0%, var(--color-korrika-gradient-end) 100%);
-    box-shadow: 0 4px 15px var(--color-korrika-glow);
+    box-shadow: 0 8px 24px var(--color-korrika-glow);
 }
 
 @utility safe-pt {

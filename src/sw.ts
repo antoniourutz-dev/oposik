@@ -44,10 +44,10 @@ const parseReminderPayload = (raw: string | null): ReminderNotificationPayload =
 
 self.addEventListener('push', (event) => {
   const payload = parseReminderPayload(event.data?.text() ?? null);
-  const title = payload.title?.trim() || 'KORRIKA zure zain dago';
+  const title = payload.title?.trim() || 'Tienes preguntas pendientes';
   const body =
     payload.body?.trim() ||
-    'Oraindik ez duzu gaurko saioa egin. Zatoz eta ekin KORRIKAren erronkari.';
+    'Entra en Oposik y continua con tu siguiente bloque de practica.';
   const url =
     typeof payload.data?.url === 'string' && payload.data.url
       ? payload.data.url
@@ -56,7 +56,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
-      tag: payload.tag || 'korrika-daily-reminder',
+      tag: payload.tag || 'oposikapp-practice-reminder',
       renotify: false,
       icon: payload.icon || DEFAULT_NOTIFICATION_ICON,
       badge: payload.badge || DEFAULT_NOTIFICATION_BADGE,
