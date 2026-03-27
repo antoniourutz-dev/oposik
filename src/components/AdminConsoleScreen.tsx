@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowRight,
   Brain,
   ChartNoAxesColumn,
   Layers3,
@@ -42,7 +41,7 @@ const AdminSurface: React.FC<
   React.PropsWithChildren<{ className?: string; title?: string; hint?: string }>
 > = ({ className = '', title, hint, children }) => (
   <section
-    className={`rounded-[1.55rem] border border-white/72 bg-white/88 p-4 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.3)] backdrop-blur ${className}`}
+    className={`rounded-[1.45rem] border border-white/72 bg-white/88 p-4 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.3)] backdrop-blur ${className}`}
   >
     {title ? (
       <div className="mb-3">
@@ -54,28 +53,37 @@ const AdminSurface: React.FC<
   </section>
 );
 
-const AdminMetricTile: React.FC<{
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-}> = ({ label, value, icon }) => (
-  <article className="rounded-[1.18rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.16)]">
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-          {label}
-        </p>
-        <p className="mt-2 text-[1.9rem] font-black leading-none text-slate-950">{value}</p>
+const AdminDisclosure: React.FC<
+  React.PropsWithChildren<{ title: string; hint: string; defaultOpen?: boolean }>
+> = ({ title, hint, defaultOpen = false, children }) => (
+  <details
+    open={defaultOpen}
+    className="rounded-[1.2rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.9))] px-4 py-4 shadow-[0_18px_32px_-28px_rgba(15,23,42,0.18)]"
+  >
+    <summary className="cursor-pointer list-none">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-extrabold tracking-[-0.02em] text-slate-950">{title}</p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">{hint}</p>
+        </div>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+          detalle
+        </span>
       </div>
-      <span className="flex h-10 w-10 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.24))] text-slate-700">
-        {icon}
-      </span>
-    </div>
-  </article>
+    </summary>
+    <div className="mt-4">{children}</div>
+  </details>
+);
+
+const AdminCompactMetric: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="rounded-[1.05rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
+    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+    <p className="mt-1.5 text-[1.2rem] font-black leading-none text-slate-950">{value}</p>
+  </div>
 );
 
 const EmptyState: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex min-h-[24rem] items-center justify-center rounded-[1.25rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.9))] px-4 py-6 text-center text-sm font-semibold text-slate-500">
+  <div className="flex min-h-[22rem] items-center justify-center rounded-[1.2rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.9))] px-4 py-6 text-center text-sm font-semibold text-slate-500">
     {children}
   </div>
 );
@@ -262,7 +270,7 @@ const AdminConsoleScreen: React.FC = () => {
     Math.floor((profile?.next_standard_batch_start_index ?? 0) / PRACTICE_BATCH_SIZE) + 1;
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.95fr_1.25fr]">
+    <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <AdminSurface>
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_16px_24px_-18px_rgba(141,147,242,0.3)]">
@@ -278,54 +286,65 @@ const AdminConsoleScreen: React.FC = () => {
           </div>
         </div>
 
-        <form
-          onSubmit={handleCreateUser}
-          className="mt-4 grid gap-3 rounded-[1.3rem] border border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(235,245,255,0.88),rgba(245,249,255,0.92))] p-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.12)]"
-        >
-          <p className="text-sm font-extrabold text-slate-900">Crear alumno</p>
-          <input
-            value={createUsername}
-            onChange={(event) => setCreateUsername(event.target.value)}
-            placeholder="Usuario visible, por ejemplo opo1"
-            className="w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-          />
-          <input
-            value={createPassword}
-            onChange={(event) => setCreatePassword(event.target.value)}
-            placeholder="Contraseña inicial"
-            type="text"
-            className="w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-          />
-          <button
-            type="submit"
-            disabled={creating || !createUsername.trim() || !createPassword.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+        <div className="mt-4">
+          <AdminDisclosure
+            title="Operaciones"
+            hint="Crear alumnos y filtrar la lista solo cuando haga falta."
           >
-            {creating ? <LoaderCircle size={16} className="animate-spin" /> : <UserPlus size={16} />}
-            Crear usuario
-          </button>
-        </form>
+            <form
+              onSubmit={handleCreateUser}
+              className="grid gap-3 rounded-[1.2rem] border border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(235,245,255,0.88),rgba(245,249,255,0.92))] p-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.12)]"
+            >
+              <p className="text-sm font-extrabold text-slate-900">Crear alumno</p>
+              <input
+                value={createUsername}
+                onChange={(event) => setCreateUsername(event.target.value)}
+                placeholder="Usuario visible, por ejemplo opo1"
+                className="w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+              />
+              <input
+                value={createPassword}
+                onChange={(event) => setCreatePassword(event.target.value)}
+                placeholder="Contrasena inicial"
+                type="text"
+                className="w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+              />
+              <button
+                type="submit"
+                disabled={creating || !createUsername.trim() || !createPassword.trim()}
+                className="inline-flex items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+              >
+                {creating ? (
+                  <LoaderCircle size={16} className="animate-spin" />
+                ) : (
+                  <UserPlus size={16} />
+                )}
+                Crear usuario
+              </button>
+            </form>
 
-        <div className="mt-4 flex gap-2">
-          <label className="relative flex-1">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar usuario, email o id"
-              className="w-full rounded-[1rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.88))] py-3 pl-11 pr-4 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={() => void loadUsers(search)}
-            className="rounded-[1rem] border border-white/80 bg-white px-4 py-3 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-sky-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99]"
-          >
-            Buscar
-          </button>
+            <div className="mt-3 flex gap-2">
+              <label className="relative flex-1">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar usuario, email o id"
+                  className="w-full rounded-[1rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.88))] py-3 pl-11 pr-4 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => void loadUsers(search)}
+                className="rounded-[1rem] border border-white/80 bg-white px-4 py-3 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-sky-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99]"
+              >
+                Buscar
+              </button>
+            </div>
+          </AdminDisclosure>
         </div>
 
         {error ? (
@@ -340,7 +359,7 @@ const AdminConsoleScreen: React.FC = () => {
           </div>
         ) : null}
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 max-h-[40rem] space-y-3 overflow-auto pr-1">
           {loadingUsers ? (
             <div className="rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.9))] px-4 py-6 text-center text-sm font-semibold text-slate-500">
               Cargando usuarios...
@@ -355,7 +374,7 @@ const AdminConsoleScreen: React.FC = () => {
                 key={entry.user_id}
                 type="button"
                 onClick={() => setSelectedUserId(entry.user_id)}
-                className={`w-full rounded-[1.2rem] border px-4 py-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.995] ${
+                className={`w-full rounded-[1.1rem] border px-4 py-3.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.995] ${
                   selectedUserId === entry.user_id
                     ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(235,245,255,0.92),rgba(245,249,255,0.96))] shadow-[0_18px_34px_-28px_rgba(141,147,242,0.16)]'
                     : 'border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.9))] hover:-translate-y-0.5 hover:border-[#c8d8f8] hover:shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]'
@@ -369,7 +388,7 @@ const AdminConsoleScreen: React.FC = () => {
                     <p className="mt-1 truncate text-xs font-semibold text-slate-500">
                       {entry.auth_email ?? entry.user_id}
                     </p>
-                    <p className="mt-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                    <p className="mt-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
                       {entry.total_sessions} sesiones · {entry.accuracy}% acierto
                     </p>
                   </div>
@@ -397,20 +416,20 @@ const AdminConsoleScreen: React.FC = () => {
           </EmptyState>
         ) : (
           <div className="space-y-4">
-            <div className="relative overflow-hidden rounded-[1.55rem] border border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-5 text-white shadow-[0_28px_72px_-42px_rgba(141,147,242,0.28)]">
+            <div className="relative overflow-hidden rounded-[1.4rem] border border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-4 text-white shadow-[0_28px_72px_-42px_rgba(141,147,242,0.28)]">
               <div className="pointer-events-none absolute inset-0">
                 <div className="absolute -right-10 -top-14 h-36 w-36 rounded-full bg-white/16 blur-3xl" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_42%)]" />
               </div>
-              <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-sky-50/84">
                     Alumno
                   </p>
-                  <h3 className="mt-2 truncate text-[1.9rem] font-black tracking-[-0.02em] text-white">
+                  <h3 className="mt-1.5 truncate text-[1.55rem] font-black tracking-[-0.02em] text-white sm:text-[1.85rem]">
                     {selectedUser.current_username ?? selectedUser.auth_email ?? selectedUser.user_id}
                   </h3>
-                  <div className="mt-3 space-y-1.5 text-sm leading-6 text-sky-50/88">
+                  <div className="mt-2 space-y-1 text-sm leading-6 text-sky-50/88">
                     <p>Ultimo acceso: {formatDate(selectedUser.last_sign_in_at)}</p>
                     <p>
                       Ultimo estudio:{' '}
@@ -425,150 +444,135 @@ const AdminConsoleScreen: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-              <AdminMetricTile
+              <AdminCompactMetric
                 label="Precision"
                 value={`${profile?.accuracy ?? selectedUser.accuracy}%`}
-                icon={<ChartNoAxesColumn size={18} />}
               />
-              <AdminMetricTile
+              <AdminCompactMetric
                 label="Sesiones"
                 value={String(profile?.total_sessions ?? selectedUser.total_sessions)}
-                icon={<Shield size={18} />}
               />
-              <AdminMetricTile
+              <AdminCompactMetric
                 label="Respondidas"
                 value={String(profile?.total_answered ?? selectedUser.total_answered)}
-                icon={<Brain size={18} />}
               />
-              <AdminMetricTile
-                label="Siguiente bloque"
-                value={String(nextBatchNumber)}
-                icon={<Layers3 size={18} />}
-              />
+              <AdminCompactMetric label="Siguiente" value={String(nextBatchNumber)} />
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-              <AdminSurface
-                className="p-4"
-                title="Ultimas sesiones"
-                hint="Actividad reciente del alumno"
-              >
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {!selectedUser.is_admin ? (
-                    <button
-                      type="button"
-                      onClick={handleResetPracticeProgress}
-                      disabled={resettingProgress}
-                      className="inline-flex items-center gap-2 rounded-[0.95rem] border border-amber-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,249,235,0.96))] px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-amber-700 shadow-[0_14px_28px_-24px_rgba(245,158,11,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(255,247,225,0.98))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+            <AdminDisclosure
+              title="Actividad y acciones"
+              hint="Sesiones recientes y operaciones sobre la cuenta."
+              defaultOpen
+            >
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {!selectedUser.is_admin ? (
+                  <button
+                    type="button"
+                    onClick={handleResetPracticeProgress}
+                    disabled={resettingProgress}
+                    className="inline-flex items-center gap-2 rounded-[0.95rem] border border-amber-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,249,235,0.96))] px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-amber-700 shadow-[0_14px_28px_-24px_rgba(245,158,11,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(255,247,225,0.98))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                  >
+                    {resettingProgress ? (
+                      <LoaderCircle size={14} className="animate-spin" />
+                    ) : (
+                      <RotateCcw size={14} />
+                    )}
+                    Reiniciar estadisticas
+                  </button>
+                ) : null}
+                {!selectedUser.is_admin ? (
+                  <button
+                    type="button"
+                    onClick={handleDeleteUser}
+                    disabled={deleting}
+                    className="inline-flex items-center gap-2 rounded-[0.95rem] border border-rose-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,245,247,0.94))] px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-rose-700 shadow-[0_14px_28px_-24px_rgba(244,114,182,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(255,242,246,0.96))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-100 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                  >
+                    {deleting ? (
+                      <LoaderCircle size={14} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
+                    Borrar cuenta
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="mt-3 space-y-3">
+                {recentSessions.length === 0 ? (
+                  <p className="text-sm text-slate-500">Todavia no hay sesiones registradas.</p>
+                ) : (
+                  recentSessions.slice(0, 4).map((session) => (
+                    <article
+                      key={session.id}
+                      className="rounded-[1.1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.16)]"
                     >
-                      {resettingProgress ? (
-                        <LoaderCircle size={14} className="animate-spin" />
-                      ) : (
-                        <RotateCcw size={14} />
-                      )}
-                      Reiniciar estadisticas
-                    </button>
-                  ) : null}
-                  {!selectedUser.is_admin ? (
-                    <button
-                      type="button"
-                      onClick={handleDeleteUser}
-                      disabled={deleting}
-                      className="inline-flex items-center gap-2 rounded-[0.95rem] border border-rose-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,245,247,0.94))] px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-rose-700 shadow-[0_14px_28px_-24px_rgba(244,114,182,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(255,242,246,0.96))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-100 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-extrabold text-slate-900">{session.title}</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            {formatDate(session.finishedAt)}
+                          </p>
+                        </div>
+                        <p className="text-lg font-black text-slate-950">
+                          {session.score}
+                          <span className="text-sm text-slate-400">/{session.total}</span>
+                        </p>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </AdminDisclosure>
+
+            <AdminDisclosure
+              title="Preguntas mas falladas"
+              hint="Se despliega solo cuando quieres inspeccionar errores."
+            >
+              <div className="space-y-3">
+                {weakQuestions.length === 0 ? (
+                  <p className="text-sm text-slate-500">Todavia no hay errores acumulados.</p>
+                ) : (
+                  weakQuestions.slice(0, 3).map((question, index) => (
+                    <details
+                      key={`${question.question_id}-${index}`}
+                      className="rounded-[1.1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
                     >
-                      {deleting ? (
-                        <LoaderCircle size={14} className="animate-spin" />
-                      ) : (
-                        <Trash2 size={14} />
-                      )}
-                      Borrar cuenta
-                    </button>
-                  ) : null}
-                </div>
-                <div className="mt-3 space-y-3">
-                  {recentSessions.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                      Todavia no hay sesiones registradas.
-                    </p>
-                  ) : (
-                    recentSessions.map((session) => (
-                      <article
-                        key={session.id}
-                        className="rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3.5 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.16)]"
-                      >
+                      <summary className="cursor-pointer list-none">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="text-sm font-extrabold text-slate-900">
-                              {session.title}
+                              Pregunta {question.question_number ?? question.question_id}
                             </p>
-                            <p className="mt-1 text-xs font-semibold text-slate-500">
-                              {formatDate(session.finishedAt)}
+                            <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                              {question.category ?? 'Sin grupo'}
                             </p>
                           </div>
-                          <p className="text-lg font-black text-slate-950">
-                            {session.score}
-                            <span className="text-sm text-slate-400">/{session.total}</span>
-                          </p>
+                          <div className="rounded-[0.95rem] bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))] px-3 py-2 text-center">
+                            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-rose-700">
+                              Fallos
+                            </p>
+                            <p className="mt-1 text-lg font-black text-slate-900">
+                              {question.incorrect_attempts}
+                            </p>
+                          </div>
                         </div>
-                      </article>
-                    ))
-                  )}
-                </div>
-              </AdminSurface>
-
-              <AdminSurface
-                className="p-4"
-                title="Preguntas mas falladas"
-                hint="Donde mas conviene insistir"
-              >
-                <div className="space-y-3">
-                  {weakQuestions.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                      Todavia no hay errores acumulados.
-                    </p>
-                  ) : (
-                    weakQuestions.map((question, index) => (
-                      <details
-                        key={`${question.question_id}-${index}`}
-                        className="rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3.5 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
-                      >
-                        <summary className="cursor-pointer list-none">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-extrabold text-slate-900">
-                                Pregunta {question.question_number ?? question.question_id}
-                              </p>
-                              <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
-                                {question.category ?? 'Sin grupo'}
-                              </p>
-                            </div>
-                            <div className="rounded-[0.95rem] bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))] px-3 py-2 text-center">
-                              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-rose-700">
-                                Fallos
-                              </p>
-                              <p className="mt-1 text-lg font-black text-slate-900">
-                                {question.incorrect_attempts}
-                              </p>
-                            </div>
-                          </div>
-                        </summary>
-                        <p className="mt-3 text-sm font-semibold leading-6 text-slate-800">
-                          {question.statement}
+                      </summary>
+                      <p className="mt-3 text-sm font-semibold leading-6 text-slate-800">
+                        {question.statement}
+                      </p>
+                      <div className="mt-3 rounded-[1rem] bg-[linear-gradient(180deg,rgba(232,240,255,0.92),rgba(241,247,255,0.92))] px-4 py-3">
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-indigo-700">
+                          Explicacion
                         </p>
-                        <div className="mt-3 rounded-[1rem] bg-[linear-gradient(180deg,rgba(232,240,255,0.92),rgba(241,247,255,0.92))] px-4 py-3">
-                          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-indigo-700">
-                            Explicacion
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-slate-700">
-                            {question.explanation || 'Sin explicacion disponible.'}
-                          </p>
-                        </div>
-                      </details>
-                    ))
-                  )}
-                </div>
-              </AdminSurface>
-            </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-700">
+                          {question.explanation || 'Sin explicacion disponible.'}
+                        </p>
+                      </div>
+                    </details>
+                  ))
+                )}
+              </div>
+            </AdminDisclosure>
           </div>
         )}
       </AdminSurface>

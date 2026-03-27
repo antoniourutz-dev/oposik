@@ -304,7 +304,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                 }`}
               >
                 <span
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] text-lg font-black ${
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.9rem] text-base font-extrabold sm:h-10 sm:w-10 sm:rounded-[1rem] sm:text-[1.02rem] ${
                     isDeferredMode
                       ? selectedKey === key
                         ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white'
@@ -317,15 +317,15 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                   }`}
                 >
                   {isCorrectOption ? (
-                    <Check size={22} strokeWidth={3} />
+                    <Check size={19} strokeWidth={3} />
                   ) : isWrongSelected ? (
-                    <X size={22} strokeWidth={3} />
+                    <X size={19} strokeWidth={3} />
                   ) : (
                     key.toUpperCase()
                   )}
                 </span>
                 <span
-                  className={`text-sm font-semibold leading-6 sm:text-base sm:leading-7 ${
+                  className={`text-[1.02rem] font-semibold leading-7 sm:text-[1.12rem] sm:leading-8 ${
                     isDeferredMode
                       ? selectedKey === key
                         ? 'text-slate-950'

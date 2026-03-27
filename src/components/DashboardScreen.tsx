@@ -1095,25 +1095,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   }
 
   return (
-    <div className="grid gap-4">
-      <SectionCard className="relative overflow-hidden border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-5 text-white shadow-[0_28px_72px_-52px_rgba(141,147,242,0.24)] sm:p-6">
+    <div className="grid gap-3 sm:gap-4">
+      <SectionCard className="relative overflow-hidden border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-4 text-white shadow-[0_28px_72px_-52px_rgba(141,147,242,0.24)] sm:p-5">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/16 blur-3xl" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_44%)]" />
         </div>
         <div className="relative flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[1.35rem] border border-white/18 bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-[10px]">
-              <UserRound size={24} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] border border-white/18 bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-[10px] sm:h-14 sm:w-14 sm:rounded-[1.35rem]">
+              <UserRound size={22} />
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-50/84">
                 Cuenta activa
               </p>
-              <p className="mt-2 text-[1.7rem] font-black leading-none text-white">
+              <p className="mt-1.5 text-[1.45rem] font-black leading-none text-white sm:mt-2 sm:text-[1.7rem]">
                 {identity.current_username}
               </p>
-              <p className="mt-2 text-sm font-medium text-sky-50/84">
+              <p className="mt-1.5 text-sm font-medium text-sky-50/84 sm:mt-2">
                 Perfil {identity.is_admin ? 'administrador' : 'alumno'}
               </p>
             </div>
@@ -1129,168 +1129,127 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </div>
       </SectionCard>
 
-      <SectionCard title="Panel de cuenta" hint="Resumen operativo del perfil">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <AccentStatTile
-            label="Rol"
-            value={identity.is_admin ? 'Admin' : 'Alumno'}
-            hint="Permiso actual"
-            icon={<Shield size={18} />}
-          />
-          <AccentStatTile
-            label="Banco"
-            value={String(questionsCount)}
-            hint="Preguntas visibles"
-            icon={<Brain size={18} />}
-          />
-          <AccentStatTile
-            label="Bloques"
-            value={String(totalBatches)}
-            hint="Recorrido total"
-            icon={<Layers3 size={18} />}
-          />
-          <AccentStatTile
-            label="Tamano"
-            value={String(batchSize)}
-            hint="Preguntas por bloque"
-            icon={<Target size={18} />}
-          />
+      <SectionCard title="Panel de cuenta" hint="Resumen rapido del perfil">
+        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          <StatusStripItem label="Rol" value={identity.is_admin ? 'Admin' : 'Alumno'} />
+          <StatusStripItem label="Banco" value={String(questionsCount)} />
+          <StatusStripItem label="Bloques" value={String(totalBatches)} />
+          <StatusStripItem label="Tamano" value={String(batchSize)} />
           {learningDashboard ? (
             <>
-              <AccentStatTile
-                label="Readiness"
-                value={readinessLabel}
-                hint={
-                  learningDashboard.examDate
-                    ? `Examen ${learningDashboard.examDate}`
-                    : 'Sin fecha de examen'
-                }
-                icon={<ChartNoAxesColumn size={18} />}
-              />
-              <AccentStatTile
+              <StatusStripItem label="Readiness" value={readinessLabel} />
+              <StatusStripItem
                 label="Capacidad"
                 value={String(learningDashboard.dailyReviewCapacity)}
-                hint="Repasos diarios"
-                icon={<Brain size={18} />}
               />
             </>
           ) : null}
         </div>
-        <form onSubmit={handleExamTargetSubmit} className="mt-4 grid gap-4">
-          <div className="rounded-[1.25rem] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.92))] p-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-extrabold text-slate-900">Configuracion de examen</p>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Define la fecha objetivo y la carga diaria para que el plan del dia y el
-                  readiness sean realmente utiles.
-                </p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
+          <StatsDisclosure
+            title="Configuracion de examen"
+            hint={
+              examTargetUpdatedLabel
+                ? `Ultima actualizacion ${examTargetUpdatedLabel}`
+                : 'Ajusta fecha y carga diaria solo cuando lo necesites.'
+            }
+          >
+            <form onSubmit={handleExamTargetSubmit} className="grid gap-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <label className="grid gap-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                    Fecha de examen
+                  </span>
+                  <input
+                    type="date"
+                    value={examDateInput}
+                    onChange={(event) => setExamDateInput(event.target.value)}
+                    className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                  />
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                    Repasos diarios
+                  </span>
+                  <input
+                    type="number"
+                    min={5}
+                    max={200}
+                    step={1}
+                    value={dailyReviewCapacityInput}
+                    onChange={(event) => setDailyReviewCapacityInput(event.target.value)}
+                    className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                  />
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                    Nuevas al dia
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={dailyNewCapacityInput}
+                    onChange={(event) => setDailyNewCapacityInput(event.target.value)}
+                    className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                  />
+                </label>
               </div>
-              {examTargetUpdatedLabel ? (
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                  Actualizado {examTargetUpdatedLabel}
-                </span>
+
+              {examTargetError ? (
+                <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                  {examTargetError}
+                </div>
               ) : null}
-            </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <label className="grid gap-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                  Fecha de examen
-                </span>
-                <input
-                  type="date"
-                  value={examDateInput}
-                  onChange={(event) => setExamDateInput(event.target.value)}
-                  className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                />
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                  Repasos diarios
-                </span>
-                <input
-                  type="number"
-                  min={5}
-                  max={200}
-                  step={1}
-                  value={dailyReviewCapacityInput}
-                  onChange={(event) => setDailyReviewCapacityInput(event.target.value)}
-                  className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                />
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                  Nuevas al dia
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={dailyNewCapacityInput}
-                  onChange={(event) => setDailyNewCapacityInput(event.target.value)}
-                  className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                />
-              </label>
-            </div>
-
-            {examTargetError ? (
-              <div className="mt-4 rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-                {examTargetError}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs font-semibold leading-5 text-slate-400">
+                  Sin fecha, el sistema sigue guiando el estudio pero sin compresion por examen.
+                </p>
+                <button
+                  type="submit"
+                  disabled={savingExamTarget}
+                  className="inline-flex items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold text-white shadow-[0_18px_30px_-24px_rgba(141,147,242,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_34px_-24px_rgba(141,147,242,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+                >
+                  {savingExamTarget ? 'Guardando...' : 'Guardar configuracion'}
+                </button>
               </div>
-            ) : null}
+            </form>
+          </StatsDisclosure>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs font-semibold leading-5 text-slate-400">
-                Si dejas la fecha vacia, el sistema seguira guiando el estudio, pero sin compresion
-                por cercania de examen.
-              </p>
-              <button
-                type="submit"
-                disabled={savingExamTarget}
-                className="inline-flex items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold text-white shadow-[0_18px_30px_-24px_rgba(141,147,242,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_34px_-24px_rgba(141,147,242,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
-              >
-                {savingExamTarget ? 'Guardando...' : 'Guardar configuracion'}
-              </button>
-            </div>
-          </div>
-        </form>
-        <button
-          type="button"
-          onClick={onSignOut}
-          className="mt-4 inline-flex w-full items-center justify-between rounded-[1.2rem] border border-rose-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,245,247,0.94))] px-4 py-3.5 text-left shadow-[0_18px_34px_-28px_rgba(244,114,182,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(255,242,246,0.96))] hover:shadow-[0_24px_38px_-30px_rgba(244,114,182,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-100 active:translate-y-0 active:scale-[0.995]"
-        >
-          <span className="inline-flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-50 text-rose-500">
-              <LogOut size={18} />
-            </span>
-            <span>
-              <span className="block text-sm font-extrabold text-slate-900">Cerrar sesion</span>
-              <span className="mt-1 block text-xs font-semibold text-slate-400">
-                Salir y cambiar de cuenta
-              </span>
-            </span>
-          </span>
-          <ArrowRight size={16} className="text-slate-400" />
-        </button>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="inline-flex items-center gap-2 rounded-[1rem] border border-rose-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,245,247,0.94))] px-4 py-3 text-sm font-extrabold text-rose-700 shadow-[0_18px_34px_-28px_rgba(244,114,182,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(255,242,246,0.96))] hover:shadow-[0_24px_38px_-30px_rgba(244,114,182,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-100 active:translate-y-0 active:scale-[0.995]"
+          >
+            <LogOut size={16} />
+            Cerrar sesion
+          </button>
+        </div>
       </SectionCard>
 
       {identity.is_admin ? (
-        <SectionCard title="Panel admin" hint="Gestion de alumnos y analitica">
-          <div className="rounded-[1.25rem] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] p-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]">
-            <Suspense
-              fallback={
-                <p className="text-sm font-medium text-slate-500">
-                  Cargando panel de administracion...
-                </p>
-              }
-            >
-              <AdminConsoleScreen />
-            </Suspense>
-          </div>
+        <SectionCard title="Panel admin" hint="Abre la gestion solo cuando la necesites">
+          <StatsDisclosure
+            title="Gestion de alumnos"
+            hint="La administracion ya no ocupa toda la pantalla del perfil."
+          >
+            <div className="rounded-[1.25rem] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] p-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]">
+              <Suspense
+                fallback={
+                  <p className="text-sm font-medium text-slate-500">
+                    Cargando panel de administracion...
+                  </p>
+                }
+              >
+                <AdminConsoleScreen />
+              </Suspense>
+            </div>
+          </StatsDisclosure>
         </SectionCard>
       ) : null}
     </div>
