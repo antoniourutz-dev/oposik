@@ -90,7 +90,7 @@ const PracticeAppShell: React.FC = () => {
     <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.15),transparent_32%),linear-gradient(180deg,#fffdf8_0%,#f8fafc_45%,#f6f7fb_100%)] text-slate-900">
       {view !== 'quiz' && <TopBar section={topBarSubtitle} />}
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col">
-        <main className={`flex flex-1 flex-col px-4 ${view === 'quiz' ? 'pb-4 pt-4' : 'pb-8 pt-24'} sm:px-6 lg:px-8 ${view === 'home' ? 'pb-32' : ''}`}>
+        <main className={`flex flex-1 flex-col px-4 ${view === 'quiz' ? 'pb-4 pt-4' : 'pb-8 pt-[5.2rem]'} sm:px-6 lg:px-8 ${view === 'home' ? 'pb-28' : ''}`}>
           {syncError && view === 'home' ? (
             <div className="mx-auto mb-4 w-full max-w-4xl rounded-[1.2rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
               {syncError}

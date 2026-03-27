@@ -134,31 +134,67 @@ const HeroCompactAction: React.FC<{
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className="inline-flex items-center gap-3 rounded-[1.08rem] border border-white/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.1))] px-3 py-3 text-left text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[10px] transition-all duration-200 hover:-translate-y-0.5 hover:border-white/24 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.2),rgba(255,255,255,0.12))] hover:shadow-[0_18px_30px_-24px_rgba(15,23,42,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 active:translate-y-0 active:scale-[0.99] disabled:opacity-45 disabled:hover:translate-y-0"
+    className="inline-flex flex-col items-center justify-center gap-2 rounded-[1.08rem] border border-white/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.1))] px-3 py-3 text-center text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[10px] transition-all duration-200 hover:-translate-y-0.5 hover:border-white/24 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.2),rgba(255,255,255,0.12))] hover:shadow-[0_18px_30px_-24px_rgba(15,23,42,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 active:translate-y-0 active:scale-[0.99] disabled:opacity-45 disabled:hover:translate-y-0"
   >
     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/12 bg-white/10 text-blue-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
       {icon}
     </span>
     <span className="min-w-0">
-      <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-blue-100/76">
+      <span className="block text-[9px] font-extrabold uppercase tracking-[0.16em] text-blue-100/72">
         {label}
       </span>
-      <span className="mt-1 block truncate text-[0.96rem] font-extrabold text-white">{title}</span>
+      <span className="mt-1 block text-[0.9rem] font-extrabold leading-none text-white">{title}</span>
     </span>
   </button>
 );
 
 const CoachChip: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <span className="inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/10 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/84 backdrop-blur-sm">
-    <span className="text-white/62">{label}</span>
+  <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08))] px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_16px_28px_-24px_rgba(15,23,42,0.22)] backdrop-blur-sm">
+    <span className="text-white/64">{label}</span>
     <span className="text-sm font-black text-white">{value}</span>
   </span>
 );
 
 const HeroMiniStat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="rounded-[1.05rem] border border-white/16 bg-white/10 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm">
-    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-sky-50/70">{label}</p>
-    <p className="mt-2 text-sm font-black text-white">{value}</p>
+  <div className="rounded-[1.05rem] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] backdrop-blur-sm">
+    <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-sky-50/68">{label}</p>
+    <p className="mt-1.5 text-sm font-black text-white">{value}</p>
+  </div>
+);
+
+const StatusStripItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="rounded-[1.1rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
+    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+    <p className="mt-1.5 text-[1.25rem] font-black leading-none text-slate-950">{value}</p>
+  </div>
+);
+
+const DailyInsightCard: React.FC<{
+  eyebrow: string;
+  title: string;
+  message: string;
+  icon: React.ReactNode;
+  accentClassName?: string;
+  trailing?: React.ReactNode;
+}> = ({ eyebrow, title, message, icon, accentClassName = '', trailing }) => (
+  <div
+    className={`rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)] ${accentClassName}`}
+  >
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(138,144,244,0.18))] text-slate-700">
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+            {eyebrow}
+          </p>
+          <p className="mt-1 text-base font-extrabold text-slate-950">{title}</p>
+          <p className="mt-1 text-sm leading-5 text-slate-500">{message}</p>
+        </div>
+      </div>
+      {trailing}
+    </div>
   </div>
 );
 
@@ -383,10 +419,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const visibleCoachChips = coachPlan.chips
     .filter((chip) => chip.label.toLowerCase() !== 'readiness')
     .slice(0, 2);
-  const heroStats = [
-    { label: 'Foco', value: coachPlan.focusLabel },
-    ...visibleCoachChips
-  ].slice(0, 3);
+  const heroStats =
+    visibleCoachChips.length > 0
+      ? visibleCoachChips.slice(0, 2)
+      : [{ label: 'Foco', value: coachPlan.focusLabel }];
   const pressureGapLabel = formatSignedPoints(pressureInsights?.pressureGap);
   const learningAccuracyLabel = formatPercent(pressureInsights?.learningAccuracy);
   const simulacroAccuracyLabel = formatPercent(pressureInsights?.simulacroAccuracy);
@@ -499,26 +535,27 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   if (activeTab === 'home') {
     return (
-      <div className="grid gap-4">
-        <SectionCard className="relative overflow-hidden border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-5 text-white shadow-[0_28px_72px_-52px_rgba(141,147,242,0.24)] sm:p-5">
+      <div className="grid gap-3 sm:gap-4">
+        <SectionCard className="relative overflow-hidden border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#6eaee5_0%,#8aa6ee_54%,#8d96f4_100%)] p-4 text-white shadow-[0_28px_72px_-52px_rgba(141,147,242,0.24)] sm:p-5">
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/18 blur-3xl" />
-            <div className="absolute -left-8 bottom-[-72px] h-44 w-44 rounded-full bg-sky-100/16 blur-3xl" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.09),transparent_44%)]" />
+            <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/20 blur-3xl" />
+            <div className="absolute -left-8 bottom-[-72px] h-44 w-44 rounded-full bg-sky-100/18 blur-3xl" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.1),transparent_44%)]" />
             <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.08))]" />
-            <div className="absolute right-6 top-6 h-28 w-28 rounded-full border border-white/16" />
-            <div className="absolute right-12 top-10 h-40 w-40 rounded-full border border-white/10" />
+            <div className="absolute right-6 top-6 h-28 w-28 rounded-full border border-white/18" />
+            <div className="absolute right-12 top-10 h-40 w-40 rounded-full border border-white/12" />
           </div>
           <div className="relative">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-sky-50/88">
+                <p className="inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-sky-50/88">
+                  <span className="h-2 w-2 rounded-full bg-white/92 shadow-[0_0_0_4px_rgba(255,255,255,0.12)]" />
                   Hoy
                 </p>
-                <p className="mt-2 text-[1.8rem] font-black leading-[0.98] text-white sm:text-[2.05rem]">
+                <p className="mt-2 text-[1.68rem] font-black leading-[0.98] text-white sm:text-[2.05rem]">
                   {coachPlan.title}
                 </p>
-                <p className="mt-2 max-w-[30rem] text-sm leading-6 text-sky-50/86">
+                <p className="mt-2 max-w-[28rem] text-[0.96rem] leading-6 text-sky-50/86">
                   {coachPlan.summary}
                 </p>
               </div>
@@ -527,30 +564,37 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-              <div className="grid gap-3">
+            <div className="mt-3 rounded-[1.32rem] border border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] sm:mt-3.5 sm:rounded-[1.4rem] sm:p-2.5">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                <div className="grid gap-3">
                 <button
                   type="button"
                   onClick={onStartRecommended}
-                  className="inline-flex items-center justify-between rounded-[1.45rem] border border-white/72 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(255,255,255,0.95))] px-4 py-4 text-left text-slate-950 shadow-[0_26px_42px_-28px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_30px_46px_-28px_rgba(141,147,242,0.28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 active:translate-y-0 active:scale-[0.995]"
+                  className="inline-flex items-center justify-between rounded-[1.28rem] border border-white/74 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(252,252,255,0.95))] px-3.5 py-3 text-left text-slate-950 shadow-[0_26px_42px_-28px_rgba(141,147,242,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_30px_46px_-28px_rgba(141,147,242,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 active:translate-y-0 active:scale-[0.995] sm:rounded-[1.35rem] sm:px-4 sm:py-3.5"
                 >
                   <span>
-                    <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                      Hoy toca
+                    <span className="inline-flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 sm:text-[10px]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#7cb6e8]" />
+                      <span className="sm:hidden">Recomendado</span>
+                      <span className="hidden sm:inline">Sesion recomendada</span>
                     </span>
-                    <span className="mt-1.5 block text-[1.28rem] font-extrabold tracking-[-0.02em]">
+                    <span className="mt-1 block text-[1.08rem] font-extrabold tracking-[-0.02em] sm:mt-1.5 sm:text-[1.18rem]">
                       {coachPlan.primaryActionLabel}
                     </span>
-                    <span className="mt-1 block max-w-[26rem] text-sm leading-6 text-slate-500">
-                      {coachPlan.impactLabel}
+                    <span className="mt-1 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 sm:hidden">
+                      {coachPlan.focusLabel}
+                    </span>
+                    <span className="mt-1 hidden max-w-[24rem] text-sm leading-5 text-slate-500 sm:block">
+                      {coachPlan.reasons[0] ?? coachPlan.impactLabel}
                     </span>
                   </span>
-                  <span className="flex h-12 w-12 items-center justify-center rounded-[1.05rem] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_16px_28px_-20px_rgba(141,147,242,0.28)]">
-                    <ArrowRight size={18} />
+                  <span className="flex h-11 w-11 items-center justify-center rounded-[1rem] border border-[#c4d7fb] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_16px_28px_-20px_rgba(141,147,242,0.28)] sm:h-12 sm:w-12 sm:rounded-[1.05rem]">
+                    <ArrowRight size={17} className="sm:hidden" />
+                    <ArrowRight size={18} className="hidden sm:block" />
                   </span>
                 </button>
 
-                <div className="grid gap-2 sm:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {heroStats.map((stat) => (
                     <HeroMiniStat
                       key={`${stat.label}-${stat.value}`}
@@ -559,84 +603,71 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     />
                   ))}
                 </div>
-              </div>
+                </div>
 
-              <div className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-1">
-                <HeroCompactAction
-                  label="Adaptativo"
-                  title={`${recommendedToday > 0 ? recommendedToday : batchSize} hoy`}
-                  onClick={onStartMixed}
-                  icon={<Target size={18} />}
-                />
-                <HeroCompactAction
-                  label="Aleatorio"
-                  title="20 mezcladas"
-                  onClick={onStartRandom}
-                  icon={<Layers3 size={18} />}
-                />
-                <HeroCompactAction
-                  label="Repaso"
-                  title="Top 5 falladas"
-                  onClick={onStartWeakReview}
-                  disabled={weakQuestions.length === 0}
-                  icon={<Brain size={18} />}
-                />
+                <div className="grid grid-cols-3 gap-2.5 lg:grid-cols-1">
+                  <HeroCompactAction
+                    label={`${recommendedToday > 0 ? recommendedToday : batchSize} hoy`}
+                    title="Mixto"
+                    onClick={onStartMixed}
+                    icon={<Target size={18} />}
+                  />
+                  <HeroCompactAction
+                    label="20 preguntas"
+                    title="Aleatorio"
+                    onClick={onStartRandom}
+                    icon={<Layers3 size={18} />}
+                  />
+                  <HeroCompactAction
+                    label="Top 5"
+                    title="Falladas"
+                    onClick={onStartWeakReview}
+                    disabled={weakQuestions.length === 0}
+                    icon={<Brain size={18} />}
+                  />
+                </div>
               </div>
             </div>
           </div>
         </SectionCard>
 
-        <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-          <SectionCard title="Estado de hoy" hint="Solo lo que conviene mirar">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <HomeMetric label="Readiness" value={readinessLabel} />
-              <HomeMetric label="Repasos hoy" value={String(recommendedReview)} />
-              <HomeMetric label="Dominio util" value={formatPercent(usefulMasteryRate)} />
-              <HomeMetric label="Cobertura" value={formatPercent(coverageRate)} />
+        <div className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
+          <SectionCard
+            title="Estado de hoy"
+            hint="Solo lo que conviene mirar"
+            className="p-3.5 sm:p-4"
+          >
+            <div className="grid gap-2.5 sm:grid-cols-3">
+              <StatusStripItem label="Readiness" value={readinessLabel} />
+              <StatusStripItem label="Repasos hoy" value={String(recommendedReview)} />
+              <StatusStripItem label="Dominio util" value={formatPercent(usefulMasteryRate)} />
             </div>
           </SectionCard>
 
-          <SectionCard title="Claves de hoy" hint="Lectura corta para no perder foco">
+          <SectionCard title="Claves de hoy" hint="Dos alertas cortas" className="p-3.5 sm:p-4">
             <div className="grid gap-3">
-              <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(138,144,244,0.18))] text-slate-700">
-                    <Target size={18} />
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                      Foco
-                    </p>
-                    <p className="mt-1 text-base font-extrabold text-slate-950">
-                      {coachPlan.focusLabel}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-slate-500">
-                      {coachPlan.reasons[0] ?? coachPlan.impactLabel}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DailyInsightCard
+                  eyebrow="Foco"
+                  title={coachPlan.focusLabel}
+                  message={coachPlan.reasons[0] ?? coachPlan.impactLabel}
+                  icon={<Target size={18} />}
+                />
 
-              {topRiskBreakdown[0] ? (
-                <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                        Riesgo principal
-                      </p>
-                      <p className="mt-1 text-base font-extrabold text-slate-950">
-                        {topRiskBreakdown[0].label}
-                      </p>
-                      <p className="mt-1 text-sm leading-6 text-slate-500">
-                        Conviene limpiarlo antes de seguir ampliando ritmo.
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(138,144,244,0.18))] px-2.5 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-700">
-                      {topRiskBreakdown[0].count}
-                    </span>
-                  </div>
-                </div>
-              ) : null}
+                {topRiskBreakdown[0] ? (
+                  <DailyInsightCard
+                    eyebrow="Riesgo"
+                    title={topRiskBreakdown[0].label}
+                    message="Mejor limpiarlo antes de ampliar carga."
+                    icon={<Shield size={18} />}
+                    trailing={
+                      <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(138,144,244,0.18))] px-2.5 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-700">
+                        {topRiskBreakdown[0].count}
+                      </span>
+                    }
+                  />
+                ) : null}
+              </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 {pressureInsights ? (
@@ -651,7 +682,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-sky-50/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99]"
                 >
                   <RotateCcw size={15} />
-                  Sincronizar
+                  Sync
                 </button>
               </div>
             </div>
