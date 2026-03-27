@@ -17,7 +17,10 @@ export type PracticeBootstrap = {
 export const createEmptyPracticeState = (): CloudPracticeState => ({
   profile: null,
   recentSessions: [],
-  questionStats: []
+  questionStats: [],
+  learningDashboard: null,
+  examTarget: null,
+  pressureInsights: null
 });
 
 export const loadPracticeBootstrap = async (

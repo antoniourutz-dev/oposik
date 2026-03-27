@@ -16,16 +16,16 @@ const pwaManifest = {
   lang: 'es',
   icons: [
     {
-      src: '/korrika_icon_set/icon_192.png',
+      src: '/minimal_dark_192.png',
       sizes: '192x192',
       type: 'image/png',
-      purpose: 'any maskable'
+      purpose: 'any'
     },
     {
-      src: '/korrika_icon_set/icon_512.png',
+      src: '/minimal_dark_512.png',
       sizes: '512x512',
       type: 'image/png',
-      purpose: 'any maskable'
+      purpose: 'any'
     }
   ]
 };
@@ -68,7 +68,8 @@ export default defineConfig({
           'assets/AdminConsoleScreen-*.js',
           'assets/react-dom-*.js',
           'assets/supabase-*.js',
-          'korrika_icon_set/**'
+          'minimal_dark_1024.png',
+          'minimal_dark_512.png'
         ]
       },
       manifest: pwaManifest,

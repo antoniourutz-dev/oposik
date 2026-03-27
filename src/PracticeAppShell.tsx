@@ -27,25 +27,36 @@ const PracticeAppShell: React.FC = () => {
     activeTab,
     answers,
     authReady,
+    coachPlan,
     currentQuestion,
     currentQuestionIndex,
+    examTarget,
+    examTargetError,
     goHome,
     handleAnswer,
     handleContinueAfterReview,
     handleEndSessionEarly,
     handleRetrySession,
+    handleSaveExamTarget,
     handleSignedIn,
     handleSignOut,
+    handleSimulacroTimeExpired,
     identity,
+    learningDashboard,
     loadingQuestions,
+    pressureInsights,
     profile,
     questionsCount,
     questionsError,
     recentSessions,
     reloadPracticeData,
     recommendedBatchNumber,
+    savingExamTarget,
     session,
+    startSimulacro,
+    startAntiTrap,
     startFromBeginning,
+    startMixed,
     startRandom,
     startRecommended,
     startWeakReview,
@@ -79,7 +90,7 @@ const PracticeAppShell: React.FC = () => {
     <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.15),transparent_32%),linear-gradient(180deg,#fffdf8_0%,#f8fafc_45%,#f6f7fb_100%)] text-slate-900">
       {view !== 'quiz' && <TopBar section={topBarSubtitle} />}
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col">
-        <main className={`flex flex-1 flex-col px-4 pb-8 ${view === 'quiz' ? 'pt-4' : 'pt-24'} sm:px-6 lg:px-8 ${view === 'home' ? 'pb-32' : 'pb-8'}`}>
+        <main className={`flex flex-1 flex-col px-4 ${view === 'quiz' ? 'pb-4 pt-4' : 'pb-8 pt-24'} sm:px-6 lg:px-8 ${view === 'home' ? 'pb-32' : ''}`}>
           {syncError && view === 'home' ? (
             <div className="mx-auto mb-4 w-full max-w-4xl rounded-[1.2rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
               {syncError}
@@ -131,6 +142,12 @@ const PracticeAppShell: React.FC = () => {
               <DashboardScreen
                 activeTab={activeTab}
                 identity={identity}
+                examTarget={examTarget}
+                examTargetError={examTargetError}
+                savingExamTarget={savingExamTarget}
+                learningDashboard={learningDashboard}
+                coachPlan={coachPlan}
+                pressureInsights={pressureInsights}
                 profile={profile}
                 recentSessions={recentSessions}
                 questionsCount={questionsCount}
@@ -140,10 +157,14 @@ const PracticeAppShell: React.FC = () => {
                 weakQuestions={weakQuestions}
                 weakCategories={weakCategories}
                 onStartRecommended={startRecommended}
+                onStartSimulacro={startSimulacro}
+                onStartAntiTrap={startAntiTrap}
+                onStartMixed={startMixed}
                 onStartRandom={startRandom}
                 onStartFromBeginning={startFromBeginning}
                 onStartWeakReview={startWeakReview}
                 onReloadQuestions={() => void reloadPracticeData()}
+                onSaveExamTarget={(payload) => void handleSaveExamTarget(payload)}
                 onSignOut={() => void handleSignOut()}
               />
             ) : null}
@@ -151,6 +172,9 @@ const PracticeAppShell: React.FC = () => {
             {!loadingQuestions && !questionsError && questionsCount > 0 && view === 'quiz' && currentQuestion && activeSession ? (
               <QuizScreen
                 title={activeSession.title}
+                feedbackMode={activeSession.feedbackMode}
+                startedAt={activeSession.startedAt}
+                timeLimitSeconds={activeSession.timeLimitSeconds}
                 question={currentQuestion}
                 questionIndex={currentQuestionIndex}
                 totalQuestions={activeSession.questions.length}
@@ -159,6 +183,7 @@ const PracticeAppShell: React.FC = () => {
                 answers={answers}
                 onAnswer={handleAnswer}
                 onEndSession={handleEndSessionEarly}
+                onTimeExpired={handleSimulacroTimeExpired}
               />
             ) : null}
 
@@ -167,6 +192,10 @@ const PracticeAppShell: React.FC = () => {
                 answers={answers}
                 batchNumber={activeSession.batchNumber}
                 totalBatches={activeSession.totalBatches}
+                sessionMode={activeSession.mode}
+                sessionStartedAt={activeSession.startedAt}
+                sessionQuestionCount={activeSession.questions.length}
+                timeLimitSeconds={activeSession.timeLimitSeconds}
                 hasNextBatch={
                   activeSession.mode === 'standard' &&
                   activeSession.nextStandardBatchStartIndex !== null &&

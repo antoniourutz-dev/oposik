@@ -102,6 +102,84 @@ export const getRandomPracticeBatch = async (
     .filter((question): question is PracticeQuestion => Boolean(question));
 };
 
+export const getMixedPracticeBatch = async (
+  batchSize: number,
+  curriculum = DEFAULT_CURRICULUM
+) => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('get_mixed_practice_batch', {
+      p_curriculum: curriculum,
+      p_batch_size: batchSize
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>)
+    .map((row) => {
+      const payload =
+        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+          ? (row.payload as Record<string, unknown>)
+          : null;
+      return payload ? mapQuestion(payload) : null;
+    })
+    .filter((question): question is PracticeQuestion => Boolean(question));
+};
+
+export const getAntiTrapPracticeBatch = async (
+  batchSize: number,
+  curriculum = DEFAULT_CURRICULUM
+) => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('get_anti_trap_batch', {
+      p_curriculum: curriculum,
+      p_limit: batchSize
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>)
+    .map((row) => {
+      const payload =
+        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+          ? (row.payload as Record<string, unknown>)
+          : null;
+      return payload ? mapQuestion(payload) : null;
+    })
+    .filter((question): question is PracticeQuestion => Boolean(question));
+};
+
+export const getSimulacroPracticeBatch = async (
+  batchSize: number,
+  curriculum = DEFAULT_CURRICULUM
+) => {
+  const { data, error } = await supabase
+    .schema('app')
+    .rpc('get_simulacro_batch', {
+      p_curriculum: curriculum,
+      p_limit: batchSize
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>)
+    .map((row) => {
+      const payload =
+        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+          ? (row.payload as Record<string, unknown>)
+          : null;
+      return payload ? mapQuestion(payload) : null;
+    })
+    .filter((question): question is PracticeQuestion => Boolean(question));
+};
+
 export const getPracticeQuestions = async () => {
   const runQuery = (orderField: string | null, from: number, to: number) => {
     let query = supabase.from('preguntas').select('*').range(from, to);

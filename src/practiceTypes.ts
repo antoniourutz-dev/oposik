@@ -1,5 +1,12 @@
 export type OptionKey = 'a' | 'b' | 'c' | 'd';
-export type PracticeMode = 'standard' | 'weakest' | 'random';
+export type PracticeMode =
+  | 'standard'
+  | 'weakest'
+  | 'random'
+  | 'review'
+  | 'mixed'
+  | 'simulacro'
+  | 'anti_trap';
 
 export interface PracticeQuestion {
   id: string;
@@ -15,6 +22,20 @@ export interface PracticeAnswer {
   question: PracticeQuestion;
   selectedOption: OptionKey | null;
   isCorrect: boolean;
+  answeredAt: string;
+  responseTimeMs: number | null;
+  timeToFirstSelectionMs: number | null;
+  changedAnswer: boolean;
+  errorTypeInferred: string | null;
+}
+
+export interface PracticeAnswerSubmission {
+  selectedOption: OptionKey;
+  answeredAt: string;
+  responseTimeMs: number | null;
+  timeToFirstSelectionMs: number | null;
+  changedAnswer: boolean;
+  errorTypeInferred?: string | null;
 }
 
 export interface PracticeQuestionStat {
@@ -56,13 +77,85 @@ export interface PracticeCatalogSummary {
   totalQuestions: number;
 }
 
+export interface PracticeRiskInsight {
+  errorType: string;
+  label: string;
+  count: number;
+}
+
+export interface PracticeLearningDashboard {
+  totalQuestions: number;
+  seenQuestions: number;
+  readiness: number;
+  readinessLower: number | null;
+  readinessUpper: number | null;
+  projectedReadiness: number | null;
+  overdueCount: number;
+  backlogCount: number;
+  fragileCount: number;
+  consolidatingCount: number;
+  solidCount: number;
+  masteredCount: number;
+  newCount: number;
+  recommendedReviewCount: number;
+  recommendedNewCount: number;
+  recommendedTodayCount: number;
+  recommendedMode: PracticeMode;
+  focusMessage: string;
+  dailyReviewCapacity: number;
+  dailyNewCapacity: number;
+  examDate: string | null;
+  riskBreakdown: PracticeRiskInsight[];
+}
+
+export interface PracticeExamTarget {
+  userId: string;
+  curriculum: string;
+  examDate: string | null;
+  dailyReviewCapacity: number;
+  dailyNewCapacity: number;
+  updatedAt: string | null;
+}
+
+export interface PracticePressureInsights {
+  learningAccuracy: number | null;
+  simulacroAccuracy: number | null;
+  pressureGap: number | null;
+  lastSimulacroAccuracy: number | null;
+  lastSimulacroFinishedAt: string | null;
+  avgSimulacroFatigue: number | null;
+  overconfidenceRate: number | null;
+  recommendedMode: PracticeMode | null;
+  pressureMessage: string;
+}
+
+export interface PracticeCoachPlanChip {
+  label: string;
+  value: string;
+}
+
+export interface PracticeCoachPlan {
+  mode: PracticeMode;
+  tone: 'rescue' | 'build' | 'pressure' | 'advance' | 'maintain';
+  eyebrow: string;
+  title: string;
+  summary: string;
+  primaryActionLabel: string;
+  focusLabel: string;
+  impactLabel: string;
+  reasons: string[];
+  chips: PracticeCoachPlanChip[];
+}
+
 export interface ActivePracticeSession {
   id: string;
   mode: PracticeMode;
+  feedbackMode: 'immediate' | 'deferred';
   title: string;
   subtitle: string;
   questions: PracticeQuestion[];
   startedAt: string;
+  timeLimitSeconds: number | null;
   batchNumber: number;
   totalBatches: number;
   batchStartIndex: number | null;
@@ -79,4 +172,7 @@ export interface CloudPracticeState {
   profile: PracticeProfile | null;
   recentSessions: PracticeSessionSummary[];
   questionStats: PracticeQuestionStat[];
+  learningDashboard: PracticeLearningDashboard | null;
+  examTarget: PracticeExamTarget | null;
+  pressureInsights: PracticePressureInsights | null;
 }

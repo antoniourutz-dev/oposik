@@ -22,14 +22,14 @@ type ReminderNotificationPayload = {
   data?: Record<string, unknown>;
 };
 
-const DEFAULT_NOTIFICATION_ICON = '/korrika_icon_set/icon_192.png';
-const DEFAULT_NOTIFICATION_BADGE = '/korrika_icon_set/icon_128.png';
+const DEFAULT_NOTIFICATION_ICON = '/minimal_dark_192.png';
+const DEFAULT_NOTIFICATION_BADGE = '/minimal_dark_128.png';
 const DEFAULT_NOTIFICATION_URL = '/';
 const PRECACHE_BLOCKLIST = [
   /^assets\/AdminConsoleScreen-.*\.js$/,
   /^assets\/react-dom-.*\.js$/,
   /^assets\/supabase-.*\.js$/,
-  /^korrika_icon_set\/icon_(16|32|48|64|72|96|144|152|180|256|384|1024)\.png$/
+  /^minimal_dark_(512|1024)\.png$/
 ];
 
 self.skipWaiting();

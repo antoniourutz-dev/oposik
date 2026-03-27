@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  mapExamTarget,
+  mapLearningDashboard,
+  mapPressureInsights,
   mapPracticeCloudError,
   mapProfile,
   mapQuestionStat,
@@ -81,6 +84,98 @@ describe('practiceCloudMappers', () => {
       questionNumber: 12,
       incorrectAttempts: 4,
       lastIncorrectAt: null
+    });
+  });
+
+  it('convierte el dashboard adaptativo y respeta modos extendidos', () => {
+    const session = mapSession({
+      session_id: 'session-2',
+      mode: 'mixed',
+      title: 'Sesion adaptativa',
+      started_at: '2026-03-27T12:00:00Z',
+      finished_at: '2026-03-27T12:15:00Z',
+      score: '14',
+      total: '20'
+    });
+    const dashboard = mapLearningDashboard({
+      total_questions: '120',
+      seen_questions: '40',
+      readiness: 0.71,
+      readiness_lower: 0.67,
+      readiness_upper: 0.75,
+      projected_readiness: 0.71,
+      overdue_count: '18',
+      backlog_count: '18',
+      fragile_count: '12',
+      consolidating_count: '9',
+      solid_count: '8',
+      mastered_count: '11',
+      new_count: '80',
+      recommended_review_count: '18',
+      recommended_new_count: '8',
+      recommended_today_count: '26',
+      recommended_mode: 'mixed',
+      focus_message: 'Hoy conviene consolidar 18 preguntas urgentes.',
+      daily_review_capacity: '35',
+      daily_new_capacity: '10',
+      exam_date: '2026-06-30',
+      risk_breakdown: [
+        { error_type: 'plazo', label: 'Plazos', count: 6 },
+        { error_type: 'negacion', label: 'Negaciones', count: 4 }
+      ]
+    });
+
+    expect(session.mode).toBe('mixed');
+    expect(dashboard).toMatchObject({
+      totalQuestions: 120,
+      seenQuestions: 40,
+      recommendedMode: 'mixed',
+      recommendedTodayCount: 26,
+      dailyReviewCapacity: 35
+    });
+    expect(dashboard?.riskBreakdown).toEqual([
+      { errorType: 'plazo', label: 'Plazos', count: 6 },
+      { errorType: 'negacion', label: 'Negaciones', count: 4 }
+    ]);
+  });
+
+  it('convierte el objetivo de examen al contrato de frontend', () => {
+    const examTarget = mapExamTarget({
+      user_id: 'user-1',
+      curriculum: 'general',
+      exam_date: '2026-06-30',
+      daily_review_capacity: '30',
+      daily_new_capacity: '8',
+      updated_at: '2026-03-27T19:00:00Z'
+    });
+
+    expect(examTarget).toMatchObject({
+      userId: 'user-1',
+      curriculum: 'general',
+      examDate: '2026-06-30',
+      dailyReviewCapacity: 30,
+      dailyNewCapacity: 8
+    });
+  });
+
+  it('convierte las metricas de rendimiento bajo presion', () => {
+    const insights = mapPressureInsights({
+      learning_accuracy: 0.81,
+      simulacro_accuracy: 0.68,
+      pressure_gap: 0.13,
+      last_simulacro_accuracy: 0.7,
+      last_simulacro_finished_at: '2026-03-27T18:00:00Z',
+      avg_simulacro_fatigue: 0.41,
+      overconfidence_rate: 0.24,
+      recommended_mode: 'anti_trap',
+      pressure_message: 'Tu rendimiento cae 13 puntos bajo presion.'
+    });
+
+    expect(insights).toMatchObject({
+      learningAccuracy: 0.81,
+      simulacroAccuracy: 0.68,
+      pressureGap: 0.13,
+      recommendedMode: 'anti_trap'
     });
   });
 });

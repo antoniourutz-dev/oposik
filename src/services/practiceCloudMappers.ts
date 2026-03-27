@@ -1,6 +1,10 @@
 import {
+  PracticeExamTarget,
+  PracticeLearningDashboard,
+  PracticePressureInsights,
   PracticeProfile,
   PracticeQuestionStat,
+  PracticeRiskInsight,
   PracticeSessionSummary
 } from '../practiceTypes';
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
@@ -30,9 +34,18 @@ const isMissingPracticeBackend = (error: {
     normalizedMessage.includes('practice_profile') ||
     normalizedMessage.includes('practice_session') ||
     normalizedMessage.includes('practice_question_stats') ||
+    normalizedMessage.includes('user_question_state') ||
+    normalizedMessage.includes('exam_targets') ||
     normalizedMessage.includes('record_practice_session') ||
     normalizedMessage.includes('get_my_practice_profile') ||
     normalizedMessage.includes('get_my_practice_profile_for_curriculum') ||
+    normalizedMessage.includes('get_my_exam_target') ||
+    normalizedMessage.includes('upsert_my_exam_target') ||
+    normalizedMessage.includes('get_readiness_dashboard') ||
+    normalizedMessage.includes('get_pressure_dashboard') ||
+    normalizedMessage.includes('get_mixed_practice_batch') ||
+    normalizedMessage.includes('get_anti_trap_batch') ||
+    normalizedMessage.includes('get_simulacro_batch') ||
     normalizedMessage.includes('schema cache')
   );
 };
@@ -70,14 +83,23 @@ export const mapProfile = (value: Record<string, unknown> | null): PracticeProfi
   };
 };
 
+const mapPracticeMode = (value: unknown): PracticeSessionSummary['mode'] => {
+  switch (String(value ?? '').trim()) {
+    case 'weakest':
+    case 'random':
+    case 'review':
+    case 'mixed':
+    case 'simulacro':
+    case 'anti_trap':
+      return String(value) as PracticeSessionSummary['mode'];
+    default:
+      return 'standard';
+  }
+};
+
 export const mapSession = (value: Record<string, unknown>): PracticeSessionSummary => ({
   id: String(value.session_id ?? value.id ?? ''),
-  mode:
-    value.mode === 'weakest'
-      ? 'weakest'
-      : value.mode === 'random'
-        ? 'random'
-        : 'standard',
+  mode: mapPracticeMode(value.mode),
   title: String(value.title ?? 'Sesion'),
   startedAt: String(value.started_at ?? value.startedAt ?? ''),
   finishedAt: String(value.finished_at ?? value.finishedAt ?? ''),
@@ -98,3 +120,109 @@ export const mapQuestionStat = (value: Record<string, unknown>): PracticeQuestio
   lastAnsweredAt: String(value.last_answered_at ?? value.lastAnsweredAt ?? ''),
   lastIncorrectAt: toNullableString(value.last_incorrect_at ?? value.lastIncorrectAt)
 });
+
+const mapRiskInsight = (value: unknown): PracticeRiskInsight | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const errorType = toNullableString(row.error_type ?? row.errorType);
+  const label = toNullableString(row.label);
+  if (!errorType || !label) return null;
+
+  return {
+    errorType,
+    label,
+    count: toNumber(row.count, 0)
+  };
+};
+
+export const mapLearningDashboard = (
+  value: Record<string, unknown> | null
+): PracticeLearningDashboard | null => {
+  if (!value) return null;
+
+  const rawRiskBreakdown = Array.isArray(value.risk_breakdown)
+    ? value.risk_breakdown
+    : Array.isArray(value.riskBreakdown)
+      ? value.riskBreakdown
+      : [];
+
+  return {
+    totalQuestions: toNumber(value.total_questions),
+    seenQuestions: toNumber(value.seen_questions),
+    readiness: Number(value.readiness ?? 0.25) || 0.25,
+    readinessLower:
+      value.readiness_lower === null || value.readiness_lower === undefined
+        ? null
+        : Number(value.readiness_lower),
+    readinessUpper:
+      value.readiness_upper === null || value.readiness_upper === undefined
+        ? null
+        : Number(value.readiness_upper),
+    projectedReadiness:
+      value.projected_readiness === null || value.projected_readiness === undefined
+        ? null
+        : Number(value.projected_readiness),
+    overdueCount: toNumber(value.overdue_count),
+    backlogCount: toNumber(value.backlog_count),
+    fragileCount: toNumber(value.fragile_count),
+    consolidatingCount: toNumber(value.consolidating_count),
+    solidCount: toNumber(value.solid_count),
+    masteredCount: toNumber(value.mastered_count),
+    newCount: toNumber(value.new_count),
+    recommendedReviewCount: toNumber(value.recommended_review_count),
+    recommendedNewCount: toNumber(value.recommended_new_count),
+    recommendedTodayCount: toNumber(value.recommended_today_count),
+    recommendedMode: mapPracticeMode(value.recommended_mode),
+    focusMessage:
+      toNullableString(value.focus_message) ?? 'Hoy conviene mantener el ritmo con una sesion adaptativa.',
+    dailyReviewCapacity: toNumber(value.daily_review_capacity, 35),
+    dailyNewCapacity: toNumber(value.daily_new_capacity, 10),
+    examDate: toNullableString(value.exam_date),
+    riskBreakdown: rawRiskBreakdown.map(mapRiskInsight).filter((item): item is PracticeRiskInsight => Boolean(item))
+  };
+};
+
+export const mapExamTarget = (
+  value: Record<string, unknown> | null
+): PracticeExamTarget | null => {
+  if (!value) return null;
+
+  return {
+    userId: String(value.user_id ?? ''),
+    curriculum: String(value.curriculum ?? DEFAULT_CURRICULUM),
+    examDate: toNullableString(value.exam_date),
+    dailyReviewCapacity: toNumber(value.daily_review_capacity, 35),
+    dailyNewCapacity: toNumber(value.daily_new_capacity, 10),
+    updatedAt: toNullableString(value.updated_at)
+  };
+};
+
+const toNullableNumber = (value: unknown) => {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+export const mapPressureInsights = (
+  value: Record<string, unknown> | null
+): PracticePressureInsights | null => {
+  if (!value) return null;
+
+  const recommendedMode = mapPracticeMode(value.recommended_mode);
+  return {
+    learningAccuracy: toNullableNumber(value.learning_accuracy),
+    simulacroAccuracy: toNullableNumber(value.simulacro_accuracy),
+    pressureGap: toNullableNumber(value.pressure_gap),
+    lastSimulacroAccuracy: toNullableNumber(value.last_simulacro_accuracy),
+    lastSimulacroFinishedAt: toNullableString(value.last_simulacro_finished_at),
+    avgSimulacroFatigue: toNullableNumber(value.avg_simulacro_fatigue),
+    overconfidenceRate: toNullableNumber(value.overconfidence_rate),
+    recommendedMode:
+      value.recommended_mode === null || value.recommended_mode === undefined
+        ? null
+        : recommendedMode,
+    pressureMessage:
+      toNullableString(value.pressure_message) ??
+      'Sigue combinando practica adaptativa y simulacros para medir la transferencia real.'
+  };
+};

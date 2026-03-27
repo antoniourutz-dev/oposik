@@ -12,7 +12,13 @@ type DeleteUserPayload = {
   userId?: string;
 };
 
-type RequestPayload = CreateUserPayload | DeleteUserPayload;
+type ResetPracticeProgressPayload = {
+  action: 'reset_practice_progress';
+  userId?: string;
+  curriculum?: string | null;
+};
+
+type RequestPayload = CreateUserPayload | DeleteUserPayload | ResetPracticeProgressPayload;
 
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9_]{1,30}[a-z0-9])?$/;
 const MIN_PASSWORD_LENGTH = 3;
@@ -347,6 +353,78 @@ const deleteUser = async (
   });
 };
 
+const resetPracticeProgress = async (
+  actorId: string,
+  actorClient: ReturnType<typeof getActorClient>,
+  payload: ResetPracticeProgressPayload
+) => {
+  const userId = String(payload.userId ?? '').trim();
+  const curriculum = String(payload.curriculum ?? '').trim() || null;
+
+  if (!userId) {
+    return jsonResponse(400, {
+      message: 'No se ha encontrado el usuario indicado.'
+    });
+  }
+
+  if (userId === actorId) {
+    return jsonResponse(400, {
+      message: 'No puedes reiniciar tu propio progreso desde el panel de administracion.'
+    });
+  }
+
+  const { data: currentUsernameRow } = await actorClient
+    .schema('app')
+    .from('username_registry')
+    .select('username')
+    .eq('user_id', userId)
+    .eq('is_current', true)
+    .maybeSingle<{ username: string }>();
+
+  const { data, error } = await actorClient
+    .schema('app')
+    .rpc('admin_reset_user_practice_progress', {
+      p_user_id: userId,
+      p_curriculum: curriculum
+    })
+    .maybeSingle<{
+      profiles_reset: number;
+      sessions_deleted: number;
+      attempts_deleted: number;
+      question_stats_deleted: number;
+      question_states_deleted: number;
+      attempt_events_deleted: number;
+    }>();
+
+  if (error || !data) {
+    const normalizedMessage = String(error?.message || '').toLowerCase();
+    return jsonResponse(
+      normalizedMessage.includes('user_not_found') ? 404 : 400,
+      {
+        message:
+          normalizedMessage.includes('cannot_reset_admin_progress')
+            ? 'Las cuentas admin no se pueden reiniciar desde este panel.'
+            : normalizedMessage.includes('cannot_reset_own_progress')
+              ? 'No puedes reiniciar tu propio progreso desde el panel de administracion.'
+              : normalizedMessage.includes('user_not_found')
+                ? 'No se ha encontrado el usuario indicado.'
+                : error?.message || 'No se ha podido reiniciar el progreso del alumno.'
+      }
+    );
+  }
+
+  return jsonResponse(200, {
+    user_id: userId,
+    current_username: currentUsernameRow?.username ?? null,
+    profiles_reset: Number(data.profiles_reset ?? 0),
+    sessions_deleted: Number(data.sessions_deleted ?? 0),
+    attempts_deleted: Number(data.attempts_deleted ?? 0),
+    question_stats_deleted: Number(data.question_stats_deleted ?? 0),
+    question_states_deleted: Number(data.question_states_deleted ?? 0),
+    attempt_events_deleted: Number(data.attempt_events_deleted ?? 0)
+  });
+};
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -372,6 +450,10 @@ Deno.serve(async (request) => {
 
     if (payload.action === 'delete_user') {
       return await deleteUser(user.id, actorClient, payload);
+    }
+
+    if (payload.action === 'reset_practice_progress') {
+      return await resetPracticeProgress(user.id, actorClient, payload);
     }
 
     return jsonResponse(400, { message: 'Accion no valida.' });

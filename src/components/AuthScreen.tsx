@@ -19,7 +19,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onSignedIn }) => {
 
     const normalizedUsername = username.trim().toLowerCase();
     if (!normalizedUsername || !password.trim()) {
-      setError('Introduce tu usuario y tu contraseña.');
+      setError('Introduce tu usuario y tu contrasena.');
       return;
     }
 
@@ -53,7 +53,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onSignedIn }) => {
         <div className="mt-6">
           <h1 className="text-2xl font-black text-slate-950">Entra con tu usuario</h1>
           <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
-            El alumno solo usa su codigo, por ejemplo <strong className="font-black text-slate-900">opo1</strong>.
+            El alumno solo usa su codigo, por ejemplo{' '}
+            <strong className="font-black text-slate-900">opo1</strong>.
           </p>
         </div>
 
@@ -63,7 +64,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onSignedIn }) => {
               Usuario
             </span>
             <div className="relative">
-              <UserRound size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <UserRound
+                size={18}
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              />
               <input
                 value={username}
                 onChange={(event) => {
@@ -81,10 +85,13 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onSignedIn }) => {
 
           <label className="block">
             <span className="mb-2 block text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">
-              Contraseña
+              Contrasena
             </span>
             <div className="relative">
-              <Lock size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Lock
+                size={18}
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -92,7 +99,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onSignedIn }) => {
                   setPassword(event.target.value);
                   setError(null);
                 }}
-                placeholder="••••••••"
+                placeholder="********"
                 className="w-full rounded-[1.2rem] border border-slate-200 bg-slate-50 py-3 pl-11 pr-12 text-sm font-bold tracking-[0.18em] text-slate-800 outline-none transition-colors focus:border-sky-400"
               />
               <button

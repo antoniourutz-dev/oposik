@@ -68,6 +68,17 @@ export type AdminDeleteUserResult = {
   warning: string | null;
 };
 
+export type AdminResetPracticeProgressResult = {
+  user_id: string;
+  current_username: string | null;
+  profiles_reset: number;
+  sessions_deleted: number;
+  attempts_deleted: number;
+  question_stats_deleted: number;
+  question_states_deleted: number;
+  attempt_events_deleted: number;
+};
+
 type AdminDeleteResultsResult = {
   deleted_rows: number;
 };
@@ -355,6 +366,28 @@ export const adminDeleteUser = async (userId: string) => {
     current_username: toNullableString(result.current_username),
     warning: toNullableString(result.warning)
   } as AdminDeleteUserResult;
+};
+
+export const adminResetPracticeProgress = async (
+  userId: string,
+  curriculum: string | null = null
+) => {
+  const result = await invokeAdminUserManagement<AdminResetPracticeProgressResult>({
+    action: 'reset_practice_progress',
+    userId,
+    curriculum
+  });
+
+  return {
+    user_id: String(result.user_id ?? userId),
+    current_username: toNullableString(result.current_username),
+    profiles_reset: toNumber(result.profiles_reset),
+    sessions_deleted: toNumber(result.sessions_deleted),
+    attempts_deleted: toNumber(result.attempts_deleted),
+    question_stats_deleted: toNumber(result.question_stats_deleted),
+    question_states_deleted: toNumber(result.question_states_deleted),
+    attempt_events_deleted: toNumber(result.attempt_events_deleted)
+  } as AdminResetPracticeProgressResult;
 };
 
 export const adminClearUserGameResults = async (

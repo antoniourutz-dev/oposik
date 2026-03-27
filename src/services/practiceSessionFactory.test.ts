@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildSimulacroPracticeSession,
   buildRandomPracticeSession,
   buildStandardPracticeSession,
   buildWeakestPracticeSession,
@@ -31,6 +32,7 @@ describe('practiceSessionFactory', () => {
 
     expect(session).toMatchObject({
       mode: 'standard',
+      feedbackMode: 'immediate',
       batchNumber: 2,
       totalBatches: 3,
       batchStartIndex: 20,
@@ -47,6 +49,7 @@ describe('practiceSessionFactory', () => {
 
     expect(session).toMatchObject({
       mode: 'weakest',
+      feedbackMode: 'immediate',
       batchNumber: 1,
       totalBatches: 1,
       continueLabel: 'Volver al panel'
@@ -65,9 +68,24 @@ describe('practiceSessionFactory', () => {
 
     expect(session).toMatchObject({
       mode: 'random',
+      feedbackMode: 'immediate',
       title: 'Sesion aleatoria',
       batchStartIndex: null,
       nextStandardBatchStartIndex: null
+    });
+  });
+
+  it('crea simulacros con feedback diferido y tiempo global', () => {
+    const session = buildSimulacroPracticeSession([
+      buildQuestion('q1'),
+      buildQuestion('q2')
+    ], 3600);
+
+    expect(session).toMatchObject({
+      mode: 'simulacro',
+      feedbackMode: 'deferred',
+      timeLimitSeconds: 3600,
+      continueLabel: 'Volver al panel'
     });
   });
 });
