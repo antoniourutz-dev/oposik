@@ -143,7 +143,16 @@ export const mapQuestion = (row: Record<string, unknown>): PracticeQuestion | nu
     options,
     correctOption,
     category: pickFirstText(row, ['grupo', 'tipo', 'type', 'category', 'tema']),
-    explanation: pickFirstText(row, ['explicacion', 'explanation', 'justificacion'])
+    explanation: pickFirstText(row, ['explicacion', 'explanation', 'justificacion']),
+    editorialExplanation: pickFirstText(row, [
+      'explicacion_editorial',
+      'editorial_explanation',
+      'resumen_editorial',
+      'editorial_summary',
+      'idea_clave',
+      'summary',
+      'resumen'
+    ])
   };
 };
 
@@ -164,6 +173,7 @@ export const mapWeakQuestionInsight = (row: Record<string, unknown>): WeakQuesti
     statement: question.statement,
     category: question.category,
     explanation: question.explanation,
+    editorialExplanation: question.editorialExplanation,
     attempts: readNumber(row.attempts) ?? 0,
     correctAttempts: readNumber(row.correct_attempts) ?? 0,
     incorrectAttempts: readNumber(row.incorrect_attempts) ?? 0,

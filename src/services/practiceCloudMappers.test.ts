@@ -57,6 +57,7 @@ describe('practiceCloudMappers', () => {
       statement: 'Pregunta',
       category: 'tema 1',
       explanation: 'Explicacion',
+      editorial_explanation: 'Idea corta',
       attempts: '6',
       correct_attempts: '2',
       incorrect_attempts: '4',
@@ -82,6 +83,7 @@ describe('practiceCloudMappers', () => {
     expect(stat).toMatchObject({
       questionId: 'q-4',
       questionNumber: 12,
+      editorialExplanation: 'Idea corta',
       incorrectAttempts: 4,
       lastIncorrectAt: null
     });

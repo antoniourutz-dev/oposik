@@ -97,6 +97,41 @@ export const buildRandomPracticeSession = (
   };
 };
 
+export const buildGuestPracticeSession = ({
+  questions,
+  blockNumber,
+  totalBlocks
+}: {
+  questions: PracticeQuestion[];
+  blockNumber: number;
+  totalBlocks: number;
+}): ActivePracticeSession | null => {
+  if (questions.length === 0) return null;
+
+  const normalizedTotalBlocks = Math.max(1, totalBlocks);
+  const normalizedBlockNumber = Math.min(
+    normalizedTotalBlocks,
+    Math.max(1, blockNumber)
+  );
+
+  return {
+    id: buildSessionId(),
+    mode: 'random',
+    feedbackMode: 'immediate',
+    title: `Bloque de prueba ${normalizedBlockNumber}/${normalizedTotalBlocks}`,
+    subtitle: 'Acceso invitado con preguntas aleatorias del temario comun.',
+    questions,
+    startedAt: new Date().toISOString(),
+    timeLimitSeconds: null,
+    batchNumber: normalizedBlockNumber,
+    totalBatches: normalizedTotalBlocks,
+    batchStartIndex: null,
+    continueLabel:
+      normalizedBlockNumber < normalizedTotalBlocks ? 'Siguiente bloque' : 'Cerrar acceso',
+    nextStandardBatchStartIndex: null
+  };
+};
+
 export const buildMixedPracticeSession = (
   questions: PracticeQuestion[]
 ): ActivePracticeSession | null => {

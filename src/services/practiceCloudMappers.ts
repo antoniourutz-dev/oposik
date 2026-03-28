@@ -114,6 +114,15 @@ export const mapQuestionStat = (value: Record<string, unknown>): PracticeQuestio
   statement: String(value.statement ?? value.question_statement ?? ''),
   category: toNullableString(value.category),
   explanation: toNullableString(value.explanation),
+  editorialExplanation: toNullableString(
+    value.editorial_explanation ??
+      value.editorialExplanation ??
+      value.explicacion_editorial ??
+      value.editorial_summary ??
+      value.resumen_editorial ??
+      value.summary ??
+      value.resumen
+  ),
   attempts: toNumber(value.attempts),
   correctAttempts: toNumber(value.correct_attempts),
   incorrectAttempts: toNumber(value.incorrect_attempts),

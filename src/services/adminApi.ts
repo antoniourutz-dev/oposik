@@ -2,7 +2,6 @@ import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { getSafeSupabaseSession, supabase } from '../supabaseClient';
 import { supabaseAnonKey, supabaseUrl } from '../supabaseConfig';
 import {
-  UsernameChangeResult,
   UsernameHistoryEntry,
   mapAccountApiError,
   normalizeUsername,
@@ -48,6 +47,7 @@ export type AdminWeakPracticeQuestion = {
   statement: string;
   category: string | null;
   explanation: string | null;
+  editorial_explanation?: string | null;
   attempts: number;
   correct_attempts: number;
   incorrect_attempts: number;
@@ -60,6 +60,14 @@ export type AdminCreateUserResult = {
   current_username: string;
   auth_email: string | null;
   created_at: string | null;
+};
+
+export type AdminUsernameChangeResult = {
+  user_id: string;
+  old_username: string | null;
+  new_username: string;
+  changed_at: string;
+  warning: string | null;
 };
 
 export type AdminDeleteUserResult = {
@@ -77,6 +85,11 @@ export type AdminResetPracticeProgressResult = {
   question_stats_deleted: number;
   question_states_deleted: number;
   attempt_events_deleted: number;
+};
+
+export type AdminSetUserPasswordResult = {
+  user_id: string;
+  current_username: string | null;
 };
 
 type AdminDeleteResultsResult = {
@@ -189,6 +202,13 @@ const mapAdminWeakQuestion = (value: Record<string, unknown>) => ({
   statement: String(value.statement ?? ''),
   category: toNullableString(value.category),
   explanation: toNullableString(value.explanation),
+  editorial_explanation: toNullableString(
+    value.editorial_explanation ??
+      value.explicacion_editorial ??
+      value.editorial_summary ??
+      value.summary ??
+      value.resumen
+  ),
   attempts: toNumber(value.attempts),
   correct_attempts: toNumber(value.correct_attempts),
   incorrect_attempts: toNumber(value.incorrect_attempts),
@@ -308,33 +328,21 @@ export const adminChangeUsername = async (
     throw new Error('Formato baliogabea. Erabili 3-32 karaktere: a-z, 0-9 eta _.');
   }
 
-  const { data, error } = await supabase
-    .schema('app')
-    .rpc('admin_change_username', {
-      p_user_id: userId,
-      p_new_username: nextUsername,
-      p_reason: reason,
-      p_request_id: generateUUID(),
-      p_metadata: { client: 'web', actor: 'admin_panel' }
-    })
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(mapAccountApiError(error));
-  }
-
-  if (!data) {
-    throw new Error('Erantzun hutsa jaso da zerbitzaritik.');
-  }
-
-  const result = data as Record<string, unknown>;
+  const result = await invokeAdminUserManagement<Record<string, unknown>>({
+    action: 'change_user_username',
+    userId,
+    username: nextUsername,
+    reason,
+    requestId: generateUUID()
+  });
 
   return {
-    user_id: String(result.out_user_id ?? ''),
-    old_username: toNullableString(result.out_old_username),
-    new_username: String(result.out_new_username ?? ''),
-    changed_at: String(result.out_changed_at ?? '')
-  } as UsernameChangeResult;
+    user_id: String(result.user_id ?? ''),
+    old_username: toNullableString(result.old_username),
+    new_username: String(result.new_username ?? ''),
+    changed_at: String(result.changed_at ?? ''),
+    warning: toNullableString(result.warning)
+  } as AdminUsernameChangeResult;
 };
 
 export const adminCreateUser = async (
@@ -388,6 +396,19 @@ export const adminResetPracticeProgress = async (
     question_states_deleted: toNumber(result.question_states_deleted),
     attempt_events_deleted: toNumber(result.attempt_events_deleted)
   } as AdminResetPracticeProgressResult;
+};
+
+export const adminSetUserPassword = async (userId: string, password: string) => {
+  const result = await invokeAdminUserManagement<AdminSetUserPasswordResult>({
+    action: 'set_user_password',
+    userId,
+    password
+  });
+
+  return {
+    user_id: String(result.user_id ?? userId),
+    current_username: toNullableString(result.current_username)
+  } as AdminSetUserPasswordResult;
 };
 
 export const adminClearUserGameResults = async (

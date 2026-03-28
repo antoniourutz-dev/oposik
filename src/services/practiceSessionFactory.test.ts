@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildGuestPracticeSession,
   buildSimulacroPracticeSession,
   buildRandomPracticeSession,
   buildStandardPracticeSession,
@@ -72,6 +73,22 @@ describe('practiceSessionFactory', () => {
       title: 'Sesion aleatoria',
       batchStartIndex: null,
       nextStandardBatchStartIndex: null
+    });
+  });
+
+  it('crea bloques de invitado con continuidad limitada', () => {
+    const session = buildGuestPracticeSession({
+      questions: [buildQuestion('q1'), buildQuestion('q2')],
+      blockNumber: 1,
+      totalBlocks: 2
+    });
+
+    expect(session).toMatchObject({
+      mode: 'random',
+      title: 'Bloque de prueba 1/2',
+      totalBatches: 2,
+      batchNumber: 1,
+      continueLabel: 'Siguiente bloque'
     });
   });
 

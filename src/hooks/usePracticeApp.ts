@@ -13,6 +13,7 @@ import type { MainTab } from '../components/BottomDock';
 import { buildPracticeCoachPlan } from '../domain/learningEngine';
 import {
   getAntiTrapPracticeBatch,
+  getGuestPracticeBatch,
   getMixedPracticeBatch,
   getRandomPracticeBatch,
   getSimulacroPracticeBatch,
@@ -29,6 +30,7 @@ import {
 } from '../services/practiceBootstrapApi';
 import {
   buildAntiTrapPracticeSession,
+  buildGuestPracticeSession,
   buildMixedPracticeSession,
   buildRandomPracticeSession,
   buildSimulacroPracticeSession,
@@ -50,6 +52,49 @@ import { getWeakCategories } from '../utils/practiceStats';
 
 export type PracticeView = 'home' | 'quiz' | 'review';
 
+const GUEST_MAX_BLOCKS = 2;
+const GUEST_ACCESS_STORAGE_KEY = 'oposik_guest_preview_v1';
+const GUEST_IDENTITY: AccountIdentity = {
+  user_id: 'guest-preview',
+  current_username: 'Invitado',
+  is_admin: false,
+  previous_usernames: []
+};
+
+const clampGuestBlocksUsed = (value: unknown) => {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.min(GUEST_MAX_BLOCKS, Math.max(0, Math.trunc(numeric)));
+};
+
+const readGuestBlocksUsed = () => {
+  if (typeof window === 'undefined') return 0;
+
+  try {
+    const rawValue = window.localStorage.getItem(GUEST_ACCESS_STORAGE_KEY);
+    if (!rawValue) return 0;
+
+    const parsed = JSON.parse(rawValue) as number | { usedBlocks?: number };
+    return clampGuestBlocksUsed(
+      typeof parsed === 'number' ? parsed : parsed?.usedBlocks
+    );
+  } catch {
+    return 0;
+  }
+};
+
+const persistGuestBlocksUsed = (usedBlocks: number) => {
+  if (typeof window === 'undefined') return;
+
+  window.localStorage.setItem(
+    GUEST_ACCESS_STORAGE_KEY,
+    JSON.stringify({
+      usedBlocks: clampGuestBlocksUsed(usedBlocks),
+      updatedAt: new Date().toISOString()
+    })
+  );
+};
+
 export const usePracticeApp = () => {
   const [questionsCount, setQuestionsCount] = useState(0);
   const [weakQuestions, setWeakQuestions] = useState<WeakQuestionInsight[]>([]);
@@ -70,6 +115,8 @@ export const usePracticeApp = () => {
   const [activeSession, setActiveSession] = useState<ActivePracticeSession | null>(null);
   const [savingExamTarget, setSavingExamTarget] = useState(false);
   const [examTargetError, setExamTargetError] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [guestBlocksUsed, setGuestBlocksUsed] = useState(readGuestBlocksUsed);
 
   const profile = practiceState.profile;
   const recentSessions = practiceState.recentSessions;
@@ -77,6 +124,7 @@ export const usePracticeApp = () => {
   const learningDashboard = practiceState.learningDashboard;
   const examTarget = practiceState.examTarget;
   const pressureInsights = practiceState.pressureInsights;
+  const guestBlocksRemaining = Math.max(0, GUEST_MAX_BLOCKS - guestBlocksUsed);
 
   const totalBatches = Math.max(1, Math.ceil(questionsCount / PRACTICE_BATCH_SIZE));
   const recommendedBatchStartIndex =
@@ -139,6 +187,7 @@ export const usePracticeApp = () => {
     setSyncError(null);
     setQuestionsError(null);
     setExamTargetError(null);
+    setIsGuest(false);
 
     try {
       const bootstrap = await loadPracticeBootstrap(DEFAULT_CURRICULUM);
@@ -284,6 +333,46 @@ export const usePracticeApp = () => {
     }
   };
 
+  const startGuestSession = async () => {
+    if (guestBlocksRemaining <= 0) {
+      setQuestionsError('El acceso invitado ya ha consumido sus dos bloques de prueba.');
+      return;
+    }
+
+    setLoadingQuestions(true);
+    setQuestionsError(null);
+
+    try {
+      const nextBlockNumber = guestBlocksUsed + 1;
+      const guestQuestions = await getGuestPracticeBatch(
+        PRACTICE_BATCH_SIZE,
+        DEFAULT_CURRICULUM
+      );
+      const nextSession = buildGuestPracticeSession({
+        questions: guestQuestions,
+        blockNumber: nextBlockNumber,
+        totalBlocks: GUEST_MAX_BLOCKS
+      });
+
+      if (!nextSession) {
+        setQuestionsError('No se ha podido preparar el bloque invitado.');
+        return;
+      }
+
+      setGuestBlocksUsed(nextBlockNumber);
+      persistGuestBlocksUsed(nextBlockNumber);
+      startSession(nextSession);
+    } catch (error) {
+      setQuestionsError(
+        error instanceof Error
+          ? error.message
+          : 'No se ha podido cargar el bloque de invitado.'
+      );
+    } finally {
+      setLoadingQuestions(false);
+    }
+  };
+
   const startMixedSession = async () => {
     setLoadingQuestions(true);
     setQuestionsError(null);
@@ -393,7 +482,7 @@ export const usePracticeApp = () => {
   };
 
   const persistSession = async (completedAnswers: PracticeAnswer[]) => {
-    if (!activeSession) return;
+    if (!activeSession || isGuest) return;
 
     try {
       await recordPracticeSessionInCloud(activeSession, completedAnswers, DEFAULT_CURRICULUM);
@@ -440,6 +529,7 @@ export const usePracticeApp = () => {
   };
 
   const handleRetrySession = () => {
+    if (isGuest) return;
     if (!activeSession) return;
     startSession(restartPracticeSession(activeSession));
   };
@@ -484,6 +574,16 @@ export const usePracticeApp = () => {
       return;
     }
 
+    if (isGuest) {
+      if (guestBlocksRemaining > 0) {
+        void startGuestSession();
+        return;
+      }
+
+      resetActiveSession();
+      return;
+    }
+
     if (activeSession.mode === 'standard' && activeSession.nextStandardBatchStartIndex) {
       void startStandardSession(activeSession.nextStandardBatchStartIndex);
       return;
@@ -493,13 +593,38 @@ export const usePracticeApp = () => {
   };
 
   const handleSignedIn = async () => {
+    setIsGuest(false);
     const currentSession = await getSafeSupabaseSession();
     setSession(currentSession);
     setLoadingQuestions(true);
     await loadAccountContext();
   };
 
+  const handleEnterGuest = () => {
+    setSession(null);
+    clearAccountContext();
+    resetActiveSession();
+    setIsGuest(true);
+    setIdentity(GUEST_IDENTITY);
+    setQuestionsError(null);
+    setSyncError(null);
+    setLoadingQuestions(false);
+    setActiveTab('home');
+  };
+
   const handleSignOut = async () => {
+    if (isGuest) {
+      setIsGuest(false);
+      setSession(null);
+      clearAccountContext();
+      resetActiveSession();
+      setLoadingQuestions(false);
+      setSyncError(null);
+      setQuestionsError(null);
+      setActiveTab('home');
+      return;
+    }
+
     await supabase.auth.signOut();
     clearSupabaseAuthStorage();
     setSession(null);
@@ -553,10 +678,12 @@ export const usePracticeApp = () => {
     handleEndSessionEarly,
     handleRetrySession,
     handleSaveExamTarget,
+    handleEnterGuest,
     handleSignedIn,
     handleSignOut,
     handleSimulacroTimeExpired,
     identity,
+    isGuest,
     learningDashboard,
     loadingQuestions,
     pressureInsights,
@@ -566,12 +693,15 @@ export const usePracticeApp = () => {
     recentSessions,
     reloadPracticeData: loadAccountContext,
     recommendedBatchNumber,
+    guestBlocksRemaining,
+    guestMaxBlocks: GUEST_MAX_BLOCKS,
     savingExamTarget,
     session,
     coachPlan,
     startSimulacro: () => void startSimulacroSession(),
     startAntiTrap: () => void startAntiTrapSession(),
     startFromBeginning: () => void startStandardSession(0),
+    startGuest: () => void startGuestSession(),
     startMixed: () => void startMixedSession(),
     startRandom: () => void startRandomSession(),
     startRecommended: () => {

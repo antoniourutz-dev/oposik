@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Brain,
   ChartNoAxesColumn,
+  KeyRound,
   Layers3,
   LoaderCircle,
+  PencilLine,
   RotateCcw,
   Search,
   Shield,
@@ -14,14 +16,17 @@ import {
   AdminUserDirectoryEntry,
   AdminUserPracticeProfile,
   AdminWeakPracticeQuestion,
+  adminChangeUsername,
   adminCreateUser,
   adminDeleteUser,
   adminResetPracticeProgress,
+  adminSetUserPassword,
   getAdminPracticeProfile,
   getAdminRecentPracticeSessions,
   getAdminUsers,
   getAdminWeakPracticeQuestions
 } from '../services/adminApi';
+import QuestionExplanation from './QuestionExplanation';
 import { DEFAULT_CURRICULUM, PRACTICE_BATCH_SIZE } from '../practiceConfig';
 import { PracticeSessionSummary } from '../practiceTypes';
 
@@ -36,6 +41,9 @@ const formatDate = (value: string | null) => {
     timeStyle: 'short'
   }).format(parsed);
 };
+
+const isInternalAuthEmail = (value: string | null) =>
+  Boolean(value && value.trim().toLowerCase().endsWith('@oposik.app'));
 
 const AdminSurface: React.FC<
   React.PropsWithChildren<{ className?: string; title?: string; hint?: string }>
@@ -100,7 +108,11 @@ const AdminConsoleScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [createUsername, setCreateUsername] = useState('');
   const [createPassword, setCreatePassword] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editPassword, setEditPassword] = useState('');
   const [creating, setCreating] = useState(false);
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [resettingProgress, setResettingProgress] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -177,6 +189,11 @@ const AdminConsoleScreen: React.FC = () => {
 
     void loadUserDetail(selectedUserId);
   }, [selectedUserId]);
+
+  useEffect(() => {
+    setEditUsername(selectedUser?.current_username ?? '');
+    setEditPassword('');
+  }, [selectedUser?.user_id, selectedUser?.current_username]);
 
   const handleCreateUser = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -266,6 +283,64 @@ const AdminConsoleScreen: React.FC = () => {
     }
   };
 
+  const handleChangeUsername = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedUser || selectedUser.is_admin || !editUsername.trim()) return;
+
+    setSavingUsername(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const changed = await adminChangeUsername(
+        selectedUser.user_id,
+        editUsername,
+        'admin_panel'
+      );
+      await loadUsers(search, selectedUser.user_id);
+      await loadUserDetail(selectedUser.user_id);
+      setEditUsername(changed.new_username);
+      setNotice(
+        changed.warning
+          ? `Usuario actualizado a ${changed.new_username}. ${changed.warning}`
+          : `Usuario actualizado a ${changed.new_username}.`
+      );
+    } catch (changeError) {
+      setError(
+        changeError instanceof Error
+          ? changeError.message
+          : 'No se ha podido actualizar el nombre del alumno.'
+      );
+    } finally {
+      setSavingUsername(false);
+    }
+  };
+
+  const handleSetPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedUser || selectedUser.is_admin || !editPassword.trim()) return;
+
+    setSavingPassword(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const updated = await adminSetUserPassword(selectedUser.user_id, editPassword);
+      setEditPassword('');
+      setNotice(
+        `Contrasena actualizada para ${updated.current_username ?? selectedUser.user_id}.`
+      );
+    } catch (passwordError) {
+      setError(
+        passwordError instanceof Error
+          ? passwordError.message
+          : 'No se ha podido actualizar la contrasena.'
+      );
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   const nextBatchNumber =
     Math.floor((profile?.next_standard_batch_start_index ?? 0) / PRACTICE_BATCH_SIZE) + 1;
 
@@ -332,7 +407,7 @@ const AdminConsoleScreen: React.FC = () => {
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Buscar usuario, email o id"
+                  placeholder="Buscar usuario o id"
                   className="w-full rounded-[1rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.88))] py-3 pl-11 pr-4 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
                 />
               </label>
@@ -383,10 +458,12 @@ const AdminConsoleScreen: React.FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-extrabold text-slate-900">
-                      {entry.current_username ?? entry.auth_email ?? entry.user_id}
+                      {entry.current_username ?? entry.user_id}
                     </p>
                     <p className="mt-1 truncate text-xs font-semibold text-slate-500">
-                      {entry.auth_email ?? entry.user_id}
+                      {isInternalAuthEmail(entry.auth_email)
+                        ? `Acceso: ${entry.current_username ?? 'sin usuario'}`
+                        : entry.auth_email ?? entry.user_id}
                     </p>
                     <p className="mt-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
                       {entry.total_sessions} sesiones · {entry.accuracy}% acierto
@@ -427,9 +504,12 @@ const AdminConsoleScreen: React.FC = () => {
                     Alumno
                   </p>
                   <h3 className="mt-1.5 truncate text-[1.55rem] font-black tracking-[-0.02em] text-white sm:text-[1.85rem]">
-                    {selectedUser.current_username ?? selectedUser.auth_email ?? selectedUser.user_id}
+                    {selectedUser.current_username ?? selectedUser.user_id}
                   </h3>
                   <div className="mt-2 space-y-1 text-sm leading-6 text-sky-50/88">
+                    <p>
+                      Acceso real: {selectedUser.current_username ?? 'sin usuario'} + contrasena
+                    </p>
                     <p>Ultimo acceso: {formatDate(selectedUser.last_sign_in_at)}</p>
                     <p>
                       Ultimo estudio:{' '}
@@ -458,6 +538,87 @@ const AdminConsoleScreen: React.FC = () => {
               />
               <AdminCompactMetric label="Siguiente" value={String(nextBatchNumber)} />
             </div>
+
+            <AdminDisclosure
+              title="Credenciales"
+              hint="Editar nombre de acceso y contrasena del alumno."
+              defaultOpen
+            >
+              {selectedUser.is_admin ? (
+                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+                  Las cuentas admin no se editan desde este panel.
+                </div>
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <form
+                    onSubmit={handleChangeUsername}
+                    className="rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] p-4 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <PencilLine size={16} className="text-sky-600" />
+                      <p className="text-sm font-extrabold text-slate-950">Cambiar usuario</p>
+                    </div>
+                    <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                      Este sera el nombre que el alumno use para entrar en la app.
+                    </p>
+                    <input
+                      value={editUsername}
+                      onChange={(event) => setEditUsername(event.target.value)}
+                      placeholder="Nuevo usuario"
+                      className="mt-3 w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                    />
+                    <button
+                      type="submit"
+                      disabled={
+                        savingUsername ||
+                        !editUsername.trim() ||
+                        editUsername.trim() === (selectedUser.current_username ?? '')
+                      }
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                    >
+                      {savingUsername ? (
+                        <LoaderCircle size={16} className="animate-spin" />
+                      ) : (
+                        <PencilLine size={16} />
+                      )}
+                      Guardar usuario
+                    </button>
+                  </form>
+
+                  <form
+                    onSubmit={handleSetPassword}
+                    className="rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] p-4 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <KeyRound size={16} className="text-sky-600" />
+                      <p className="text-sm font-extrabold text-slate-950">Cambiar contrasena</p>
+                    </div>
+                    <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                      La contrasena se aplica al mismo acceso por usuario.
+                    </p>
+                    <input
+                      value={editPassword}
+                      onChange={(event) => setEditPassword(event.target.value)}
+                      placeholder="Nueva contrasena"
+                      type="password"
+                      className="mt-3 w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                    />
+                    <button
+                      type="submit"
+                      disabled={savingPassword || !editPassword.trim()}
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                    >
+                      {savingPassword ? (
+                        <LoaderCircle size={16} className="animate-spin" />
+                      ) : (
+                        <KeyRound size={16} />
+                      )}
+                      Guardar contrasena
+                    </button>
+                  </form>
+                </div>
+              )}
+            </AdminDisclosure>
 
             <AdminDisclosure
               title="Actividad y acciones"
@@ -564,9 +725,12 @@ const AdminConsoleScreen: React.FC = () => {
                         <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-indigo-700">
                           Explicacion
                         </p>
-                        <p className="mt-2 text-sm leading-6 text-slate-700">
-                          {question.explanation || 'Sin explicacion disponible.'}
-                        </p>
+                        <div className="mt-2">
+                          <QuestionExplanation
+                            explanation={question.explanation}
+                            editorialExplanation={question.editorial_explanation}
+                          />
+                        </div>
                       </div>
                     </details>
                   ))

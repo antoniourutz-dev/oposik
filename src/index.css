@@ -18,11 +18,11 @@ html {
 
 body {
     font-family: var(--font-montserrat);
-    background-color: #f8fafc;
+    background-color: #f5f8ff;
     background-image:
-        radial-gradient(at 0% 0%, rgba(125, 211, 252, 0.1) 0, transparent 45%),
-        radial-gradient(at 100% 100%, rgba(165, 180, 252, 0.1) 0, transparent 45%),
-        linear-gradient(180deg, #fffdf8 0%, #f8fafc 48%, #f3f6fb 100%);
+        radial-gradient(at 0% 0%, rgba(124, 182, 232, 0.14) 0, transparent 42%),
+        radial-gradient(at 100% 100%, rgba(141, 147, 242, 0.12) 0, transparent 44%),
+        linear-gradient(180deg, #f6f9ff 0%, #f7faff 42%, #eef4ff 100%);
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     margin: 0;
@@ -35,6 +35,184 @@ body {
     width: 100%;
     display: flex;
     flex-direction: column;
+}
+
+.app-shell-default {
+    background:
+        radial-gradient(circle at top, rgba(124, 182, 232, 0.12), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(141, 147, 242, 0.1), transparent 32%),
+        linear-gradient(180deg, #f6f9ff 0%, #f7faff 46%, #eef4ff 100%);
+}
+
+.app-shell-home {
+    position: relative;
+    isolation: isolate;
+    background:
+        radial-gradient(circle at 12% 0%, rgba(124, 182, 232, 0.18), transparent 26%),
+        radial-gradient(circle at 88% 8%, rgba(141, 147, 242, 0.2), transparent 24%),
+        radial-gradient(circle at 50% 100%, rgba(194, 223, 255, 0.2), transparent 28%),
+        linear-gradient(180deg, #f4f8ff 0%, #f7faff 34%, #edf4ff 100%);
+}
+
+.app-shell-home::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.36), transparent 18%),
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.42), transparent 34%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+@keyframes screen-rise-in {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 20px, 0) scale(0.992);
+        filter: blur(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+        filter: blur(0);
+    }
+}
+
+@keyframes screen-soft-in {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 12px, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes screen-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes chrome-float {
+    0%,
+    100% {
+        transform: translate3d(0, 0, 0);
+    }
+
+    50% {
+        transform: translate3d(0, -2px, 0);
+    }
+}
+
+@keyframes chrome-sheen {
+    0% {
+        transform: translateX(-120%);
+        opacity: 0;
+    }
+
+    20% {
+        opacity: 0.16;
+    }
+
+    50% {
+        opacity: 0.24;
+    }
+
+    100% {
+        transform: translateX(220%);
+        opacity: 0;
+    }
+}
+
+@keyframes decision-commit-in {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 10px, 0) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+@keyframes decision-soft-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(141, 147, 242, 0);
+    }
+
+    35% {
+        box-shadow: 0 0 0 8px rgba(141, 147, 242, 0.08);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(141, 147, 242, 0);
+    }
+}
+
+.screen-enter {
+    animation: screen-rise-in 0.44s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-origin: top center;
+    will-change: transform, opacity, filter;
+}
+
+.screen-enter-soft {
+    animation: screen-soft-in 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.screen-enter-fixed-safe {
+    animation: screen-fade-in 0.24s ease-out;
+}
+
+.chrome-float {
+    animation: chrome-float 5.5s ease-in-out infinite;
+}
+
+.chrome-sheen {
+    position: relative;
+    overflow: hidden;
+}
+
+.chrome-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.08) 38%, rgba(255, 255, 255, 0.28) 50%, transparent 62%);
+    transform: translateX(-120%);
+    animation: chrome-sheen 5.8s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.decision-commit-in {
+    animation: decision-commit-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.decision-soft-pulse {
+    animation: decision-soft-pulse 0.42s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .screen-enter,
+    .screen-enter-soft,
+    .screen-enter-fixed-safe,
+    .chrome-float,
+    .decision-commit-in,
+    .decision-soft-pulse {
+        animation: none;
+    }
+
+    .chrome-sheen::after {
+        animation: none;
+        display: none;
+    }
 }
 
 @utility glassmorphism {

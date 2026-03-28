@@ -16,6 +16,7 @@ export interface PracticeQuestion {
   correctOption: OptionKey;
   category: string | null;
   explanation: string | null;
+  editorialExplanation?: string | null;
 }
 
 export interface PracticeAnswer {
@@ -44,6 +45,7 @@ export interface PracticeQuestionStat {
   statement: string;
   category: string | null;
   explanation: string | null;
+  editorialExplanation?: string | null;
   attempts: number;
   correctAttempts: number;
   incorrectAttempts: number;

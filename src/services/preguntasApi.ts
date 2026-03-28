@@ -9,6 +9,42 @@ import { mapQuestion, mapWeakQuestionInsight, readNumber } from './preguntasMapp
 
 const QUESTIONS_PAGE_SIZE = 500;
 
+const mapQuestionPayloadRows = (rows: Array<Record<string, unknown>>) =>
+  rows
+    .map((row) => {
+      const payload =
+        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+          ? (row.payload as Record<string, unknown>)
+          : null;
+      return payload ? mapQuestion(payload) : null;
+    })
+    .filter((question): question is PracticeQuestion => Boolean(question));
+
+const shuffleQuestions = (questions: PracticeQuestion[]) => {
+  const nextQuestions = [...questions];
+
+  for (let index = nextQuestions.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const current = nextQuestions[index];
+    nextQuestions[index] = nextQuestions[swapIndex];
+    nextQuestions[swapIndex] = current;
+  }
+
+  return nextQuestions;
+};
+
+const isMissingGuestRpcError = (error: { code?: string; message?: string; details?: string | null }) => {
+  const normalizedMessage = String(error.message ?? '').toLowerCase();
+  const normalizedDetails = String(error.details ?? '').toLowerCase();
+
+  return (
+    error.code === 'PGRST202' ||
+    normalizedMessage.includes('get_public_guest_practice_batch') ||
+    normalizedMessage.includes('could not find the function') ||
+    normalizedDetails.includes('get_public_guest_practice_batch')
+  );
+};
+
 export const getPracticeCatalogSummary = async (
   curriculum = DEFAULT_CURRICULUM
 ): Promise<PracticeCatalogSummary> => {
@@ -45,15 +81,7 @@ export const getStandardPracticeBatch = async (
     throw error;
   }
 
-  return ((data ?? []) as Array<Record<string, unknown>>)
-    .map((row) => {
-      const payload =
-        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
-          ? (row.payload as Record<string, unknown>)
-          : null;
-      return payload ? mapQuestion(payload) : null;
-    })
-    .filter((question): question is PracticeQuestion => Boolean(question));
+  return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
 };
 
 export const getWeakPracticeInsights = async (
@@ -91,15 +119,36 @@ export const getRandomPracticeBatch = async (
     throw error;
   }
 
-  return ((data ?? []) as Array<Record<string, unknown>>)
-    .map((row) => {
-      const payload =
-        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
-          ? (row.payload as Record<string, unknown>)
-          : null;
-      return payload ? mapQuestion(payload) : null;
-    })
-    .filter((question): question is PracticeQuestion => Boolean(question));
+  return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+};
+
+export const getGuestPracticeBatch = async (
+  batchSize: number,
+  curriculum = DEFAULT_CURRICULUM
+) => {
+  try {
+    const questions = await getPracticeQuestions();
+    return shuffleQuestions(questions).slice(0, Math.max(1, batchSize));
+  } catch (directReadError) {
+    const { data, error } = await supabase
+      .schema('app')
+      .rpc('get_public_guest_practice_batch', {
+        p_curriculum: curriculum,
+        p_batch_size: batchSize
+      });
+
+    if (error) {
+      if (!isMissingGuestRpcError(error)) {
+        throw error;
+      }
+
+      throw new Error(
+        'No se ha podido cargar el bloque de invitado. Aplica la migracion `20260328120000_public_guest_practice_batch.sql` o permite lectura publica de `preguntas`.'
+      );
+    }
+
+    return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+  }
 };
 
 export const getMixedPracticeBatch = async (
@@ -117,15 +166,7 @@ export const getMixedPracticeBatch = async (
     throw error;
   }
 
-  return ((data ?? []) as Array<Record<string, unknown>>)
-    .map((row) => {
-      const payload =
-        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
-          ? (row.payload as Record<string, unknown>)
-          : null;
-      return payload ? mapQuestion(payload) : null;
-    })
-    .filter((question): question is PracticeQuestion => Boolean(question));
+  return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
 };
 
 export const getAntiTrapPracticeBatch = async (
@@ -143,15 +184,7 @@ export const getAntiTrapPracticeBatch = async (
     throw error;
   }
 
-  return ((data ?? []) as Array<Record<string, unknown>>)
-    .map((row) => {
-      const payload =
-        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
-          ? (row.payload as Record<string, unknown>)
-          : null;
-      return payload ? mapQuestion(payload) : null;
-    })
-    .filter((question): question is PracticeQuestion => Boolean(question));
+  return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
 };
 
 export const getSimulacroPracticeBatch = async (
@@ -169,15 +202,7 @@ export const getSimulacroPracticeBatch = async (
     throw error;
   }
 
-  return ((data ?? []) as Array<Record<string, unknown>>)
-    .map((row) => {
-      const payload =
-        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
-          ? (row.payload as Record<string, unknown>)
-          : null;
-      return payload ? mapQuestion(payload) : null;
-    })
-    .filter((question): question is PracticeQuestion => Boolean(question));
+  return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
 };
 
 export const getPracticeQuestions = async () => {

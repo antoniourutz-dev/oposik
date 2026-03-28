@@ -18,7 +18,26 @@ type ResetPracticeProgressPayload = {
   curriculum?: string | null;
 };
 
-type RequestPayload = CreateUserPayload | DeleteUserPayload | ResetPracticeProgressPayload;
+type SetUserPasswordPayload = {
+  action: 'set_user_password';
+  userId?: string;
+  password?: string;
+};
+
+type ChangeUserUsernamePayload = {
+  action: 'change_user_username';
+  userId?: string;
+  username?: string;
+  reason?: string | null;
+  requestId?: string | null;
+};
+
+type RequestPayload =
+  | CreateUserPayload
+  | DeleteUserPayload
+  | ResetPracticeProgressPayload
+  | SetUserPasswordPayload
+  | ChangeUserUsernamePayload;
 
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9_]{1,30}[a-z0-9])?$/;
 const MIN_PASSWORD_LENGTH = 3;
@@ -155,7 +174,12 @@ const cleanupUserReferencesBeforeDelete = async (actorId: string, userId: string
     .delete()
     .eq('user_id', userId);
 
-  if (deleteResults.error) {
+  if (
+    deleteResults.error &&
+    !String(deleteResults.error.message || '')
+      .toLowerCase()
+      .includes('relation "public.game_results" does not exist')
+  ) {
     throw deleteResults.error;
   }
 
@@ -425,6 +449,168 @@ const resetPracticeProgress = async (
   });
 };
 
+const setUserPassword = async (
+  actorId: string,
+  actorClient: ReturnType<typeof getActorClient>,
+  payload: SetUserPasswordPayload
+) => {
+  const userId = String(payload.userId ?? '').trim();
+  const password = String(payload.password ?? '');
+
+  if (!userId) {
+    return jsonResponse(400, {
+      message: 'No se ha encontrado el usuario indicado.'
+    });
+  }
+
+  if (userId === actorId) {
+    return jsonResponse(400, {
+      message: 'No puedes cambiar tu propia contrasena desde este panel.'
+    });
+  }
+
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return jsonResponse(400, {
+      message: 'La contrasena debe tener al menos 3 caracteres.'
+    });
+  }
+
+  const { data: currentUsernameRow } = await actorClient
+    .schema('app')
+    .from('username_registry')
+    .select('username')
+    .eq('user_id', userId)
+    .eq('is_current', true)
+    .maybeSingle<{ username: string }>();
+
+  const { data: targetAdminRole } = await actorClient
+    .schema('app')
+    .from('user_roles')
+    .select('user_id')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
+    .maybeSingle<{ user_id: string }>();
+
+  if (targetAdminRole?.user_id) {
+    return jsonResponse(400, {
+      message: 'Las cuentas admin no se pueden editar desde este panel.'
+    });
+  }
+
+  const { data: updatedUserResult, error: updateError } =
+    await adminClient.auth.admin.updateUserById(userId, {
+      password
+    });
+
+  if (updateError || !updatedUserResult.user) {
+    const normalizedMessage = String(updateError?.message || '').toLowerCase();
+    return jsonResponse(
+      normalizedMessage.includes('not found') ? 404 : 400,
+      {
+        message: normalizedMessage.includes('not found')
+          ? 'No se ha encontrado el usuario indicado.'
+          : updateError?.message || 'No se ha podido actualizar la contrasena.'
+      }
+    );
+  }
+
+  return jsonResponse(200, {
+    user_id: userId,
+    current_username: currentUsernameRow?.username ?? null
+  });
+};
+
+const changeUserUsername = async (
+  actorId: string,
+  actorClient: ReturnType<typeof getActorClient>,
+  payload: ChangeUserUsernamePayload
+) => {
+  const userId = String(payload.userId ?? '').trim();
+  const username = normalizeUsername(String(payload.username ?? ''));
+  const reason = String(payload.reason ?? '').trim() || 'admin_panel';
+  const requestId = String(payload.requestId ?? '').trim() || crypto.randomUUID();
+
+  if (!userId) {
+    return jsonResponse(400, {
+      message: 'No se ha encontrado el usuario indicado.'
+    });
+  }
+
+  if (userId === actorId) {
+    return jsonResponse(400, {
+      message: 'No puedes cambiar tu propio usuario desde este panel.'
+    });
+  }
+
+  if (!isValidUsername(username)) {
+    return jsonResponse(400, {
+      message: 'Formato invalido. Usa entre 3 y 32 caracteres: a-z, 0-9 y _.'
+    });
+  }
+
+  const { data: targetAdminRole } = await actorClient
+    .schema('app')
+    .from('user_roles')
+    .select('user_id')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
+    .maybeSingle<{ user_id: string }>();
+
+  if (targetAdminRole?.user_id) {
+    return jsonResponse(400, {
+      message: 'Las cuentas admin no se pueden editar desde este panel.'
+    });
+  }
+
+  const { data, error } = await actorClient
+    .schema('app')
+    .rpc('admin_change_username', {
+      p_user_id: userId,
+      p_new_username: username,
+      p_reason: reason,
+      p_request_id: requestId,
+      p_metadata: { client: 'edge_function', actor: 'admin_user_management' }
+    })
+    .maybeSingle<{
+      out_user_id: string;
+      out_old_username: string | null;
+      out_new_username: string;
+      out_changed_at: string;
+    }>();
+
+  if (error || !data) {
+    const normalizedMessage = String(error?.message || '').toLowerCase();
+    return jsonResponse(
+      normalizedMessage.includes('username_already_taken') ? 409 : 400,
+      {
+        message:
+          normalizedMessage.includes('username_already_taken')
+            ? 'Ese usuario ya esta en uso o reservado.'
+            : error?.message || 'No se ha podido actualizar el usuario.'
+      }
+    );
+  }
+
+  let warning: string | null = null;
+  const emailSyncResult = await adminClient.auth.admin.updateUserById(userId, {
+    email: buildInternalEmail(data.out_new_username),
+    email_confirm: true
+  });
+
+  if (emailSyncResult.error) {
+    console.error('admin-user-management email sync failed', emailSyncResult.error);
+    warning = 'El usuario se ha cambiado, pero el email interno de Auth no se ha podido sincronizar.';
+  }
+
+  return jsonResponse(200, {
+    user_id: data.out_user_id,
+    old_username: data.out_old_username ?? null,
+    new_username: data.out_new_username,
+    changed_at: data.out_changed_at,
+    warning
+  });
+};
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -454,6 +640,14 @@ Deno.serve(async (request) => {
 
     if (payload.action === 'reset_practice_progress') {
       return await resetPracticeProgress(user.id, actorClient, payload);
+    }
+
+    if (payload.action === 'set_user_password') {
+      return await setUserPassword(user.id, actorClient, payload);
+    }
+
+    if (payload.action === 'change_user_username') {
+      return await changeUserUsername(user.id, actorClient, payload);
     }
 
     return jsonResponse(400, { message: 'Accion no valida.' });

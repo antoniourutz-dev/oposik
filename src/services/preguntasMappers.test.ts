@@ -12,7 +12,8 @@ describe('preguntasMappers', () => {
       option_d: 'Lisboa',
       correct_answer: '  paris ',
       category: 'geografia',
-      explanation: 'Paris es la capital de Francia.'
+      explanation: 'Paris es la capital de Francia.',
+      explicacion_editorial: 'La clave es simple: Paris es la capital de Francia.'
     });
 
     expect(question).toEqual({
@@ -27,7 +28,8 @@ describe('preguntasMappers', () => {
       },
       correctOption: 'b',
       category: 'geografia',
-      explanation: 'Paris es la capital de Francia.'
+      explanation: 'Paris es la capital de Francia.',
+      editorialExplanation: 'La clave es simple: Paris es la capital de Francia.'
     });
   });
 
@@ -62,7 +64,8 @@ describe('preguntasMappers', () => {
         },
         respuesta_correcta: 4,
         grupo: 'simulacro',
-        explicacion: 'La opcion correcta es la cuarta.'
+        explicacion: 'La opcion correcta es la cuarta.',
+        resumen_editorial: 'La buena es la d: es la cuarta opcion.'
       }
     });
 
@@ -71,7 +74,8 @@ describe('preguntasMappers', () => {
       questionId: 'q-9',
       incorrectAttempts: 5,
       attempts: 7,
-      category: 'simulacro'
+      category: 'simulacro',
+      editorialExplanation: 'La buena es la d: es la cuarta opcion.'
     });
   });
 });

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useLayoutEffect } from 'react';
 import { Database, LoaderCircle } from 'lucide-react';
 import BottomDock from './components/BottomDock';
 import TopBar from './components/TopBar';
@@ -7,6 +7,7 @@ import { PRACTICE_BATCH_SIZE } from './practiceConfig';
 
 const AuthScreen = lazy(() => import('./components/AuthScreen'));
 const DashboardScreen = lazy(() => import('./components/DashboardScreen'));
+const GuestDashboardScreen = lazy(() => import('./components/GuestDashboardScreen'));
 const QuizScreen = lazy(() => import('./components/QuizScreen'));
 const PracticeReviewScreen = lazy(() => import('./components/PracticeReviewScreen'));
 
@@ -32,9 +33,12 @@ const PracticeAppShell: React.FC = () => {
     currentQuestionIndex,
     examTarget,
     examTargetError,
+    guestBlocksRemaining,
+    guestMaxBlocks,
     goHome,
     handleAnswer,
     handleContinueAfterReview,
+    handleEnterGuest,
     handleEndSessionEarly,
     handleRetrySession,
     handleSaveExamTarget,
@@ -42,6 +46,7 @@ const PracticeAppShell: React.FC = () => {
     handleSignOut,
     handleSimulacroTimeExpired,
     identity,
+    isGuest,
     learningDashboard,
     loadingQuestions,
     pressureInsights,
@@ -56,6 +61,7 @@ const PracticeAppShell: React.FC = () => {
     startSimulacro,
     startAntiTrap,
     startFromBeginning,
+    startGuest,
     startMixed,
     startRandom,
     startRecommended,
@@ -69,15 +75,39 @@ const PracticeAppShell: React.FC = () => {
     weakQuestions,
     setActiveTab
   } = usePracticeApp();
+  const navigationScrollKey = view === 'home' ? `home:${activeTab}` : view;
+  const contentEnterClass =
+    view === 'quiz' || view === 'review' ? 'screen-enter-fixed-safe' : 'screen-enter';
+  const topBarSection =
+    view === 'home' && (activeTab === 'home' || isGuest) ? undefined : topBarSubtitle;
+  const mainTopPadding =
+    view === 'quiz'
+      ? 'pt-4'
+      : view === 'home' && (activeTab === 'home' || isGuest)
+        ? 'pt-[4.05rem]'
+        : 'pt-[5.2rem]';
+  const shellBackgroundClass =
+    view === 'home' && (activeTab === 'home' || isGuest) ? 'app-shell-home' : 'app-shell-default';
+
+  useLayoutEffect(() => {
+    const scrollRoot = document.scrollingElement;
+    scrollRoot?.scrollTo({ top: 0, behavior: 'auto' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [navigationScrollKey]);
 
   if (!authReady) {
     return <FullscreenLoader label="Preparando acceso" />;
   }
 
-  if (!session) {
+  if (!session && !isGuest) {
     return (
       <Suspense fallback={<FullscreenLoader label="Cargando acceso" />}>
-        <AuthScreen onSignedIn={handleSignedIn} />
+        <AuthScreen
+          onSignedIn={handleSignedIn}
+          onEnterGuest={handleEnterGuest}
+          guestBlocksRemaining={guestBlocksRemaining}
+          guestMaxBlocks={guestMaxBlocks}
+        />
       </Suspense>
     );
   }
@@ -87,10 +117,10 @@ const PracticeAppShell: React.FC = () => {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.15),transparent_32%),linear-gradient(180deg,#fffdf8_0%,#f8fafc_45%,#f6f7fb_100%)] text-slate-900">
-      {view !== 'quiz' && <TopBar section={topBarSubtitle} />}
+    <div className={`min-h-[100dvh] text-slate-900 ${shellBackgroundClass}`}>
+      {view !== 'quiz' && <TopBar section={topBarSection} />}
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col">
-        <main className={`flex flex-1 flex-col px-4 ${view === 'quiz' ? 'pb-4 pt-4' : 'pb-8 pt-[5.2rem]'} sm:px-6 lg:px-8 ${view === 'home' ? 'pb-28' : ''}`}>
+        <main className={`flex flex-1 flex-col px-4 pb-8 ${mainTopPadding} sm:px-6 lg:px-8 ${view === 'home' ? 'pb-28' : ''}`}>
           {syncError && view === 'home' ? (
             <div className="mx-auto mb-4 w-full max-w-4xl rounded-[1.2rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
               {syncError}
@@ -122,7 +152,7 @@ const PracticeAppShell: React.FC = () => {
             </div>
           ) : null}
 
-          {!loadingQuestions && !questionsError && questionsCount === 0 ? (
+          {!loadingQuestions && !questionsError && !isGuest && questionsCount === 0 ? (
             <div className="mx-auto flex w-full max-w-3xl flex-1 items-center py-10">
               <div className="w-full rounded-[2rem] border border-slate-200 bg-white/85 p-8 shadow-[0_30px_70px_-35px_rgba(15,23,42,0.32)] backdrop-blur">
                 <Database className="h-12 w-12 text-slate-400" />
@@ -138,80 +168,105 @@ const PracticeAppShell: React.FC = () => {
           ) : null}
 
           <Suspense fallback={<FullscreenLoader label="Cargando modulo" />}>
-            {!loadingQuestions && !questionsError && questionsCount > 0 && view === 'home' ? (
-              <DashboardScreen
-                activeTab={activeTab}
-                identity={identity}
-                examTarget={examTarget}
-                examTargetError={examTargetError}
-                savingExamTarget={savingExamTarget}
-                learningDashboard={learningDashboard}
-                coachPlan={coachPlan}
-                pressureInsights={pressureInsights}
-                profile={profile}
-                recentSessions={recentSessions}
-                questionsCount={questionsCount}
-                totalBatches={totalBatches}
-                batchSize={PRACTICE_BATCH_SIZE}
-                recommendedBatchNumber={recommendedBatchNumber}
-                weakQuestions={weakQuestions}
-                weakCategories={weakCategories}
-                onStartRecommended={startRecommended}
-                onStartSimulacro={startSimulacro}
-                onStartAntiTrap={startAntiTrap}
-                onStartMixed={startMixed}
-                onStartRandom={startRandom}
-                onStartFromBeginning={startFromBeginning}
-                onStartWeakReview={startWeakReview}
-                onReloadQuestions={() => void reloadPracticeData()}
-                onSaveExamTarget={(payload) => void handleSaveExamTarget(payload)}
-                onSignOut={() => void handleSignOut()}
-              />
-            ) : null}
+            {!loadingQuestions && !questionsError && (isGuest || questionsCount > 0) ? (
+              <div key={navigationScrollKey} className={contentEnterClass}>
+                {view === 'home' ? (
+                  isGuest ? (
+                    <GuestDashboardScreen
+                      remainingBlocks={guestBlocksRemaining}
+                      maxBlocks={guestMaxBlocks}
+                      loading={loadingQuestions}
+                      onStart={startGuest}
+                      onExit={() => void handleSignOut()}
+                    />
+                  ) : (
+                    <DashboardScreen
+                      activeTab={activeTab}
+                      identity={identity}
+                      examTarget={examTarget}
+                      examTargetError={examTargetError}
+                      savingExamTarget={savingExamTarget}
+                      learningDashboard={learningDashboard}
+                      coachPlan={coachPlan}
+                      pressureInsights={pressureInsights}
+                      profile={profile}
+                      recentSessions={recentSessions}
+                      questionsCount={questionsCount}
+                      totalBatches={totalBatches}
+                      batchSize={PRACTICE_BATCH_SIZE}
+                      recommendedBatchNumber={recommendedBatchNumber}
+                      weakQuestions={weakQuestions}
+                      weakCategories={weakCategories}
+                      onStartRecommended={startRecommended}
+                      onStartSimulacro={startSimulacro}
+                      onStartAntiTrap={startAntiTrap}
+                      onStartMixed={startMixed}
+                      onStartRandom={startRandom}
+                      onStartFromBeginning={startFromBeginning}
+                      onStartWeakReview={startWeakReview}
+                      onReloadQuestions={() => void reloadPracticeData()}
+                      onSaveExamTarget={(payload) => void handleSaveExamTarget(payload)}
+                      onSignOut={() => void handleSignOut()}
+                    />
+                  )
+                ) : null}
 
-            {!loadingQuestions && !questionsError && questionsCount > 0 && view === 'quiz' && currentQuestion && activeSession ? (
-              <QuizScreen
-                title={activeSession.title}
-                feedbackMode={activeSession.feedbackMode}
-                startedAt={activeSession.startedAt}
-                timeLimitSeconds={activeSession.timeLimitSeconds}
-                question={currentQuestion}
-                questionIndex={currentQuestionIndex}
-                totalQuestions={activeSession.questions.length}
-                batchNumber={activeSession.batchNumber}
-                totalBatches={activeSession.totalBatches}
-                answers={answers}
-                onAnswer={handleAnswer}
-                onEndSession={handleEndSessionEarly}
-                onTimeExpired={handleSimulacroTimeExpired}
-              />
-            ) : null}
+                {view === 'quiz' && currentQuestion && activeSession ? (
+                  <div>
+                    <QuizScreen
+                      mode={activeSession.mode}
+                      title={activeSession.title}
+                      subtitle={activeSession.subtitle}
+                      feedbackMode={activeSession.feedbackMode}
+                      startedAt={activeSession.startedAt}
+                      timeLimitSeconds={activeSession.timeLimitSeconds}
+                      question={currentQuestion}
+                      questionIndex={currentQuestionIndex}
+                      totalQuestions={activeSession.questions.length}
+                      batchNumber={activeSession.batchNumber}
+                      totalBatches={activeSession.totalBatches}
+                      answers={answers}
+                      onAnswer={handleAnswer}
+                      onEndSession={handleEndSessionEarly}
+                      onTimeExpired={handleSimulacroTimeExpired}
+                    />
+                  </div>
+                ) : null}
 
-            {!loadingQuestions && !questionsError && questionsCount > 0 && view === 'review' && activeSession ? (
-              <PracticeReviewScreen
-                answers={answers}
-                batchNumber={activeSession.batchNumber}
-                totalBatches={activeSession.totalBatches}
-                sessionMode={activeSession.mode}
-                sessionStartedAt={activeSession.startedAt}
-                sessionQuestionCount={activeSession.questions.length}
-                timeLimitSeconds={activeSession.timeLimitSeconds}
-                hasNextBatch={
-                  activeSession.mode === 'standard' &&
-                  activeSession.nextStandardBatchStartIndex !== null &&
-                  activeSession.nextStandardBatchStartIndex > 0
-                }
-                title={activeSession.title}
-                continueLabel={activeSession.continueLabel}
-                onRetryBatch={handleRetrySession}
-                onContinue={handleContinueAfterReview}
-                onBackToStart={goHome}
-              />
+                {view === 'review' && activeSession ? (
+                  <div>
+                    <PracticeReviewScreen
+                      answers={answers}
+                      batchNumber={activeSession.batchNumber}
+                      totalBatches={activeSession.totalBatches}
+                      sessionMode={activeSession.mode}
+                      sessionStartedAt={activeSession.startedAt}
+                      sessionQuestionCount={activeSession.questions.length}
+                      timeLimitSeconds={activeSession.timeLimitSeconds}
+                      hasNextBatch={
+                        isGuest
+                          ? guestBlocksRemaining > 0
+                          : activeSession.mode === 'standard' &&
+                            activeSession.nextStandardBatchStartIndex !== null &&
+                            activeSession.nextStandardBatchStartIndex > 0
+                      }
+                      title={activeSession.title}
+                      subtitle={activeSession.subtitle}
+                      continueLabel={activeSession.continueLabel}
+                      showRetry={!isGuest}
+                      simplified={isGuest}
+                      onRetryBatch={handleRetrySession}
+                      onContinue={handleContinueAfterReview}
+                      onBackToStart={goHome}
+                    />
+                  </div>
+                ) : null}
+              </div>
             ) : null}
           </Suspense>
         </main>
 
-        {view === 'home' ? (
+        {view === 'home' && !isGuest ? (
           <BottomDock activeTab={activeTab} onChangeTab={setActiveTab} />
         ) : null}
       </div>
