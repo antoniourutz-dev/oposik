@@ -6,6 +6,7 @@ import type {
   OptionKey,
   PracticeAnswer,
   PracticeAnswerSubmission,
+  PracticeQuestionScopeFilter,
   WeakQuestionInsight
 } from '../practiceTypes';
 import type { AccountIdentity } from '../services/accountApi';
@@ -54,10 +55,12 @@ export type PracticeView = 'home' | 'quiz' | 'review';
 
 const GUEST_MAX_BLOCKS = 2;
 const GUEST_ACCESS_STORAGE_KEY = 'oposik_guest_preview_v1';
+const QUESTION_SCOPE_STORAGE_KEY = 'oposik_question_scope_v1';
 const GUEST_IDENTITY: AccountIdentity = {
   user_id: 'guest-preview',
   current_username: 'Invitado',
   is_admin: false,
+  player_mode: 'generic',
   previous_usernames: []
 };
 
@@ -95,6 +98,36 @@ const persistGuestBlocksUsed = (usedBlocks: number) => {
   );
 };
 
+const isStoredQuestionScope = (value: unknown): value is PracticeQuestionScopeFilter =>
+  value === 'all' || value === 'common' || value === 'specific';
+
+const readQuestionScope = (): PracticeQuestionScopeFilter => {
+  if (typeof window === 'undefined') return 'all';
+
+  try {
+    const rawValue = window.localStorage.getItem(QUESTION_SCOPE_STORAGE_KEY);
+    if (!rawValue) return 'all';
+
+    const parsed = JSON.parse(rawValue) as string | { questionScope?: string };
+    const candidate = typeof parsed === 'string' ? parsed : parsed?.questionScope;
+    return isStoredQuestionScope(candidate) ? candidate : 'all';
+  } catch {
+    return 'all';
+  }
+};
+
+const persistQuestionScope = (questionScope: PracticeQuestionScopeFilter) => {
+  if (typeof window === 'undefined') return;
+
+  window.localStorage.setItem(
+    QUESTION_SCOPE_STORAGE_KEY,
+    JSON.stringify({
+      questionScope,
+      updatedAt: new Date().toISOString()
+    })
+  );
+};
+
 export const usePracticeApp = () => {
   const [questionsCount, setQuestionsCount] = useState(0);
   const [weakQuestions, setWeakQuestions] = useState<WeakQuestionInsight[]>([]);
@@ -117,6 +150,8 @@ export const usePracticeApp = () => {
   const [examTargetError, setExamTargetError] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [guestBlocksUsed, setGuestBlocksUsed] = useState(readGuestBlocksUsed);
+  const [selectedQuestionScope, setSelectedQuestionScope] =
+    useState<PracticeQuestionScopeFilter>(readQuestionScope);
 
   const profile = practiceState.profile;
   const recentSessions = practiceState.recentSessions;
@@ -125,10 +160,13 @@ export const usePracticeApp = () => {
   const examTarget = practiceState.examTarget;
   const pressureInsights = practiceState.pressureInsights;
   const guestBlocksRemaining = Math.max(0, GUEST_MAX_BLOCKS - guestBlocksUsed);
+  const isGenericPlayer = !isGuest && identity?.player_mode === 'generic';
 
   const totalBatches = Math.max(1, Math.ceil(questionsCount / PRACTICE_BATCH_SIZE));
   const recommendedBatchStartIndex =
-    profile && profile.nextStandardBatchStartIndex < questionsCount
+    selectedQuestionScope === 'all' &&
+    profile &&
+    profile.nextStandardBatchStartIndex < questionsCount
       ? profile.nextStandardBatchStartIndex
       : 0;
   const recommendedBatchNumber =
@@ -182,7 +220,7 @@ export const usePracticeApp = () => {
     setExamTargetError(null);
   };
 
-  const loadAccountContext = async () => {
+  const loadAccountContext = async (questionScope = selectedQuestionScope) => {
     setSyncingState(true);
     setSyncError(null);
     setQuestionsError(null);
@@ -190,7 +228,7 @@ export const usePracticeApp = () => {
     setIsGuest(false);
 
     try {
-      const bootstrap = await loadPracticeBootstrap(DEFAULT_CURRICULUM);
+      const bootstrap = await loadPracticeBootstrap(DEFAULT_CURRICULUM, questionScope);
       setIdentity(bootstrap.identity);
       setPracticeState(bootstrap.practiceState);
       setQuestionsCount(bootstrap.questionsCount);
@@ -203,6 +241,30 @@ export const usePracticeApp = () => {
       );
     } finally {
       setSyncingState(false);
+      setLoadingQuestions(false);
+    }
+  };
+
+  const loadScopedQuestionContext = async (
+    questionScope = selectedQuestionScope
+  ) => {
+    setLoadingQuestions(true);
+    setQuestionsError(null);
+
+    try {
+      const bootstrap = await loadPracticeBootstrap(DEFAULT_CURRICULUM, questionScope);
+      setQuestionsCount(bootstrap.questionsCount);
+      setWeakQuestions(bootstrap.weakQuestions);
+      if (bootstrap.questionsError) {
+        setQuestionsError(bootstrap.questionsError);
+      }
+    } catch (error) {
+      setQuestionsError(
+        error instanceof Error
+          ? error.message
+          : 'No se ha podido cargar el catalogo seleccionado.'
+      );
+    } finally {
       setLoadingQuestions(false);
     }
   };
@@ -262,6 +324,22 @@ export const usePracticeApp = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (isGenericPlayer && activeTab === 'stats') {
+      setActiveTab('home');
+    }
+  }, [activeTab, isGenericPlayer]);
+
+  useEffect(() => {
+    persistQuestionScope(selectedQuestionScope);
+
+    if (!authReady || isGuest || !session || !identity) {
+      return;
+    }
+
+    void loadScopedQuestionContext(selectedQuestionScope);
+  }, [authReady, identity, isGuest, selectedQuestionScope, session]);
+
   const startSession = (nextSession: ActivePracticeSession | null) => {
     if (!nextSession || nextSession.questions.length === 0) return;
     setActiveSession(nextSession);
@@ -270,29 +348,37 @@ export const usePracticeApp = () => {
     setView('quiz');
   };
 
-  const buildStandardSession = async (batchStartIndex: number) => {
+  const buildStandardSession = async (
+    batchStartIndex: number,
+    questionScope = selectedQuestionScope
+  ) => {
     const normalizedStartIndex =
       batchStartIndex >= 0 && batchStartIndex < questionsCount ? batchStartIndex : 0;
     const batchQuestions = await getStandardPracticeBatch(
       normalizedStartIndex,
       PRACTICE_BATCH_SIZE,
-      DEFAULT_CURRICULUM
+      DEFAULT_CURRICULUM,
+      questionScope
     );
 
     return buildStandardPracticeSession({
       batchStartIndex: normalizedStartIndex,
       questionsCount,
       questions: batchQuestions,
+      questionScope,
       batchSize: PRACTICE_BATCH_SIZE
     });
   };
 
-  const startStandardSession = async (batchStartIndex: number) => {
+  const startStandardSession = async (
+    batchStartIndex: number,
+    questionScope = selectedQuestionScope
+  ) => {
     setLoadingQuestions(true);
     setQuestionsError(null);
 
     try {
-      const nextSession = await buildStandardSession(batchStartIndex);
+      const nextSession = await buildStandardSession(batchStartIndex, questionScope);
       if (!nextSession) {
         setQuestionsError('No se ha encontrado un bloque de preguntas para esa posicion.');
         return;
@@ -315,9 +401,10 @@ export const usePracticeApp = () => {
     try {
       const randomQuestions = await getRandomPracticeBatch(
         PRACTICE_BATCH_SIZE,
-        DEFAULT_CURRICULUM
+        DEFAULT_CURRICULUM,
+        selectedQuestionScope
       );
-      const nextSession = buildRandomPracticeSession(randomQuestions);
+      const nextSession = buildRandomPracticeSession(randomQuestions, selectedQuestionScope);
       if (!nextSession) {
         setQuestionsError('No se ha podido construir una sesion aleatoria con el catalogo actual.');
         return;
@@ -380,9 +467,10 @@ export const usePracticeApp = () => {
     try {
       const mixedQuestions = await getMixedPracticeBatch(
         PRACTICE_BATCH_SIZE,
-        DEFAULT_CURRICULUM
+        DEFAULT_CURRICULUM,
+        selectedQuestionScope
       );
-      const nextSession = buildMixedPracticeSession(mixedQuestions);
+      const nextSession = buildMixedPracticeSession(mixedQuestions, selectedQuestionScope);
       if (!nextSession) {
         setQuestionsError(
           'No se ha podido construir una sesion adaptativa con el estado actual.'
@@ -393,7 +481,10 @@ export const usePracticeApp = () => {
       startSession(nextSession);
     } catch (error) {
       try {
-        const fallbackSession = await buildStandardSession(recommendedBatchStartIndex);
+        const fallbackSession = await buildStandardSession(
+          recommendedBatchStartIndex,
+          selectedQuestionScope
+        );
         if (!fallbackSession) {
           throw error;
         }
@@ -409,6 +500,10 @@ export const usePracticeApp = () => {
     }
   };
 
+  const startGenericRecommendedSession = async () => {
+    await startMixedSession();
+  };
+
   const startAntiTrapSession = async () => {
     setLoadingQuestions(true);
     setQuestionsError(null);
@@ -416,9 +511,13 @@ export const usePracticeApp = () => {
     try {
       const antiTrapQuestions = await getAntiTrapPracticeBatch(
         PRACTICE_BATCH_SIZE,
-        DEFAULT_CURRICULUM
+        DEFAULT_CURRICULUM,
+        selectedQuestionScope
       );
-      const nextSession = buildAntiTrapPracticeSession(antiTrapQuestions);
+      const nextSession = buildAntiTrapPracticeSession(
+        antiTrapQuestions,
+        selectedQuestionScope
+      );
       if (!nextSession) {
         setQuestionsError(
           'No se ha podido preparar un entrenamiento anti-trampas con el estado actual.'
@@ -428,7 +527,10 @@ export const usePracticeApp = () => {
 
       startSession(nextSession);
     } catch (error) {
-      const fallbackSession = buildWeakestPracticeSession(weakQuestions);
+      const fallbackSession = buildWeakestPracticeSession(
+        weakQuestions,
+        selectedQuestionScope
+      );
       if (fallbackSession) {
         startSession(fallbackSession);
       } else {
@@ -450,9 +552,13 @@ export const usePracticeApp = () => {
     try {
       const simulacroQuestions = await getSimulacroPracticeBatch(
         SIMULACRO_BATCH_SIZE,
-        DEFAULT_CURRICULUM
+        DEFAULT_CURRICULUM,
+        selectedQuestionScope
       );
-      const nextSession = buildSimulacroPracticeSession(simulacroQuestions);
+      const nextSession = buildSimulacroPracticeSession(
+        simulacroQuestions,
+        selectedQuestionScope
+      );
       if (!nextSession) {
         setQuestionsError('No se ha podido preparar el simulacro con el catalogo actual.');
         return;
@@ -463,9 +569,13 @@ export const usePracticeApp = () => {
       try {
         const fallbackQuestions = await getRandomPracticeBatch(
           SIMULACRO_BATCH_SIZE,
-          DEFAULT_CURRICULUM
+          DEFAULT_CURRICULUM,
+          selectedQuestionScope
         );
-        const fallbackSession = buildSimulacroPracticeSession(fallbackQuestions);
+        const fallbackSession = buildSimulacroPracticeSession(
+          fallbackQuestions,
+          selectedQuestionScope
+        );
         if (!fallbackSession) {
           throw error;
         }
@@ -486,7 +596,10 @@ export const usePracticeApp = () => {
 
     try {
       await recordPracticeSessionInCloud(activeSession, completedAnswers, DEFAULT_CURRICULUM);
-      const nextState = await refreshPracticeAfterSession(DEFAULT_CURRICULUM);
+      const nextState = await refreshPracticeAfterSession(
+        DEFAULT_CURRICULUM,
+        selectedQuestionScope
+      );
       setPracticeState(nextState.practiceState);
       setWeakQuestions(nextState.weakQuestions);
       setSyncError(null);
@@ -534,7 +647,23 @@ export const usePracticeApp = () => {
     startSession(restartPracticeSession(activeSession));
   };
 
-  const handleEndSessionEarly = () => {
+  const handleEndSessionEarly = (submission: PracticeAnswerSubmission | null = null) => {
+    if (submission && currentQuestion) {
+      const nextAnswer: PracticeAnswer = {
+        question: currentQuestion,
+        selectedOption: submission.selectedOption,
+        isCorrect: submission.selectedOption === currentQuestion.correctOption,
+        answeredAt: submission.answeredAt,
+        responseTimeMs: submission.responseTimeMs,
+        timeToFirstSelectionMs: submission.timeToFirstSelectionMs,
+        changedAnswer: submission.changedAnswer,
+        errorTypeInferred: submission.errorTypeInferred ?? null
+      };
+
+      commitSession([...answers, nextAnswer]);
+      return;
+    }
+
     if (answers.length === 0) {
       resetActiveSession();
       return;
@@ -545,7 +674,7 @@ export const usePracticeApp = () => {
 
   const handleSimulacroTimeExpired = (submission: PracticeAnswerSubmission | null) => {
     if (!activeSession || activeSession.mode !== 'simulacro') {
-      handleEndSessionEarly();
+      handleEndSessionEarly(submission);
       return;
     }
 
@@ -585,7 +714,10 @@ export const usePracticeApp = () => {
     }
 
     if (activeSession.mode === 'standard' && activeSession.nextStandardBatchStartIndex) {
-      void startStandardSession(activeSession.nextStandardBatchStartIndex);
+      void startStandardSession(
+        activeSession.nextStandardBatchStartIndex,
+        activeSession.questionScope ?? selectedQuestionScope
+      );
       return;
     }
 
@@ -610,6 +742,7 @@ export const usePracticeApp = () => {
     setSyncError(null);
     setLoadingQuestions(false);
     setActiveTab('home');
+    setSelectedQuestionScope('all');
   };
 
   const handleSignOut = async () => {
@@ -682,8 +815,12 @@ export const usePracticeApp = () => {
     handleSignedIn,
     handleSignOut,
     handleSimulacroTimeExpired,
+    handleQuestionScopeChange: (questionScope: PracticeQuestionScopeFilter) => {
+      setSelectedQuestionScope(questionScope);
+    },
     identity,
     isGuest,
+    isGenericPlayer,
     learningDashboard,
     loadingQuestions,
     pressureInsights,
@@ -693,6 +830,7 @@ export const usePracticeApp = () => {
     recentSessions,
     reloadPracticeData: loadAccountContext,
     recommendedBatchNumber,
+    selectedQuestionScope,
     guestBlocksRemaining,
     guestMaxBlocks: GUEST_MAX_BLOCKS,
     savingExamTarget,
@@ -702,6 +840,7 @@ export const usePracticeApp = () => {
     startAntiTrap: () => void startAntiTrapSession(),
     startFromBeginning: () => void startStandardSession(0),
     startGuest: () => void startGuestSession(),
+    startGenericRecommended: () => void startGenericRecommendedSession(),
     startMixed: () => void startMixedSession(),
     startRandom: () => void startRandomSession(),
     startRecommended: () => {
@@ -719,10 +858,11 @@ export const usePracticeApp = () => {
           void startSimulacroSession();
           return;
         default:
-          void startStandardSession(recommendedBatchStartIndex);
+          void startStandardSession(recommendedBatchStartIndex, selectedQuestionScope);
       }
     },
-    startWeakReview: () => startSession(buildWeakestPracticeSession(weakQuestions)),
+    startWeakReview: () =>
+      startSession(buildWeakestPracticeSession(weakQuestions, selectedQuestionScope)),
     syncingState,
     syncError,
     topBarSubtitle,

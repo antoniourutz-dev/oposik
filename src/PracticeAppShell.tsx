@@ -8,14 +8,24 @@ import { PRACTICE_BATCH_SIZE } from './practiceConfig';
 const AuthScreen = lazy(() => import('./components/AuthScreen'));
 const DashboardScreen = lazy(() => import('./components/DashboardScreen'));
 const GuestDashboardScreen = lazy(() => import('./components/GuestDashboardScreen'));
+const GenericDashboardScreen = lazy(() => import('./components/GenericDashboardScreen'));
 const QuizScreen = lazy(() => import('./components/QuizScreen'));
 const PracticeReviewScreen = lazy(() => import('./components/PracticeReviewScreen'));
 
 const FullscreenLoader: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex min-h-[100dvh] items-center justify-center bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.15),transparent_32%),linear-gradient(180deg,#fffdf8_0%,#f8fafc_45%,#f6f7fb_100%)] px-4">
-    <div className="rounded-[1.8rem] border border-white/70 bg-white/86 px-6 py-8 text-center shadow-[0_24px_60px_-40px_rgba(15,23,42,0.35)]">
-      <LoaderCircle className="mx-auto h-10 w-10 animate-spin text-amber-500" />
-      <p className="mt-4 text-sm font-black uppercase tracking-[0.16em] text-slate-500">
+  <div className="flex min-h-[100dvh] items-center justify-center bg-[radial-gradient(circle_at_12%_0%,rgba(124,182,232,0.18),transparent_26%),radial-gradient(circle_at_88%_8%,rgba(141,147,242,0.2),transparent_24%),radial-gradient(circle_at_50%_100%,rgba(194,223,255,0.16),transparent_28%),linear-gradient(180deg,#f4f8ff_0%,#f7faff_34%,#edf4ff_100%)] px-4">
+    <div className="relative overflow-hidden rounded-[1.9rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] px-6 py-8 text-center shadow-[0_28px_70px_-40px_rgba(141,147,242,0.24)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_24%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_38%)]" />
+      <div className="relative">
+        <span className="inline-flex items-center gap-2 rounded-full border border-[#d7e4fb] bg-white/86 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[0_12px_24px_-22px_rgba(141,147,242,0.18)]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)]" />
+          Oposik
+        </span>
+        <div className="mx-auto mt-5 flex h-14 w-14 items-center justify-center rounded-[1.2rem] border border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.22))] text-[#7cb6e8] shadow-[0_18px_30px_-22px_rgba(141,147,242,0.22)]">
+          <LoaderCircle className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+      <p className="relative mt-4 text-sm font-black uppercase tracking-[0.16em] text-slate-600">
         {label}
       </p>
     </div>
@@ -40,6 +50,7 @@ const PracticeAppShell: React.FC = () => {
     handleContinueAfterReview,
     handleEnterGuest,
     handleEndSessionEarly,
+    handleQuestionScopeChange,
     handleRetrySession,
     handleSaveExamTarget,
     handleSignedIn,
@@ -47,6 +58,7 @@ const PracticeAppShell: React.FC = () => {
     handleSimulacroTimeExpired,
     identity,
     isGuest,
+    isGenericPlayer,
     learningDashboard,
     loadingQuestions,
     pressureInsights,
@@ -56,11 +68,13 @@ const PracticeAppShell: React.FC = () => {
     recentSessions,
     reloadPracticeData,
     recommendedBatchNumber,
+    selectedQuestionScope,
     savingExamTarget,
     session,
     startSimulacro,
     startAntiTrap,
     startFromBeginning,
+    startGenericRecommended,
     startGuest,
     startMixed,
     startRandom,
@@ -79,15 +93,15 @@ const PracticeAppShell: React.FC = () => {
   const contentEnterClass =
     view === 'quiz' || view === 'review' ? 'screen-enter-fixed-safe' : 'screen-enter';
   const topBarSection =
-    view === 'home' && (activeTab === 'home' || isGuest) ? undefined : topBarSubtitle;
+    view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer) ? undefined : topBarSubtitle;
   const mainTopPadding =
     view === 'quiz'
       ? 'pt-4'
-      : view === 'home' && (activeTab === 'home' || isGuest)
+      : view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer)
         ? 'pt-[4.05rem]'
         : 'pt-[5.2rem]';
   const shellBackgroundClass =
-    view === 'home' && (activeTab === 'home' || isGuest) ? 'app-shell-home' : 'app-shell-default';
+    view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer) ? 'app-shell-home' : 'app-shell-default';
 
   useLayoutEffect(() => {
     const scrollRoot = document.scrollingElement;
@@ -129,9 +143,18 @@ const PracticeAppShell: React.FC = () => {
 
           {loadingQuestions ? (
             <div className="mx-auto flex w-full max-w-3xl flex-1 items-center justify-center py-10">
-              <div className="w-full rounded-[2rem] border border-white/70 bg-white/80 p-8 text-center shadow-[0_30px_70px_-35px_rgba(15,23,42,0.35)] backdrop-blur">
-                <LoaderCircle className="mx-auto h-12 w-12 animate-spin text-amber-500" />
-                <p className="mt-5 text-sm font-black uppercase tracking-[0.22em] text-slate-500">
+              <div className="relative w-full overflow-hidden rounded-[2rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] p-8 text-center shadow-[0_30px_70px_-35px_rgba(141,147,242,0.24)] backdrop-blur">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_24%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_38%)]" />
+                <div className="relative">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#d7e4fb] bg-white/86 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[0_12px_24px_-22px_rgba(141,147,242,0.18)]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)]" />
+                    Oposik
+                  </span>
+                </div>
+                <div className="relative mx-auto mt-5 flex h-16 w-16 items-center justify-center rounded-[1.35rem] border border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.22))] text-[#7cb6e8] shadow-[0_20px_34px_-24px_rgba(141,147,242,0.22)]">
+                  <LoaderCircle className="h-9 w-9 animate-spin" />
+                </div>
+                <p className="relative mt-5 text-sm font-black uppercase tracking-[0.22em] text-slate-600">
                   Cargando preguntas
                 </p>
               </div>
@@ -179,6 +202,21 @@ const PracticeAppShell: React.FC = () => {
                       onStart={startGuest}
                       onExit={() => void handleSignOut()}
                     />
+                  ) : isGenericPlayer ? (
+                    <GenericDashboardScreen
+                      activeTab={activeTab}
+                      identity={identity}
+                      profile={profile}
+                      recentSessions={recentSessions}
+                      weakQuestionCount={weakQuestions.length}
+                      questionScope={selectedQuestionScope}
+                      onQuestionScopeChange={handleQuestionScopeChange}
+                      onStartSimple={startGenericRecommended}
+                      onStartRandom={startRandom}
+                      onStartWeakReview={startWeakReview}
+                      onStartFromBeginning={startFromBeginning}
+                      onSignOut={() => void handleSignOut()}
+                    />
                   ) : (
                     <DashboardScreen
                       activeTab={activeTab}
@@ -197,6 +235,8 @@ const PracticeAppShell: React.FC = () => {
                       recommendedBatchNumber={recommendedBatchNumber}
                       weakQuestions={weakQuestions}
                       weakCategories={weakCategories}
+                      questionScope={selectedQuestionScope}
+                      onQuestionScopeChange={handleQuestionScopeChange}
                       onStartRecommended={startRecommended}
                       onStartSimulacro={startSimulacro}
                       onStartAntiTrap={startAntiTrap}
@@ -225,6 +265,9 @@ const PracticeAppShell: React.FC = () => {
                       totalQuestions={activeSession.questions.length}
                       batchNumber={activeSession.batchNumber}
                       totalBatches={activeSession.totalBatches}
+                      questionScope={activeSession.questionScope ?? selectedQuestionScope}
+                      simplified={isGuest || isGenericPlayer}
+                      showCompactProgress={isGenericPlayer}
                       answers={answers}
                       onAnswer={handleAnswer}
                       onEndSession={handleEndSessionEarly}
@@ -253,8 +296,8 @@ const PracticeAppShell: React.FC = () => {
                       title={activeSession.title}
                       subtitle={activeSession.subtitle}
                       continueLabel={activeSession.continueLabel}
-                      showRetry={!isGuest}
-                      simplified={isGuest}
+                      showRetry={!isGuest && !isGenericPlayer}
+                      simplified={isGuest || isGenericPlayer}
                       onRetryBatch={handleRetrySession}
                       onContinue={handleContinueAfterReview}
                       onBackToStart={goHome}
@@ -267,7 +310,11 @@ const PracticeAppShell: React.FC = () => {
         </main>
 
         {view === 'home' && !isGuest ? (
-          <BottomDock activeTab={activeTab} onChangeTab={setActiveTab} />
+          <BottomDock
+            activeTab={activeTab}
+            onChangeTab={setActiveTab}
+            variant={isGenericPlayer ? 'generic' : 'default'}
+          />
         ) : null}
       </div>
     </div>

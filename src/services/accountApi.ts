@@ -1,10 +1,13 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '../supabaseClient';
 
+export type AccountPlayerMode = 'advanced' | 'generic';
+
 export type AccountIdentity = {
   user_id: string;
   current_username: string;
   is_admin: boolean;
+  player_mode: AccountPlayerMode;
   previous_usernames: string[];
 };
 
@@ -32,6 +35,36 @@ export const normalizeUsername = (value: string) => value.trim().toLowerCase();
 
 export const validateUsername = (value: string) => USERNAME_RE.test(normalizeUsername(value));
 
+export const normalizeAccountPlayerMode = (value: unknown): AccountPlayerMode =>
+  String(value ?? '').trim().toLowerCase() === 'generic' ? 'generic' : 'advanced';
+
+const toStringArray = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => String(entry ?? '').trim())
+    .filter(Boolean);
+};
+
+const mapAccountIdentity = (value: unknown): AccountIdentity | null => {
+  if (!value || typeof value !== 'object') return null;
+
+  const record = value as Record<string, unknown>;
+  const userId = String(record.user_id ?? '').trim();
+  const currentUsername = String(record.current_username ?? '').trim();
+
+  if (!userId || !currentUsername) {
+    return null;
+  }
+
+  return {
+    user_id: userId,
+    current_username: currentUsername,
+    is_admin: Boolean(record.is_admin),
+    player_mode: normalizeAccountPlayerMode(record.player_mode),
+    previous_usernames: toStringArray(record.previous_usernames)
+  };
+};
+
 export const getMyAccountIdentity = async () => {
   const { data, error } = await supabase
     .schema('app')
@@ -39,7 +72,7 @@ export const getMyAccountIdentity = async () => {
     .maybeSingle();
 
   if (error) throw new Error(mapAccountApiError(error));
-  return (data ?? null) as AccountIdentity | null;
+  return mapAccountIdentity(data);
 };
 
 export const getMyUsernameHistory = async (limit = 10) => {
@@ -107,6 +140,12 @@ export const mapAccountApiError = (error: Pick<PostgrestError, 'code' | 'message
   }
   if (normalizedMessage.includes('cannot_clear_own_results_from_admin')) {
     return 'No puedes borrar tus propios resultados desde la administracion.';
+  }
+  if (normalizedMessage.includes('invalid_player_mode')) {
+    return 'El modo de jugador no es valido.';
+  }
+  if (normalizedMessage.includes('cannot_edit_admin_account')) {
+    return 'Las cuentas admin no se pueden editar desde este panel.';
   }
   if (normalizedMessage.includes('use_change_my_username_for_self')) {
     return 'Para cambiar tu usuario, utiliza tu perfil.';

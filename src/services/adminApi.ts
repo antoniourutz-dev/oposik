@@ -4,9 +4,11 @@ import { supabaseAnonKey, supabaseUrl } from '../supabaseConfig';
 import {
   UsernameHistoryEntry,
   mapAccountApiError,
+  normalizeAccountPlayerMode,
   normalizeUsername,
   validateUsername
 } from './accountApi';
+import type { AccountPlayerMode } from './accountApi';
 
 export type AdminUserDirectoryEntry = {
   user_id: string;
@@ -14,6 +16,7 @@ export type AdminUserDirectoryEntry = {
   auth_email: string | null;
   is_admin: boolean;
   status: string;
+  player_mode: AccountPlayerMode;
   created_at: string | null;
   updated_at: string | null;
   last_sign_in_at: string | null;
@@ -60,6 +63,7 @@ export type AdminCreateUserResult = {
   current_username: string;
   auth_email: string | null;
   created_at: string | null;
+  player_mode: AccountPlayerMode;
 };
 
 export type AdminUsernameChangeResult = {
@@ -90,6 +94,13 @@ export type AdminResetPracticeProgressResult = {
 export type AdminSetUserPasswordResult = {
   user_id: string;
   current_username: string | null;
+};
+
+export type AdminSetUserPlayerModeResult = {
+  user_id: string;
+  current_username: string | null;
+  player_mode: AccountPlayerMode;
+  updated_at: string | null;
 };
 
 type AdminDeleteResultsResult = {
@@ -169,6 +180,7 @@ const mapAdminDirectoryEntry = (value: Record<string, unknown>): AdminUserDirect
   auth_email: toNullableString(value.auth_email),
   is_admin: Boolean(value.is_admin),
   status: String(value.status ?? 'active'),
+  player_mode: normalizeAccountPlayerMode(value.player_mode),
   created_at: value.created_at ? String(value.created_at) : null,
   updated_at: value.updated_at ? String(value.updated_at) : null,
   last_sign_in_at: value.last_sign_in_at ? String(value.last_sign_in_at) : null,
@@ -347,19 +359,22 @@ export const adminChangeUsername = async (
 
 export const adminCreateUser = async (
   username: string,
-  password: string
+  password: string,
+  playerMode: AccountPlayerMode = 'advanced'
 ) => {
   const result = await invokeAdminUserManagement<AdminCreateUserResult>({
     action: 'create_user',
     username,
-    password
+    password,
+    playerMode
   });
 
   return {
     user_id: String(result.user_id ?? ''),
     current_username: String(result.current_username ?? ''),
     auth_email: toNullableString(result.auth_email),
-    created_at: toNullableString(result.created_at)
+    created_at: toNullableString(result.created_at),
+    player_mode: normalizeAccountPlayerMode(result.player_mode)
   } as AdminCreateUserResult;
 };
 
@@ -409,6 +424,24 @@ export const adminSetUserPassword = async (userId: string, password: string) => 
     user_id: String(result.user_id ?? userId),
     current_username: toNullableString(result.current_username)
   } as AdminSetUserPasswordResult;
+};
+
+export const adminSetUserPlayerMode = async (
+  userId: string,
+  playerMode: AccountPlayerMode
+) => {
+  const result = await invokeAdminUserManagement<AdminSetUserPlayerModeResult>({
+    action: 'set_user_player_mode',
+    userId,
+    playerMode
+  });
+
+  return {
+    user_id: String(result.user_id ?? userId),
+    current_username: toNullableString(result.current_username),
+    player_mode: normalizeAccountPlayerMode(result.player_mode),
+    updated_at: toNullableString(result.updated_at)
+  } as AdminSetUserPlayerModeResult;
 };
 
 export const adminClearUserGameResults = async (

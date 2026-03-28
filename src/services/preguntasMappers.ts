@@ -4,6 +4,7 @@ import {
   PracticeQuestionStat,
   WeakQuestionInsight
 } from '../practiceTypes';
+import { readQuestionScopeFromRow } from '../utils/practiceQuestionScope';
 
 const OPTION_KEYS: OptionKey[] = ['a', 'b', 'c', 'd'];
 
@@ -142,7 +143,8 @@ export const mapQuestion = (row: Record<string, unknown>): PracticeQuestion | nu
     statement,
     options,
     correctOption,
-    category: pickFirstText(row, ['grupo', 'tipo', 'type', 'category', 'tema']),
+    category: pickFirstText(row, ['category', 'tema', 'topic', 'subject', 'materia', 'subtema']),
+    questionScope: readQuestionScopeFromRow(row),
     explanation: pickFirstText(row, ['explicacion', 'explanation', 'justificacion']),
     editorialExplanation: pickFirstText(row, [
       'explicacion_editorial',
@@ -172,6 +174,7 @@ export const mapWeakQuestionInsight = (row: Record<string, unknown>): WeakQuesti
     questionNumber: question.number,
     statement: question.statement,
     category: question.category,
+    questionScope: question.questionScope,
     explanation: question.explanation,
     editorialExplanation: question.editorialExplanation,
     attempts: readNumber(row.attempts) ?? 0,

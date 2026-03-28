@@ -12,11 +12,13 @@ import {
   UserRound
 } from 'lucide-react';
 import { MainTab } from './BottomDock';
+import QuestionScopePicker from './QuestionScopePicker';
 import { AccountIdentity } from '../services/accountApi';
 import {
   PracticeCoachPlan,
   PracticeExamTarget,
   PracticeLearningDashboard,
+  PracticeQuestionScopeFilter,
   PracticePressureInsights,
   PracticeProfile,
   PracticeSessionSummary,
@@ -43,6 +45,8 @@ type DashboardScreenProps = {
   recommendedBatchNumber: number;
   weakQuestions: WeakQuestionInsight[];
   weakCategories: Array<{ category: string; incorrectAttempts: number; attempts: number }>;
+  questionScope: PracticeQuestionScopeFilter;
+  onQuestionScopeChange: (questionScope: PracticeQuestionScopeFilter) => void;
   onStartSimulacro: () => void;
   onStartAntiTrap: () => void;
   onStartRecommended: () => void;
@@ -141,53 +145,40 @@ const HeroCompactAction: React.FC<{
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className={`group inline-flex h-full min-h-[8.65rem] w-full flex-col justify-between rounded-[1.1rem] border px-3 py-3 text-left text-slate-950 transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:opacity-45 disabled:hover:translate-y-0 ${
+    className={`group relative inline-flex min-h-[6.2rem] w-full flex-col rounded-[1rem] border px-3 py-3 text-left text-slate-950 transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:opacity-45 disabled:hover:translate-y-0 ${
       accent
-        ? 'border-[#c8d8fb] bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(236,244,255,0.95))] shadow-[0_18px_34px_-24px_rgba(141,147,242,0.22)] hover:border-[#b8cff8] hover:shadow-[0_20px_36px_-22px_rgba(141,147,242,0.24)]'
-        : 'border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] shadow-[0_16px_28px_-24px_rgba(15,23,42,0.14)] hover:border-[#bfd2f6] hover:shadow-[0_18px_30px_-22px_rgba(141,147,242,0.18)]'
+        ? 'border-[#c7d8fb] bg-[linear-gradient(180deg,rgba(247,251,255,0.99),rgba(236,244,255,0.95))] shadow-[0_16px_28px_-24px_rgba(141,147,242,0.18)] hover:border-[#b5cef8] hover:shadow-[0_18px_30px_-22px_rgba(141,147,242,0.2)]'
+        : 'border-slate-200/88 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(247,250,255,0.94))] shadow-[0_14px_24px_-24px_rgba(15,23,42,0.12)] hover:border-[#c5d7f8] hover:shadow-[0_16px_26px_-22px_rgba(141,147,242,0.16)]'
     }`}
   >
-    <span className="flex w-full items-start justify-between gap-2">
+    <span className="pointer-events-none absolute right-3 top-3 text-slate-400 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-slate-600">
+      <ArrowRight size={14} />
+    </span>
+    <span className="flex w-full items-start gap-2">
       <span
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border text-slate-700 ${
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.9rem] border text-slate-700 ${
           accent
-            ? 'border-[#c6d7fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.2),rgba(141,147,242,0.24))] text-slate-800'
-            : 'border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(141,147,242,0.16))]'
+            ? 'border-[#c6d7fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] text-slate-800'
+            : 'border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.12),rgba(141,147,242,0.14))]'
         }`}
       >
         {icon}
       </span>
-      <span
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ${
-          accent
-            ? 'border-[#c6d7fb] bg-white/92 text-slate-700 shadow-[0_12px_24px_-18px_rgba(141,147,242,0.3)]'
-            : 'border-slate-200/90 bg-slate-50/90 text-slate-500'
-        }`}
-      >
-        <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-      </span>
     </span>
     <span className="mt-3 min-w-0">
-      <span className="block text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
+      <span className="block text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
         {label}
       </span>
-      <span className="mt-1.5 block text-[0.96rem] font-black leading-[1.05] text-slate-950 sm:text-[1rem]">
+      <span className="mt-1 block text-[1rem] font-black leading-[1.02] text-slate-950 sm:text-[1.03rem]">
         {title}
       </span>
       {caption ? (
-        <span className="mt-1.75 block text-[11px] font-semibold leading-4 text-slate-500">
+        <span className="mt-1 block pr-5 text-[11px] font-semibold leading-4 text-slate-500">
           {caption}
         </span>
       ) : null}
     </span>
   </button>
-);
-
-const CoachChip: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08))] px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/86 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-sm">
-    <span className="text-white/62">{label}</span>
-    <span className="text-[0.9rem] font-black text-white">{value}</span>
-  </span>
 );
 
 const HeroMiniStat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
@@ -218,6 +209,29 @@ const StatusStripItem: React.FC<{
   </div>
 );
 
+const HomeStatusBandMetric: React.FC<{
+  label: string;
+  value: string;
+  caption: string;
+  accent?: boolean;
+}> = ({ label, value, caption, accent = false }) => (
+  <div
+    className={`flex min-h-[6.25rem] flex-col justify-between px-3.5 py-3 ${
+      accent
+        ? 'bg-[linear-gradient(180deg,rgba(243,248,255,0.96),rgba(235,243,255,0.9))]'
+        : 'bg-transparent'
+    }`}
+  >
+    <div>
+      <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="mt-2 text-[1.55rem] font-black leading-none tracking-[-0.04em] text-slate-950">
+        {value}
+      </p>
+    </div>
+    <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-400">{caption}</p>
+  </div>
+);
+
 const AnalyticsMiniTile: React.FC<{
   label: string;
   value: string;
@@ -234,35 +248,6 @@ const AnalyticsMiniTile: React.FC<{
     <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
     <p className="mt-1.5 text-[1.35rem] font-black leading-none text-slate-950">{value}</p>
     {caption ? <p className="mt-1.5 text-xs font-semibold leading-5 text-slate-400">{caption}</p> : null}
-  </div>
-);
-
-const DailyInsightCard: React.FC<{
-  eyebrow: string;
-  title: string;
-  message: string;
-  icon: React.ReactNode;
-  accentClassName?: string;
-  trailing?: React.ReactNode;
-}> = ({ eyebrow, title, message, icon, accentClassName = '', trailing }) => (
-  <div
-    className={`rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)] ${accentClassName}`}
-  >
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex min-w-0 items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(138,144,244,0.18))] text-slate-700">
-          {icon}
-        </span>
-        <div className="min-w-0">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-            {eyebrow}
-          </p>
-          <p className="mt-1 text-base font-extrabold text-slate-950">{title}</p>
-          <p className="mt-1 text-sm leading-5 text-slate-500">{message}</p>
-        </div>
-      </div>
-      {trailing}
-    </div>
   </div>
 );
 
@@ -792,6 +777,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   recommendedBatchNumber,
   weakQuestions,
   weakCategories,
+  questionScope,
+  onQuestionScopeChange,
   onStartSimulacro,
   onStartAntiTrap,
   onStartRecommended,
@@ -834,16 +821,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           : coachPlan.mode === 'random'
             ? 'Abrir sesion aleatoria'
             : 'Iniciar sesion mixta';
-  const primaryCtaDetail =
-    coachPlan.mode === 'mixed' && (recommendedReview > 0 || recommendedNew > 0)
-      ? `${recommendedReview} repasos + ${recommendedNew} nuevas con mezcla controlada.`
-      : coachPlan.mode === 'simulacro'
-        ? 'Presion real, sin correccion inmediata y con tiempo global.'
-        : coachPlan.mode === 'anti_trap'
-          ? 'Afina lectura, negaciones, plazos y distractores cercanos.'
-          : coachPlan.mode === 'random'
-            ? 'Mide recuperacion real sin orden previsible.'
-            : studyFocusLine;
   const primaryCtaMetaLabel =
     coachPlan.mode === 'standard'
       ? `Bloque ${recommendedBatchNumber}`
@@ -1034,47 +1011,45 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   if (activeTab === 'home') {
     return (
       <div className="grid gap-3 sm:gap-4">
-        <SectionCard className="relative overflow-hidden border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#6eaee5_0%,#8aa6ee_54%,#8d96f4_100%)] p-3.25 text-white shadow-[0_24px_60px_-44px_rgba(141,147,242,0.22)] sm:p-4.25">
+        <SectionCard className="relative overflow-hidden border-[#c8d8fb]/70 bg-[linear-gradient(135deg,#72afe6_0%,#87a6ee_56%,#8d96f4_100%)] p-3.25 text-white shadow-[0_22px_52px_-42px_rgba(141,147,242,0.22)] sm:p-4">
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-white/18 blur-3xl" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_42%)]" />
-            <div className="absolute right-5 top-5 h-28 w-28 rounded-full border border-white/14" />
+            <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-white/14 blur-3xl" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.14),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_42%)]" />
           </div>
           <div className="relative grid gap-2.5 sm:gap-3">
-            <div className="flex items-start justify-between gap-2.5 sm:gap-3">
-              <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-2.5 sm:gap-3">
+              <div className="min-w-0 flex-1 max-w-[17.2rem] sm:max-w-[20rem]">
                 <p className="inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-sky-50/88">
                   <span className="h-2 w-2 rounded-full bg-white/92 shadow-[0_0_0_4px_rgba(255,255,255,0.12)]" />
                   Hoy
                 </p>
-                <p className="mt-1.5 max-w-[13.2rem] text-[1.56rem] font-black leading-[0.96] tracking-[-0.04em] text-white sm:max-w-[17rem] sm:text-[1.92rem]">
+                <p className="mt-1.5 text-[1.56rem] font-black leading-[0.96] tracking-[-0.04em] text-white sm:text-[1.9rem]">
                   {coachPlan.title}
                 </p>
-              </div>
-              <div className="shrink-0 text-right">
-                <CoachChip label="Readiness" value={readinessLabel} />
               </div>
             </div>
 
             <div className="grid max-w-[28.5rem] gap-2.25 sm:gap-2.5">
-              <p className="max-w-[24rem] text-[0.92rem] font-medium leading-5.5 text-sky-50/84 sm:text-[0.95rem] sm:leading-6">
-                {studyPrimarySummary}
-              </p>
+              <QuestionScopePicker
+                value={questionScope}
+                onChange={onQuestionScopeChange}
+                label="Temario"
+              />
 
               <button
                 type="button"
                 onClick={onStartRecommended}
-                className="group grid grid-cols-[minmax(0,1fr)_3.55rem] items-stretch gap-3 rounded-[1.2rem] border border-white/78 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(252,252,255,0.96))] px-3.5 py-3 text-left text-slate-950 shadow-[0_24px_38px_-28px_rgba(141,147,242,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_42px_-28px_rgba(141,147,242,0.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 active:translate-y-0 active:scale-[0.995] sm:grid-cols-[minmax(0,1fr)_4rem] sm:rounded-[1.26rem] sm:px-4 sm:py-3.25"
+                className="group flex items-center justify-between gap-3 rounded-[1.08rem] border border-white/82 bg-white/98 px-3.5 py-3 text-left text-slate-950 shadow-[0_20px_32px_-26px_rgba(141,147,242,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_36px_-26px_rgba(141,147,242,0.26)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 active:translate-y-0 active:scale-[0.995] sm:px-4 sm:py-3.25"
               >
-                <span className="min-w-0 self-center">
+                <span className="min-w-0 flex-1 self-center">
                   <span className="inline-flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 sm:text-[10px]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#7cb6e8]" />
-                    Accion recomendada
+                    Empieza ahora
                   </span>
                   <span className="mt-1 block text-[1.16rem] font-black leading-[1.01] tracking-[-0.035em] text-slate-950 sm:mt-1.25 sm:text-[1.24rem]">
                     {primaryCtaCommand}
                   </span>
-                  <span className="mt-1.75 flex flex-wrap items-center gap-1.5">
+                  <span className="mt-2 flex flex-wrap items-center gap-1.5">
                     <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-600 sm:text-[10px]">
                       {recommendedSessionSize} preguntas
                     </span>
@@ -1082,16 +1057,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       {primaryCtaMetaLabel}
                     </span>
                   </span>
-                  <span className="mt-1.75 block max-w-[22.5rem] text-[12px] leading-5 text-slate-500 sm:text-sm">
-                    {primaryCtaDetail}
-                  </span>
                 </span>
-                <span className="flex flex-col items-center justify-center gap-1 rounded-[0.98rem] border border-[#c4d7fb] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_16px_28px_-20px_rgba(141,147,242,0.28)] transition-transform duration-200 group-hover:translate-x-0.5 sm:rounded-[1.02rem]">
-                  <ArrowRight size={17} className="sm:hidden" />
-                  <ArrowRight size={18} className="hidden sm:block" />
-                  <span className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-white/84 sm:text-[9px]">
-                    Ir
-                  </span>
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_16px_26px_-18px_rgba(141,147,242,0.28)] transition-transform duration-200 group-hover:translate-x-0.5 sm:h-12 sm:w-12">
+                  <ArrowRight size={18} />
                 </span>
               </button>
 
@@ -1103,96 +1071,116 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </div>
         </SectionCard>
 
-        <div className="grid grid-cols-[1.14fr_0.93fr_0.93fr] gap-2.5">
+        <div className="grid grid-cols-3 gap-2">
           <HeroCompactAction
-            label={recommendedToday > 0 ? 'sesion del dia' : 'ruta adaptativa'}
+            label="Hoy"
             title="Mixto"
-            caption={`${recommendedSessionSize} preguntas con mezcla util`}
+            caption={`${recommendedSessionSize} preguntas`}
             onClick={onStartMixed}
             icon={<Target size={18} />}
             accent
           />
           <HeroCompactAction
-            label={`${batchSize} preguntas`}
+            label="Directo"
             title="Aleatorio"
-            caption="recuerdo sin patron"
+            caption={`${batchSize} preguntas`}
             onClick={onStartRandom}
             icon={<Layers3 size={18} />}
           />
           <HeroCompactAction
-            label={weakReviewSlotCount > 0 ? `Top ${weakReviewSlotCount}` : 'sin deuda'}
+            label={weakReviewSlotCount > 0 ? `Top ${weakReviewSlotCount}` : 'Errores'}
             title="Falladas"
             caption={
-              weakReviewSlotCount > 0 ? 'limpiar errores caros' : 'sin foco critico'
+              weakReviewSlotCount > 0 ? 'Repasar ahora' : 'Sin pendientes'
             }
             onClick={onStartWeakReview}
             disabled={weakQuestions.length === 0}
-            icon={<Brain size={18} />}
+            icon={<Flame size={18} />}
           />
         </div>
 
         <div className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
           <SectionCard
             title="Estado de hoy"
-            hint="Solo lo que conviene mirar"
+            hint="Pulso rapido"
             className="p-3 sm:p-4"
           >
-            <div className="grid grid-cols-3 gap-2">
-              <StatusStripItem
-                label="Precision"
-                value={`${accuracy}%`}
-                caption="rendimiento actual"
-                accent
-              />
-              <StatusStripItem
-                label="Cobertura"
-                value={formatPercent(coverageRate)}
-                caption="banco visto"
-              />
-              <StatusStripItem
-                label="Dominio util"
-                value={formatPercent(usefulMasteryRate)}
-                caption="memoria estable"
-              />
+            <div className="overflow-hidden rounded-[1.2rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
+              <div className="grid grid-cols-3 divide-x divide-slate-100/85">
+                <HomeStatusBandMetric
+                  label="Precision"
+                  value={`${accuracy}%`}
+                  caption="rendimiento actual"
+                  accent
+                />
+                <HomeStatusBandMetric
+                  label="Cobertura"
+                  value={formatPercent(coverageRate)}
+                  caption="banco visto"
+                />
+                <HomeStatusBandMetric
+                  label="Dominio util"
+                  value={formatPercent(usefulMasteryRate)}
+                  caption="memoria estable"
+                />
+              </div>
             </div>
           </SectionCard>
 
-          <SectionCard title="Claves de hoy" hint="Dos alertas cortas" className="p-3.5 sm:p-4">
-            <div className="grid gap-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <DailyInsightCard
-                  eyebrow="Foco"
-                  title={coachPlan.focusLabel}
-                  message={coachPlan.reasons[0] ?? coachPlan.impactLabel}
-                  icon={<Target size={18} />}
-                />
-
-                {topRiskBreakdown[0] ? (
-                  <DailyInsightCard
-                    eyebrow="Riesgo"
-                    title={topRiskBreakdown[0].label}
-                    message="Mejor limpiarlo antes de ampliar carga."
-                    icon={<Shield size={18} />}
-                    trailing={
-                      <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(138,144,244,0.18))] px-2.5 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-700">
-                        {topRiskBreakdown[0].count}
-                      </span>
-                    }
-                  />
-                ) : null}
+          <SectionCard title="Claves de hoy" hint="Dos ordenes claras" className="p-3.5 sm:p-4">
+            <div className="grid gap-2.5">
+              <div className="rounded-[1.18rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(239,246,255,0.94))] px-4 py-3.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(138,144,244,0.18))] text-slate-700">
+                      <Target size={18} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                        Ahora
+                      </p>
+                      <p className="mt-1 text-[1rem] font-black leading-5 text-slate-950">
+                        {coachPlan.focusLabel}
+                      </p>
+                      <p className="mt-1.5 text-[12px] font-semibold leading-5 text-slate-500">
+                        {coachPlan.reasons[0] ?? coachPlan.impactLabel}
+                      </p>
+                    </div>
+                  </div>
+                  {pressureInsights ? (
+                    <span className="shrink-0 rounded-full border border-slate-200/90 bg-white/92 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
+                      {pressureGapLabel}
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {pressureInsights ? (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50/90 px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                    Presion
-                    <span className="text-sm font-black text-slate-900">{pressureGapLabel}</span>
-                  </span>
-                ) : null}
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2.5">
+                <div className="rounded-[1.05rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-3.5 py-3 shadow-[0_14px_26px_-24px_rgba(15,23,42,0.12)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                        Riesgo
+                      </p>
+                      <p className="mt-1 text-[0.96rem] font-black leading-5 text-slate-950">
+                        {topRiskBreakdown[0]?.label ?? 'Sistema estable'}
+                      </p>
+                      <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-400">
+                        {topRiskBreakdown[0]
+                          ? 'Conviene limpiarlo antes de ampliar carga.'
+                          : 'No hay una alerta dominante ahora mismo.'}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(138,144,244,0.16))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
+                      {topRiskBreakdown[0] ? topRiskBreakdown[0].count : 'OK'}
+                    </span>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   onClick={onReloadQuestions}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-sky-50/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99]"
+                  className="inline-flex min-h-[5.85rem] items-center justify-center gap-2 rounded-[1.05rem] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(245,249,255,0.94))] px-3.5 py-3 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700 shadow-[0_14px_24px_-24px_rgba(15,23,42,0.14)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-sky-50/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99]"
                 >
                   <RotateCcw size={15} />
                   Sync
@@ -1618,6 +1606,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   if (activeTab === 'study') {
     return (
       <div className="grid gap-3 sm:gap-4">
+        <QuestionScopePicker
+          value={questionScope}
+          onChange={onQuestionScopeChange}
+          label="Temario"
+        />
+
         <SectionCard title="Sesion del dia" hint="Inicio decide. Estudio te deja ejecutar o cambiar el modo con criterio.">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.02fr)_minmax(17rem,0.98fr)]">
             <div className="rounded-[1.35rem] border border-[#c8d8f8] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(138,144,244,0.18))] p-4 shadow-[0_22px_42px_-30px_rgba(141,147,242,0.18)]">

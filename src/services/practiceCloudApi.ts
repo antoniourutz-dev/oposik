@@ -11,6 +11,52 @@ import {
   mapSession
 } from './practiceCloudMappers';
 
+const buildAttemptPayloads = (answers: PracticeAnswer[]) => {
+  const attemptsByQuestionId = new Map<
+    string,
+    {
+      question_id: string;
+      question_number: number | null;
+      statement: string;
+      category: string | null;
+      question_scope: string | null | undefined;
+      explanation: string | null;
+      selected_option: PracticeAnswer['selectedOption'];
+      correct_option: PracticeAnswer['question']['correctOption'];
+      is_correct: boolean;
+      answered_at: string;
+      response_time_ms: number | null;
+      time_to_first_selection_ms: number | null;
+      changed_answer: boolean;
+      error_type_inferred: string | null;
+    }
+  >();
+
+  for (const answer of answers) {
+    const questionId = String(answer.question.id ?? '').trim();
+    if (!questionId) continue;
+
+    attemptsByQuestionId.set(questionId, {
+      question_id: questionId,
+      question_number: answer.question.number,
+      statement: answer.question.statement,
+      category: answer.question.category,
+      question_scope: answer.question.questionScope,
+      explanation: answer.question.explanation,
+      selected_option: answer.selectedOption,
+      correct_option: answer.question.correctOption,
+      is_correct: answer.isCorrect,
+      answered_at: answer.answeredAt,
+      response_time_ms: answer.responseTimeMs,
+      time_to_first_selection_ms: answer.timeToFirstSelectionMs,
+      changed_answer: answer.changedAnswer,
+      error_type_inferred: answer.errorTypeInferred
+    });
+  }
+
+  return [...attemptsByQuestionId.values()];
+};
+
 export const getMyPracticeState = async (
   curriculum = DEFAULT_CURRICULUM
 ): Promise<CloudPracticeState> => {
@@ -116,9 +162,17 @@ export const recordPracticeSessionInCloud = async (
   answers: PracticeAnswer[],
   curriculum = DEFAULT_CURRICULUM
 ) => {
+  const attemptPayloads = buildAttemptPayloads(answers);
+  const uniqueSessionQuestionCount = new Set(
+    session.questions
+      .map((question) => String(question.id ?? '').trim())
+      .filter(Boolean)
+  ).size;
   const finishedAt = new Date().toISOString();
   const totalQuestions =
-    session.mode === 'simulacro' ? session.questions.length : answers.length;
+    session.mode === 'simulacro'
+      ? uniqueSessionQuestionCount
+      : attemptPayloads.length;
 
   const { error } = await supabase.schema('app').rpc('record_practice_session', {
     p_session_id: session.id,
@@ -127,27 +181,13 @@ export const recordPracticeSessionInCloud = async (
     p_title: session.title,
     p_started_at: session.startedAt,
     p_finished_at: finishedAt,
-    p_score: answers.filter((answer) => answer.isCorrect).length,
+    p_score: attemptPayloads.filter((attempt) => attempt.is_correct).length,
     p_total: totalQuestions,
     p_batch_number: session.batchNumber || null,
-    p_batch_size: session.questions.length,
+    p_batch_size: uniqueSessionQuestionCount,
     p_batch_start_index: session.batchStartIndex,
     p_next_standard_batch_start_index: session.nextStandardBatchStartIndex ?? 0,
-    p_attempts: answers.map((answer) => ({
-      question_id: answer.question.id,
-      question_number: answer.question.number,
-      statement: answer.question.statement,
-      category: answer.question.category,
-      explanation: answer.question.explanation,
-      selected_option: answer.selectedOption,
-      correct_option: answer.question.correctOption,
-      is_correct: answer.isCorrect,
-      answered_at: answer.answeredAt,
-      response_time_ms: answer.responseTimeMs,
-      time_to_first_selection_ms: answer.timeToFirstSelectionMs,
-      changed_answer: answer.changedAnswer,
-      error_type_inferred: answer.errorTypeInferred
-    }))
+    p_attempts: attemptPayloads
   });
 
   if (error) {

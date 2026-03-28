@@ -9,6 +9,8 @@ import QuestionExplanation from './QuestionExplanation';
 import { PracticeAnswer } from '../practiceTypes';
 import { getSessionPresentation } from '../sessionPresentation';
 
+type ReviewFilter = 'incorrect' | 'all';
+
 type PracticeReviewScreenProps = {
   answers: PracticeAnswer[];
   batchNumber: number;
@@ -191,13 +193,44 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
     overconfidenceScore,
     hasNextBatch
   });
+  const scoreSurfaceClass =
+    percentage >= 85
+      ? 'border-emerald-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(236,253,245,0.94))] shadow-[0_24px_48px_-34px_rgba(16,185,129,0.24)]'
+      : percentage >= 70
+        ? 'border-sky-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(239,246,255,0.94))] shadow-[0_24px_48px_-34px_rgba(125,182,232,0.22)]'
+        : percentage >= 55
+          ? 'border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.94))] shadow-[0_24px_48px_-34px_rgba(245,158,11,0.2)]'
+          : 'border-rose-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.94))] shadow-[0_24px_48px_-34px_rgba(244,63,94,0.2)]';
+  const resultBandClass =
+    percentage >= 85
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      : percentage >= 70
+        ? 'border-sky-200 bg-sky-50 text-sky-700'
+        : percentage >= 55
+          ? 'border-amber-200 bg-amber-50 text-amber-700'
+          : 'border-rose-200 bg-rose-50 text-rose-700';
+  const nextStepSurfaceClass =
+    unansweredCount > 0
+      ? 'border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.94))]'
+      : overconfidenceScore >= 0.4
+        ? 'border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.94))]'
+        : fatigueScore >= 0.45
+          ? 'border-sky-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(239,246,255,0.94))]'
+          : 'border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.94))]';
   const simplifiedHeroHeadline =
     batchNumber >= totalBatches ? 'Prueba completada' : `Bloque ${batchNumber} completado`;
   const simplifiedReviewHint = hasNextBatch
     ? 'Revisa este bloque y, si quieres, abre el siguiente.'
     : 'Revisa tus respuestas y cierra la prueba cuando termines.';
+  const reviewEntries = answers.map((answer, index) => ({ answer, reviewIndex: index }));
+  const incorrectEntries = reviewEntries.filter(({ answer }) => !answer.isCorrect);
+  const incorrectCount = incorrectEntries.length;
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>(
+    incorrectCount > 0 ? 'incorrect' : 'all'
+  );
   const [isDockVisible, setIsDockVisible] = useState(true);
   const hideDockTimeoutRef = useRef<number | null>(null);
+  const visibleEntries = reviewFilter === 'incorrect' ? incorrectEntries : reviewEntries;
 
   useEffect(() => {
     const clearHideTimeout = () => {
@@ -227,82 +260,103 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    setReviewFilter(incorrectCount > 0 ? 'incorrect' : 'all');
+  }, [incorrectCount, batchNumber, totalBatches, sessionStartedAt]);
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-0 py-3 pb-32 sm:px-2 sm:pb-32 lg:px-4">
-      <section className="relative overflow-hidden rounded-[1.5rem] border border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-3.5 text-white shadow-[0_28px_60px_-34px_rgba(141,147,242,0.24)] backdrop-blur sm:rounded-[1.6rem] sm:p-5">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-white/16 blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_42%)]" />
+      <section className="space-y-3.5">
+        <div className="relative overflow-hidden rounded-[1.4rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] p-4 shadow-[0_24px_56px_-36px_rgba(141,147,242,0.2)] backdrop-blur">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_24%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_42%)]" />
+          <div className="relative min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-[#d7e4fb] bg-white/90 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
+                {simplified ? 'Revision' : sessionPresentation.eyebrow}
+              </span>
+              {!simplified ? (
+                <span
+                  className={`rounded-full border px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] ${resultBandClass}`}
+                >
+                  {reviewClosure.resultBand}
+                </span>
+              ) : null}
+            </div>
+            <h2 className="mt-2 text-[1.34rem] font-black leading-[0.98] tracking-[-0.04em] text-slate-950 sm:text-[1.72rem]">
+              {simplified ? simplifiedHeroHeadline : reviewClosure.outcomeHeadline}
+            </h2>
+            <p className="mt-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+              {title || `Bloque ${batchNumber} de ${totalBatches}`}
+            </p>
+          </div>
         </div>
 
-        <div className="relative flex flex-col gap-3">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:items-end sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-sky-50/82 sm:text-[10px] sm:tracking-[0.2em]">
-                {simplified ? 'Revision' : sessionPresentation.eyebrow}
-              </p>
-              <h2 className="mt-1 text-[1.28rem] font-black leading-[0.98] tracking-[-0.03em] text-white sm:mt-1.5 sm:text-[1.9rem]">
-                {simplified ? simplifiedHeroHeadline : reviewClosure.outcomeHeadline}
-              </h2>
-              <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-sky-50/74 sm:mt-1.5 sm:text-[11px] sm:tracking-[0.16em]">
-                {title || `Bloque ${batchNumber} de ${totalBatches}`}
-              </p>
-              <p className="mt-1.5 text-[13px] font-semibold text-sky-50/84 sm:mt-2 sm:text-sm">
-                {simplified ? simplifiedReviewHint : reviewClosure.nextFocus}
-              </p>
-            </div>
-
-            <div className="self-start rounded-[1rem] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08))] px-3 py-2.5 text-left shadow-[0_20px_40px_-30px_rgba(141,147,242,0.28)] backdrop-blur-[10px] sm:min-w-[11rem] sm:rounded-[1.15rem] sm:px-4 sm:py-3 sm:text-center">
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-sky-50/78 sm:text-[10px] sm:tracking-[0.18em]">
+        <div className="grid gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div
+              className={`rounded-[1.2rem] border px-3.5 py-3.5 shadow-[0_18px_34px_-28px_rgba(15,23,42,0.14)] ${scoreSurfaceClass}`}
+            >
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
                 Resultado
               </p>
-              <p className="mt-1 text-[2.1rem] font-black leading-none text-white sm:mt-1.5 sm:text-[2.5rem]">
+              <p className="mt-2 text-[2rem] font-black leading-none tracking-[-0.04em] text-slate-950 sm:text-[2.35rem]">
                 {score}
-                <span className="text-base text-white/60 sm:text-xl"> / {totalQuestions}</span>
+                <span className="text-[1rem] text-slate-400 sm:text-[1.2rem]"> / {totalQuestions}</span>
               </p>
-              <p className="mt-0.5 text-[11px] font-bold text-sky-50/78 sm:mt-1 sm:text-xs">
-                {percentage}% de acierto
+              <p className="mt-1 text-[12px] font-bold text-slate-500">{percentage}% de acierto</p>
+            </div>
+
+            <div
+              className={`rounded-[1.2rem] border px-3.5 py-3.5 shadow-[0_18px_34px_-28px_rgba(15,23,42,0.14)] ${nextStepSurfaceClass}`}
+            >
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                {simplified ? 'Siguiente' : 'Ahora'}
               </p>
+              <p className="mt-2 text-[1rem] font-black leading-[1.06] text-slate-950 sm:text-[1.08rem]">
+                {simplified ? simplifiedReviewHint : reviewClosure.nextFocus}
+              </p>
+              {!simplified ? (
+                <p className="mt-1.5 text-[12px] font-semibold leading-5 text-slate-500 sm:text-[13px]">
+                  {reviewClosure.outcomeSummary}
+                </p>
+              ) : null}
             </div>
           </div>
 
           {!simplified ? (
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-[repeat(3,minmax(0,1fr))_auto] sm:gap-2">
-              <div className="rounded-[0.95rem] border border-white/14 bg-white/10 px-2.5 py-2 backdrop-blur-sm sm:rounded-[1rem] sm:px-3 sm:py-2.5">
-                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-sky-50/68 sm:text-[9px] sm:tracking-[0.16em]">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-3 py-2.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
+                <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
                   Cierre
                 </p>
-                <p className="mt-0.5 text-[13px] font-black text-white sm:mt-1 sm:text-sm">
+                <p className="mt-1.5 text-[1rem] font-black leading-none text-slate-950">
                   {answeredCount}/{totalQuestions}
                 </p>
-                <p className="mt-0.5 text-[10px] font-semibold text-sky-50/68 sm:text-[11px]">
-                  {unansweredCount > 0 ? `${unansweredCount} sin responder` : 'sin huecos'}
+                <p className="mt-1 text-[10px] font-semibold text-slate-400">
+                  {unansweredCount > 0 ? `${unansweredCount} sin responder` : 'Sin huecos'}
                 </p>
               </div>
-              <div className="rounded-[0.95rem] border border-white/14 bg-white/10 px-2.5 py-2 backdrop-blur-sm sm:rounded-[1rem] sm:px-3 sm:py-2.5">
-                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-sky-50/68 sm:text-[9px] sm:tracking-[0.16em]">
+
+              <div className="rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-3 py-2.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
+                <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
                   Senal
                 </p>
-                <p className="mt-0.5 text-[13px] font-black text-white sm:mt-1 sm:text-sm">
+                <p className="mt-1.5 text-[13px] font-black leading-4 text-slate-950">
                   {primarySignalLabel}
                 </p>
-                <p className="mt-0.5 text-[10px] font-semibold text-sky-50/68 sm:text-[11px]">
-                  {reviewClosure.nextFocus}
-                </p>
+                <p className="mt-1 text-[10px] font-semibold text-slate-400">Lectura de sesion</p>
               </div>
-              <div className="rounded-[0.95rem] border border-white/14 bg-white/10 px-2.5 py-2 backdrop-blur-sm sm:rounded-[1rem] sm:px-3 sm:py-2.5">
-                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-sky-50/68 sm:text-[9px] sm:tracking-[0.16em]">
+
+              <div className="rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-3 py-2.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
+                <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
                   Tiempo
                 </p>
-                <p className="mt-0.5 text-[13px] font-black text-white sm:mt-1 sm:text-sm">
+                <p className="mt-1.5 text-[1rem] font-black leading-none text-slate-950">
                   {resolvedTimeLabel ?? '--'}
                 </p>
-                <p className="mt-0.5 text-[10px] font-semibold text-sky-50/68 sm:text-[11px]">
-                  {timeLimitLabel ? 'con limite' : 'sin cronometro'}
+                <p className="mt-1 text-[10px] font-semibold text-slate-400">
+                  {timeLimitLabel ? 'Con limite' : 'Sin crono'}
                 </p>
-              </div>
-              <div className="col-span-2 inline-flex min-h-[2.3rem] items-center justify-center rounded-full border border-white/14 bg-white/10 px-3 py-2 text-[9px] font-extrabold uppercase tracking-[0.14em] text-white/82 sm:col-span-1 sm:min-h-0 sm:text-[10px] sm:tracking-[0.16em]">
-                {reviewClosure.resultBand}
               </div>
             </div>
           ) : null}
@@ -310,7 +364,50 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
       </section>
 
       <section className="space-y-2.5">
-        {answers.map((answer, index) => {
+        <div className="rounded-[1.25rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] px-3.5 py-3 shadow-[0_20px_46px_-34px_rgba(141,147,242,0.16)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                Revision
+              </p>
+              <p className="mt-1 text-[0.95rem] font-black leading-5 text-slate-950">
+                {reviewFilter === 'incorrect' ? 'Solo fallos' : 'Todas las respuestas'}
+              </p>
+            </div>
+            <div className="inline-flex rounded-full border border-[#d7e4fb] bg-white/90 p-1 shadow-[0_12px_24px_-22px_rgba(141,147,242,0.16)]">
+              <button
+                type="button"
+                onClick={() => setReviewFilter('incorrect')}
+                disabled={incorrectCount === 0}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] transition-all duration-200 ${
+                  reviewFilter === 'incorrect'
+                    ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
+                    : 'text-slate-500 hover:bg-sky-50/80'
+                } ${incorrectCount === 0 ? 'cursor-not-allowed opacity-45 hover:bg-transparent' : ''}`}
+              >
+                Incorrectas
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewFilter('all')}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] transition-all duration-200 ${
+                  reviewFilter === 'all'
+                    ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
+                    : 'text-slate-500 hover:bg-sky-50/80'
+                }`}
+              >
+                Todas
+              </button>
+            </div>
+          </div>
+          <p className="mt-2 text-[12px] font-semibold text-slate-500">
+            {reviewFilter === 'incorrect'
+              ? `${incorrectCount} fallo${incorrectCount === 1 ? '' : 's'} para revisar`
+              : `${answers.length} respuesta${answers.length === 1 ? '' : 's'} resuelta${answers.length === 1 ? '' : 's'}`}
+          </p>
+        </div>
+
+        {visibleEntries.map(({ answer, reviewIndex }) => {
           const selectedKey = answer.selectedOption;
           const correctKey = answer.question.correctOption;
           const selectedText = selectedKey ? answer.question.options[selectedKey] : null;
@@ -318,7 +415,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
 
           return (
             <article
-              key={`${answer.question.id}-${index}`}
+              key={`${answer.question.id}-${reviewIndex}`}
               className="overflow-hidden rounded-[1.25rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.92))] p-3.5 shadow-[0_20px_46px_-36px_rgba(141,147,242,0.16)] backdrop-blur"
             >
               <div className="flex flex-col gap-2.5">
@@ -326,7 +423,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                   <div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.18))] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
-                        Pregunta {index + 1}
+                        Pregunta {reviewIndex + 1}
                       </span>
                       {answer.question.category && (
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">

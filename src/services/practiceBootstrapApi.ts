@@ -1,7 +1,11 @@
 import type { AccountIdentity } from './accountApi';
 import { getMyAccountIdentity } from './accountApi';
 import { DEFAULT_CURRICULUM, WEAK_QUESTIONS_LIMIT } from '../practiceConfig';
-import type { CloudPracticeState, WeakQuestionInsight } from '../practiceTypes';
+import type {
+  CloudPracticeState,
+  PracticeQuestionScopeFilter,
+  WeakQuestionInsight
+} from '../practiceTypes';
 import { getPracticeCatalogSummary, getWeakPracticeInsights } from './preguntasApi';
 import { getMyPracticeState } from './practiceCloudApi';
 
@@ -24,14 +28,15 @@ export const createEmptyPracticeState = (): CloudPracticeState => ({
 });
 
 export const loadPracticeBootstrap = async (
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ): Promise<PracticeBootstrap> => {
   const [identityResult, practiceResult, catalogResult, weakQuestionsResult] =
     await Promise.allSettled([
       getMyAccountIdentity(),
       getMyPracticeState(curriculum),
-      getPracticeCatalogSummary(curriculum),
-      getWeakPracticeInsights(curriculum, WEAK_QUESTIONS_LIMIT)
+      getPracticeCatalogSummary(curriculum, questionScope),
+      getWeakPracticeInsights(curriculum, WEAK_QUESTIONS_LIMIT, questionScope)
     ]);
 
   if (identityResult.status === 'rejected') {
@@ -64,11 +69,12 @@ export const loadPracticeBootstrap = async (
 };
 
 export const refreshPracticeAfterSession = async (
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ) => {
   const [practiceState, weakQuestions] = await Promise.all([
     getMyPracticeState(curriculum),
-    getWeakPracticeInsights(curriculum, WEAK_QUESTIONS_LIMIT)
+    getWeakPracticeInsights(curriculum, WEAK_QUESTIONS_LIMIT, questionScope)
   ]);
 
   return {

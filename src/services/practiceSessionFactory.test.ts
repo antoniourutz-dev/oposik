@@ -76,6 +76,16 @@ describe('practiceSessionFactory', () => {
     });
   });
 
+  it('deduplica preguntas repetidas dentro de una sesion', () => {
+    const session = buildRandomPracticeSession([
+      buildQuestion('q1'),
+      buildQuestion('q1'),
+      buildQuestion('q2')
+    ]);
+
+    expect(session?.questions.map((question) => question.id)).toEqual(['q1', 'q2']);
+  });
+
   it('crea bloques de invitado con continuidad limitada', () => {
     const session = buildGuestPracticeSession({
       questions: [buildQuestion('q1'), buildQuestion('q2')],

@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Brain,
-  ChartNoAxesColumn,
   KeyRound,
   Layers3,
   LoaderCircle,
@@ -20,15 +18,20 @@ import {
   adminCreateUser,
   adminDeleteUser,
   adminResetPracticeProgress,
+  adminSetUserPlayerMode,
   adminSetUserPassword,
   getAdminPracticeProfile,
   getAdminRecentPracticeSessions,
   getAdminUsers,
   getAdminWeakPracticeQuestions
 } from '../services/adminApi';
+import type { AccountPlayerMode } from '../services/accountApi';
 import QuestionExplanation from './QuestionExplanation';
 import { DEFAULT_CURRICULUM, PRACTICE_BATCH_SIZE } from '../practiceConfig';
 import { PracticeSessionSummary } from '../practiceTypes';
+
+const formatPlayerModeLabel = (value: AccountPlayerMode) =>
+  value === 'generic' ? 'Generico' : 'Avanzado';
 
 const formatDate = (value: string | null) => {
   if (!value) return 'Sin datos';
@@ -108,11 +111,14 @@ const AdminConsoleScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [createUsername, setCreateUsername] = useState('');
   const [createPassword, setCreatePassword] = useState('');
+  const [createPlayerMode, setCreatePlayerMode] = useState<AccountPlayerMode>('advanced');
   const [editUsername, setEditUsername] = useState('');
   const [editPassword, setEditPassword] = useState('');
+  const [editPlayerMode, setEditPlayerMode] = useState<AccountPlayerMode>('advanced');
   const [creating, setCreating] = useState(false);
   const [savingUsername, setSavingUsername] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [savingPlayerMode, setSavingPlayerMode] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [resettingProgress, setResettingProgress] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -193,7 +199,8 @@ const AdminConsoleScreen: React.FC = () => {
   useEffect(() => {
     setEditUsername(selectedUser?.current_username ?? '');
     setEditPassword('');
-  }, [selectedUser?.user_id, selectedUser?.current_username]);
+    setEditPlayerMode(selectedUser?.player_mode ?? 'advanced');
+  }, [selectedUser?.current_username, selectedUser?.player_mode, selectedUser?.user_id]);
 
   const handleCreateUser = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -204,10 +211,13 @@ const AdminConsoleScreen: React.FC = () => {
     setNotice(null);
 
     try {
-      const created = await adminCreateUser(createUsername, createPassword);
+      const created = await adminCreateUser(createUsername, createPassword, createPlayerMode);
       setCreateUsername('');
       setCreatePassword('');
-      setNotice(`Usuario ${created.current_username} creado correctamente.`);
+      setCreatePlayerMode('advanced');
+      setNotice(
+        `Usuario ${created.current_username} creado correctamente en modo ${formatPlayerModeLabel(created.player_mode).toLowerCase()}.`
+      );
       await loadUsers('', created.user_id);
     } catch (createError) {
       setError(
@@ -341,6 +351,34 @@ const AdminConsoleScreen: React.FC = () => {
     }
   };
 
+  const handleSetPlayerMode = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedUser || selectedUser.is_admin) return;
+    if (editPlayerMode === selectedUser.player_mode) return;
+
+    setSavingPlayerMode(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const updated = await adminSetUserPlayerMode(selectedUser.user_id, editPlayerMode);
+      await loadUsers(search, selectedUser.user_id);
+      await loadUserDetail(selectedUser.user_id);
+      setEditPlayerMode(updated.player_mode);
+      setNotice(
+        `Modo actualizado a ${formatPlayerModeLabel(updated.player_mode).toLowerCase()} para ${updated.current_username ?? selectedUser.user_id}.`
+      );
+    } catch (modeError) {
+      setError(
+        modeError instanceof Error
+          ? modeError.message
+          : 'No se ha podido actualizar el modo del alumno.'
+      );
+    } finally {
+      setSavingPlayerMode(false);
+    }
+  };
+
   const nextBatchNumber =
     Math.floor((profile?.next_standard_batch_start_index ?? 0) / PRACTICE_BATCH_SIZE) + 1;
 
@@ -384,6 +422,14 @@ const AdminConsoleScreen: React.FC = () => {
                 type="text"
                 className="w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
               />
+              <select
+                value={createPlayerMode}
+                onChange={(event) => setCreatePlayerMode(event.target.value as AccountPlayerMode)}
+                className="w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+              >
+                <option value="advanced">Modo avanzado</option>
+                <option value="generic">Modo generico</option>
+              </select>
               <button
                 type="submit"
                 disabled={creating || !createUsername.trim() || !createPassword.trim()}
@@ -469,11 +515,16 @@ const AdminConsoleScreen: React.FC = () => {
                       {entry.total_sessions} sesiones · {entry.accuracy}% acierto
                     </p>
                   </div>
-                  {entry.is_admin ? (
-                    <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
-                      admin
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    {entry.is_admin ? (
+                      <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
+                        admin
+                      </span>
+                    ) : null}
+                    <span className="rounded-full border border-slate-200 bg-white/85 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
+                      {formatPlayerModeLabel(entry.player_mode)}
                     </span>
-                  ) : null}
+                  </div>
                 </div>
               </button>
             ))
@@ -518,7 +569,9 @@ const AdminConsoleScreen: React.FC = () => {
                   </div>
                 </div>
                 <span className="inline-flex w-fit items-center rounded-full border border-white/20 bg-white/12 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/86 backdrop-blur-sm">
-                  {selectedUser.is_admin ? 'Admin' : 'Alumno'}
+                  {selectedUser.is_admin
+                    ? 'Admin'
+                    : `Alumno ${formatPlayerModeLabel(selectedUser.player_mode)}`}
                 </span>
               </div>
             </div>
@@ -540,8 +593,8 @@ const AdminConsoleScreen: React.FC = () => {
             </div>
 
             <AdminDisclosure
-              title="Credenciales"
-              hint="Editar nombre de acceso y contrasena del alumno."
+              title="Acceso y modo"
+              hint="Editar nombre de acceso, contrasena y nivel de interfaz."
               defaultOpen
             >
               {selectedUser.is_admin ? (
@@ -549,73 +602,110 @@ const AdminConsoleScreen: React.FC = () => {
                   Las cuentas admin no se editan desde este panel.
                 </div>
               ) : (
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="grid gap-3">
                   <form
-                    onSubmit={handleChangeUsername}
+                    onSubmit={handleSetPlayerMode}
                     className="rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] p-4 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
                   >
                     <div className="flex items-center gap-2">
-                      <PencilLine size={16} className="text-sky-600" />
-                      <p className="text-sm font-extrabold text-slate-950">Cambiar usuario</p>
+                      <Layers3 size={16} className="text-sky-600" />
+                      <p className="text-sm font-extrabold text-slate-950">Modo de alumno</p>
                     </div>
                     <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                      Este sera el nombre que el alumno use para entrar en la app.
+                      Generico reduce menus y mensajes. Avanzado mantiene el panel completo.
                     </p>
-                    <input
-                      value={editUsername}
-                      onChange={(event) => setEditUsername(event.target.value)}
-                      placeholder="Nuevo usuario"
-                      className="mt-3 w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                    />
-                    <button
-                      type="submit"
-                      disabled={
-                        savingUsername ||
-                        !editUsername.trim() ||
-                        editUsername.trim() === (selectedUser.current_username ?? '')
-                      }
-                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
-                    >
-                      {savingUsername ? (
-                        <LoaderCircle size={16} className="animate-spin" />
-                      ) : (
-                        <PencilLine size={16} />
-                      )}
-                      Guardar usuario
-                    </button>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                      <select
+                        value={editPlayerMode}
+                        onChange={(event) => setEditPlayerMode(event.target.value as AccountPlayerMode)}
+                        className="w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                      >
+                        <option value="advanced">Modo avanzado</option>
+                        <option value="generic">Modo generico</option>
+                      </select>
+                      <button
+                        type="submit"
+                        disabled={savingPlayerMode || editPlayerMode === selectedUser.player_mode}
+                        className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                      >
+                        {savingPlayerMode ? (
+                          <LoaderCircle size={16} className="animate-spin" />
+                        ) : (
+                          <Layers3 size={16} />
+                        )}
+                        Guardar modo
+                      </button>
+                    </div>
                   </form>
 
-                  <form
-                    onSubmit={handleSetPassword}
-                    className="rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] p-4 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <KeyRound size={16} className="text-sky-600" />
-                      <p className="text-sm font-extrabold text-slate-950">Cambiar contrasena</p>
-                    </div>
-                    <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                      La contrasena se aplica al mismo acceso por usuario.
-                    </p>
-                    <input
-                      value={editPassword}
-                      onChange={(event) => setEditPassword(event.target.value)}
-                      placeholder="Nueva contrasena"
-                      type="password"
-                      className="mt-3 w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                    />
-                    <button
-                      type="submit"
-                      disabled={savingPassword || !editPassword.trim()}
-                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <form
+                      onSubmit={handleChangeUsername}
+                      className="rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] p-4 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
                     >
-                      {savingPassword ? (
-                        <LoaderCircle size={16} className="animate-spin" />
-                      ) : (
-                        <KeyRound size={16} />
-                      )}
-                      Guardar contrasena
-                    </button>
-                  </form>
+                      <div className="flex items-center gap-2">
+                        <PencilLine size={16} className="text-sky-600" />
+                        <p className="text-sm font-extrabold text-slate-950">Cambiar usuario</p>
+                      </div>
+                      <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                        Este sera el nombre que el alumno use para entrar en la app.
+                      </p>
+                      <input
+                        value={editUsername}
+                        onChange={(event) => setEditUsername(event.target.value)}
+                        placeholder="Nuevo usuario"
+                        className="mt-3 w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                      />
+                      <button
+                        type="submit"
+                        disabled={
+                          savingUsername ||
+                          !editUsername.trim() ||
+                          editUsername.trim() === (selectedUser.current_username ?? '')
+                        }
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                      >
+                        {savingUsername ? (
+                          <LoaderCircle size={16} className="animate-spin" />
+                        ) : (
+                          <PencilLine size={16} />
+                        )}
+                        Guardar usuario
+                      </button>
+                    </form>
+
+                    <form
+                      onSubmit={handleSetPassword}
+                      className="rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] p-4 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
+                    >
+                      <div className="flex items-center gap-2">
+                        <KeyRound size={16} className="text-sky-600" />
+                        <p className="text-sm font-extrabold text-slate-950">Cambiar contrasena</p>
+                      </div>
+                      <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                        La contrasena se aplica al mismo acceso por usuario.
+                      </p>
+                      <input
+                        value={editPassword}
+                        onChange={(event) => setEditPassword(event.target.value)}
+                        placeholder="Nueva contrasena"
+                        type="password"
+                        className="mt-3 w-full rounded-[1rem] border border-white/85 bg-white/95 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                      />
+                      <button
+                        type="submit"
+                        disabled={savingPassword || !editPassword.trim()}
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                      >
+                        {savingPassword ? (
+                          <LoaderCircle size={16} className="animate-spin" />
+                        ) : (
+                          <KeyRound size={16} />
+                        )}
+                        Guardar contrasena
+                      </button>
+                    </form>
+                  </div>
                 </div>
               )}
             </AdminDisclosure>

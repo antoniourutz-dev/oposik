@@ -5,6 +5,7 @@ type CreateUserPayload = {
   action: 'create_user';
   username?: string;
   password?: string;
+  playerMode?: string;
 };
 
 type DeleteUserPayload = {
@@ -32,15 +33,24 @@ type ChangeUserUsernamePayload = {
   requestId?: string | null;
 };
 
+type SetUserPlayerModePayload = {
+  action: 'set_user_player_mode';
+  userId?: string;
+  playerMode?: string;
+};
+
 type RequestPayload =
   | CreateUserPayload
   | DeleteUserPayload
   | ResetPracticeProgressPayload
   | SetUserPasswordPayload
-  | ChangeUserUsernamePayload;
+  | ChangeUserUsernamePayload
+  | SetUserPlayerModePayload;
 
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9_]{1,30}[a-z0-9])?$/;
 const MIN_PASSWORD_LENGTH = 3;
+const VALID_PLAYER_MODES = ['advanced', 'generic'] as const;
+type PlayerMode = (typeof VALID_PLAYER_MODES)[number];
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
@@ -59,6 +69,12 @@ const jsonResponse = (status: number, body: Record<string, unknown>) =>
 const normalizeUsername = (value: string) => value.trim().toLowerCase();
 const isValidUsername = (value: string) => USERNAME_RE.test(normalizeUsername(value));
 const buildInternalEmail = (username: string) => `${username}@oposik.app`;
+const parsePlayerMode = (value: unknown): PlayerMode | null => {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return VALID_PLAYER_MODES.includes(normalized as PlayerMode)
+    ? (normalized as PlayerMode)
+    : null;
+};
 
 const getActorClient = (authorizationHeader: string) =>
   createClient(supabaseUrl, supabaseAnonKey, {
@@ -219,6 +235,7 @@ const createUser = async (
 ) => {
   const username = normalizeUsername(String(payload.username ?? ''));
   const password = String(payload.password ?? '');
+  const playerMode = parsePlayerMode(payload.playerMode ?? 'advanced');
 
   if (!isValidUsername(username)) {
     return jsonResponse(400, {
@@ -229,6 +246,12 @@ const createUser = async (
   if (password.length < MIN_PASSWORD_LENGTH) {
     return jsonResponse(400, {
       message: 'La contrasena debe tener al menos 3 caracteres.'
+    });
+  }
+
+  if (!playerMode) {
+    return jsonResponse(400, {
+      message: 'El modo de jugador no es valido.'
     });
   }
 
@@ -291,11 +314,33 @@ const createUser = async (
     );
   }
 
+  if (playerMode === 'generic') {
+    const { data: playerModeResult, error: playerModeError } = await actorClient
+      .schema('app')
+      .rpc('admin_set_user_player_mode', {
+        p_user_id: createdUser.id,
+        p_player_mode: playerMode
+      })
+      .maybeSingle<{
+        out_user_id: string;
+        out_player_mode: string;
+      }>();
+
+    if (playerModeError || !playerModeResult) {
+      await cleanupCreatedUser(createdUser.id);
+      return jsonResponse(400, {
+        message:
+          playerModeError?.message || 'No se ha podido asignar el modo de jugador a la cuenta nueva.'
+      });
+    }
+  }
+
   return jsonResponse(200, {
     user_id: usernameChange.out_user_id,
     current_username: usernameChange.out_new_username,
     auth_email: createdUser.email,
-    created_at: createdUser.created_at
+    created_at: createdUser.created_at,
+    player_mode: playerMode
   });
 };
 
@@ -611,6 +656,72 @@ const changeUserUsername = async (
   });
 };
 
+const setUserPlayerMode = async (
+  actorId: string,
+  actorClient: ReturnType<typeof getActorClient>,
+  payload: SetUserPlayerModePayload
+) => {
+  const userId = String(payload.userId ?? '').trim();
+  const playerMode = parsePlayerMode(payload.playerMode);
+
+  if (!userId) {
+    return jsonResponse(400, {
+      message: 'No se ha encontrado el usuario indicado.'
+    });
+  }
+
+  if (userId === actorId) {
+    return jsonResponse(400, {
+      message: 'No puedes cambiar tu propio modo desde el panel.'
+    });
+  }
+
+  if (!playerMode) {
+    return jsonResponse(400, {
+      message: 'El modo de jugador no es valido.'
+    });
+  }
+
+  const { data, error } = await actorClient
+    .schema('app')
+    .rpc('admin_set_user_player_mode', {
+      p_user_id: userId,
+      p_player_mode: playerMode
+    })
+    .maybeSingle<{
+      out_user_id: string;
+      out_current_username: string | null;
+      out_player_mode: string;
+      out_updated_at: string;
+    }>();
+
+  if (error || !data) {
+    const normalizedMessage = String(error?.message || '').toLowerCase();
+    return jsonResponse(
+      normalizedMessage.includes('target_user_not_found') ? 404 : 400,
+      {
+        message:
+          normalizedMessage.includes('target_user_not_found')
+            ? 'No se ha encontrado el usuario indicado.'
+            : normalizedMessage.includes('cannot_edit_admin_account')
+              ? 'Las cuentas admin no se pueden editar desde este panel.'
+              : normalizedMessage.includes('cannot_set_own_player_mode_from_admin')
+                ? 'No puedes cambiar tu propio modo desde el panel.'
+                : normalizedMessage.includes('invalid_player_mode')
+                  ? 'El modo de jugador no es valido.'
+                  : error?.message || 'No se ha podido actualizar el modo del alumno.'
+      }
+    );
+  }
+
+  return jsonResponse(200, {
+    user_id: data.out_user_id,
+    current_username: data.out_current_username ?? null,
+    player_mode: data.out_player_mode,
+    updated_at: data.out_updated_at
+  });
+};
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -648,6 +759,10 @@ Deno.serve(async (request) => {
 
     if (payload.action === 'change_user_username') {
       return await changeUserUsername(user.id, actorClient, payload);
+    }
+
+    if (payload.action === 'set_user_player_mode') {
+      return await setUserPlayerMode(user.id, actorClient, payload);
     }
 
     return jsonResponse(400, { message: 'Accion no valida.' });

@@ -9,6 +9,7 @@ import {
 } from '../practiceTypes';
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { mapAccountApiError } from './accountApi';
+import { normalizeQuestionScope } from '../utils/practiceQuestionScope';
 
 const toNullableString = (value: unknown) => {
   const normalized = String(value ?? '').trim();
@@ -113,6 +114,7 @@ export const mapQuestionStat = (value: Record<string, unknown>): PracticeQuestio
   questionNumber: value.question_number === null || value.question_number === undefined ? null : toNumber(value.question_number, 0),
   statement: String(value.statement ?? value.question_statement ?? ''),
   category: toNullableString(value.category),
+  questionScope: normalizeQuestionScope(value.question_scope ?? value.questionScope),
   explanation: toNullableString(value.explanation),
   editorialExplanation: toNullableString(
     value.editorial_explanation ??

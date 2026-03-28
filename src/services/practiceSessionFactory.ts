@@ -4,27 +4,49 @@ import {
 } from '../practiceConfig';
 import {
   ActivePracticeSession,
+  PracticeQuestionScopeFilter,
   PracticeQuestion,
   WeakQuestionInsight
 } from '../practiceTypes';
+import { getQuestionScopeHint, getQuestionScopeLabel } from '../utils/practiceQuestionScope';
 
 export const buildSessionId = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `session-${Date.now()}`;
 
+const dedupeQuestions = (questions: PracticeQuestion[]) => {
+  const seenIds = new Set<string>();
+  const nextQuestions: PracticeQuestion[] = [];
+
+  for (const question of questions) {
+    const questionId = String(question.id ?? '').trim();
+    if (!questionId || seenIds.has(questionId)) {
+      continue;
+    }
+
+    seenIds.add(questionId);
+    nextQuestions.push(question);
+  }
+
+  return nextQuestions;
+};
+
 export const buildStandardPracticeSession = ({
   batchStartIndex,
   questionsCount,
   questions,
+  questionScope = 'all',
   batchSize = PRACTICE_BATCH_SIZE
 }: {
   batchStartIndex: number;
   questionsCount: number;
   questions: PracticeQuestion[];
+  questionScope?: PracticeQuestionScopeFilter;
   batchSize?: number;
 }): ActivePracticeSession | null => {
-  if (questions.length === 0) return null;
+  const uniqueQuestions = dedupeQuestions(questions);
+  if (uniqueQuestions.length === 0) return null;
 
   const normalizedStartIndex =
     batchStartIndex >= 0 && batchStartIndex < questionsCount ? batchStartIndex : 0;
@@ -38,12 +60,13 @@ export const buildStandardPracticeSession = ({
     mode: 'standard',
     feedbackMode: 'immediate',
     title: `Bloque ${batchNumber} de ${totalBatches}`,
-    subtitle: 'Ruta principal de practica en bloques consecutivos.',
-    questions,
+    subtitle: `Ruta principal de ${getQuestionScopeHint(questionScope)}.`,
+    questions: uniqueQuestions,
     startedAt: new Date().toISOString(),
     timeLimitSeconds: null,
     batchNumber,
     totalBatches,
+    questionScope,
     batchStartIndex: normalizedStartIndex,
     continueLabel:
       nextBatchStartIndex > 0 ? 'Continuar con las siguientes 20' : 'Volver al panel',
@@ -53,22 +76,26 @@ export const buildStandardPracticeSession = ({
 
 export const buildWeakestPracticeSession = (
   weakQuestions: WeakQuestionInsight[],
+  questionScope: PracticeQuestionScopeFilter = 'all',
   batchSize = PRACTICE_BATCH_SIZE
 ): ActivePracticeSession | null => {
-  const questions = weakQuestions.map((item) => item.question).slice(0, batchSize);
+  const questions = dedupeQuestions(
+    weakQuestions.map((item) => item.question)
+  ).slice(0, batchSize);
   if (questions.length === 0) return null;
 
   return {
     id: buildSessionId(),
     mode: 'weakest',
     feedbackMode: 'immediate',
-    title: 'Repaso de preguntas mas falladas',
-    subtitle: 'Sesion enfocada en tus errores recurrentes.',
+    title: `Repaso ${getQuestionScopeLabel(questionScope).toLowerCase()}`,
+    subtitle: `Sesion enfocada en tus errores recurrentes de ${getQuestionScopeHint(questionScope)}.`,
     questions,
     startedAt: new Date().toISOString(),
     timeLimitSeconds: null,
     batchNumber: 1,
     totalBatches: 1,
+    questionScope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
     nextStandardBatchStartIndex: null
@@ -76,21 +103,27 @@ export const buildWeakestPracticeSession = (
 };
 
 export const buildRandomPracticeSession = (
-  questions: PracticeQuestion[]
+  questions: PracticeQuestion[],
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ): ActivePracticeSession | null => {
-  if (questions.length === 0) return null;
+  const uniqueQuestions = dedupeQuestions(questions);
+  if (uniqueQuestions.length === 0) return null;
 
   return {
     id: buildSessionId(),
     mode: 'random',
     feedbackMode: 'immediate',
-    title: 'Sesion aleatoria',
-    subtitle: 'Preguntas servidas en orden aleatorio.',
-    questions,
+    title:
+      questionScope === 'all'
+        ? 'Sesion aleatoria'
+        : `Sesion aleatoria - ${getQuestionScopeLabel(questionScope)}`,
+    subtitle: `Preguntas servidas en orden aleatorio de ${getQuestionScopeHint(questionScope)}.`,
+    questions: uniqueQuestions,
     startedAt: new Date().toISOString(),
     timeLimitSeconds: null,
     batchNumber: 1,
     totalBatches: 1,
+    questionScope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
     nextStandardBatchStartIndex: null
@@ -106,7 +139,8 @@ export const buildGuestPracticeSession = ({
   blockNumber: number;
   totalBlocks: number;
 }): ActivePracticeSession | null => {
-  if (questions.length === 0) return null;
+  const uniqueQuestions = dedupeQuestions(questions);
+  if (uniqueQuestions.length === 0) return null;
 
   const normalizedTotalBlocks = Math.max(1, totalBlocks);
   const normalizedBlockNumber = Math.min(
@@ -120,11 +154,12 @@ export const buildGuestPracticeSession = ({
     feedbackMode: 'immediate',
     title: `Bloque de prueba ${normalizedBlockNumber}/${normalizedTotalBlocks}`,
     subtitle: 'Acceso invitado con preguntas aleatorias del temario comun.',
-    questions,
+    questions: uniqueQuestions,
     startedAt: new Date().toISOString(),
     timeLimitSeconds: null,
     batchNumber: normalizedBlockNumber,
     totalBatches: normalizedTotalBlocks,
+    questionScope: 'common',
     batchStartIndex: null,
     continueLabel:
       normalizedBlockNumber < normalizedTotalBlocks ? 'Siguiente bloque' : 'Cerrar acceso',
@@ -133,21 +168,27 @@ export const buildGuestPracticeSession = ({
 };
 
 export const buildMixedPracticeSession = (
-  questions: PracticeQuestion[]
+  questions: PracticeQuestion[],
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ): ActivePracticeSession | null => {
-  if (questions.length === 0) return null;
+  const uniqueQuestions = dedupeQuestions(questions);
+  if (uniqueQuestions.length === 0) return null;
 
   return {
     id: buildSessionId(),
     mode: 'mixed',
     feedbackMode: 'immediate',
-    title: 'Sesion adaptativa',
-    subtitle: 'Repasos vencidos, fragiles y nuevas con prioridad inteligente.',
-    questions,
+    title:
+      questionScope === 'all'
+        ? 'Sesion adaptativa'
+        : `Sesion adaptativa - ${getQuestionScopeLabel(questionScope)}`,
+    subtitle: `Repasos vencidos, fragiles y nuevas con prioridad inteligente de ${getQuestionScopeHint(questionScope)}.`,
+    questions: uniqueQuestions,
     startedAt: new Date().toISOString(),
     timeLimitSeconds: null,
     batchNumber: 1,
     totalBatches: 1,
+    questionScope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
     nextStandardBatchStartIndex: null
@@ -155,21 +196,27 @@ export const buildMixedPracticeSession = (
 };
 
 export const buildAntiTrapPracticeSession = (
-  questions: PracticeQuestion[]
+  questions: PracticeQuestion[],
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ): ActivePracticeSession | null => {
-  if (questions.length === 0) return null;
+  const uniqueQuestions = dedupeQuestions(questions);
+  if (uniqueQuestions.length === 0) return null;
 
   return {
     id: buildSessionId(),
     mode: 'anti_trap',
     feedbackMode: 'immediate',
-    title: 'Entrenamiento anti-trampas',
-    subtitle: 'Negaciones, plazos, excepciones y distractores cercanos.',
-    questions,
+    title:
+      questionScope === 'all'
+        ? 'Anti-trampas'
+        : `Anti-trampas - ${getQuestionScopeLabel(questionScope)}`,
+    subtitle: `Negaciones, plazos, excepciones y distractores cercanos de ${getQuestionScopeHint(questionScope)}.`,
+    questions: uniqueQuestions,
     startedAt: new Date().toISOString(),
     timeLimitSeconds: null,
     batchNumber: 1,
     totalBatches: 1,
+    questionScope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
     nextStandardBatchStartIndex: null
@@ -178,21 +225,33 @@ export const buildAntiTrapPracticeSession = (
 
 export const buildSimulacroPracticeSession = (
   questions: PracticeQuestion[],
+  questionScopeOrTimeLimit: PracticeQuestionScopeFilter | number = 'all',
   timeLimitSeconds = SIMULACRO_TIME_LIMIT_SECONDS
 ): ActivePracticeSession | null => {
-  if (questions.length === 0) return null;
+  const questionScope =
+    typeof questionScopeOrTimeLimit === 'number' ? 'all' : questionScopeOrTimeLimit;
+  const resolvedTimeLimitSeconds =
+    typeof questionScopeOrTimeLimit === 'number'
+      ? questionScopeOrTimeLimit
+      : timeLimitSeconds;
+  const uniqueQuestions = dedupeQuestions(questions);
+  if (uniqueQuestions.length === 0) return null;
 
   return {
     id: buildSessionId(),
     mode: 'simulacro',
     feedbackMode: 'deferred',
-    title: 'Simulacro de examen',
-    subtitle: 'Sin correccion inmediata y con tiempo global.',
-    questions,
+    title:
+      questionScope === 'all'
+        ? 'Simulacro'
+        : `Simulacro - ${getQuestionScopeLabel(questionScope)}`,
+    subtitle: `Sin correccion inmediata y con tiempo global sobre ${getQuestionScopeHint(questionScope)}.`,
+    questions: uniqueQuestions,
     startedAt: new Date().toISOString(),
-    timeLimitSeconds,
+    timeLimitSeconds: resolvedTimeLimitSeconds,
     batchNumber: 1,
     totalBatches: 1,
+    questionScope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
     nextStandardBatchStartIndex: null

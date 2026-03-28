@@ -3,11 +3,15 @@ import { supabase } from '../supabaseClient';
 import {
   PracticeCatalogSummary,
   PracticeQuestion,
+  PracticeQuestionScopeFilter,
   WeakQuestionInsight
 } from '../practiceTypes';
-import { mapQuestion, mapWeakQuestionInsight, readNumber } from './preguntasMappers';
+import { mapQuestion, readNumber } from './preguntasMappers';
+import { mapQuestionStat } from './practiceCloudMappers';
+import { filterQuestionsByScope } from '../utils/practiceQuestionScope';
 
 const QUESTIONS_PAGE_SIZE = 500;
+const WEAK_INSIGHTS_FALLBACK_LIMIT = 120;
 
 const mapQuestionPayloadRows = (rows: Array<Record<string, unknown>>) =>
   rows
@@ -33,7 +37,62 @@ const shuffleQuestions = (questions: PracticeQuestion[]) => {
   return nextQuestions;
 };
 
-const isMissingGuestRpcError = (error: { code?: string; message?: string; details?: string | null }) => {
+const takeUniqueQuestions = (
+  questions: PracticeQuestion[],
+  limit: number,
+  excludedIds = new Set<string>()
+) => {
+  const nextQuestions: PracticeQuestion[] = [];
+  const seenIds = new Set(excludedIds);
+
+  for (const question of questions) {
+    if (seenIds.has(question.id)) continue;
+    seenIds.add(question.id);
+    nextQuestions.push(question);
+
+    if (nextQuestions.length >= limit) {
+      break;
+    }
+  }
+
+  return nextQuestions;
+};
+
+const mapPayloadRowsWithScope = (
+  rows: Array<Record<string, unknown>>,
+  questionScope: PracticeQuestionScopeFilter
+) => filterQuestionsByScope(mapQuestionPayloadRows(rows), questionScope);
+
+const compareWeakInsights = (left: WeakQuestionInsight, right: WeakQuestionInsight) => {
+  const incorrectDelta = right.stat.incorrectAttempts - left.stat.incorrectAttempts;
+  if (incorrectDelta !== 0) {
+    return incorrectDelta;
+  }
+
+  const leftRatio =
+    left.stat.attempts > 0 ? left.stat.incorrectAttempts / left.stat.attempts : 0;
+  const rightRatio =
+    right.stat.attempts > 0 ? right.stat.incorrectAttempts / right.stat.attempts : 0;
+  const ratioDelta = rightRatio - leftRatio;
+  if (ratioDelta !== 0) {
+    return ratioDelta;
+  }
+
+  const leftTimestamp = left.stat.lastIncorrectAt
+    ? Date.parse(left.stat.lastIncorrectAt)
+    : Number.NEGATIVE_INFINITY;
+  const rightTimestamp = right.stat.lastIncorrectAt
+    ? Date.parse(right.stat.lastIncorrectAt)
+    : Number.NEGATIVE_INFINITY;
+
+  return rightTimestamp - leftTimestamp;
+};
+
+const isMissingGuestRpcError = (error: {
+  code?: string;
+  message?: string;
+  details?: string | null;
+}) => {
   const normalizedMessage = String(error.message ?? '').toLowerCase();
   const normalizedDetails = String(error.details ?? '').toLowerCase();
 
@@ -45,9 +104,72 @@ const isMissingGuestRpcError = (error: { code?: string; message?: string; detail
   );
 };
 
+const getWeakPracticeInsightsFromTables = async (
+  curriculum = DEFAULT_CURRICULUM,
+  limit = 5,
+  questionScope: PracticeQuestionScopeFilter = 'all'
+) => {
+  const fetchLimit = Math.min(
+    WEAK_INSIGHTS_FALLBACK_LIMIT,
+    Math.max(limit * (questionScope === 'all' ? 4 : 10), 24)
+  );
+
+  const [questions, statsResponse] = await Promise.all([
+    getPracticeQuestions(curriculum, questionScope),
+    supabase
+      .schema('app')
+      .from('practice_question_stats')
+      .select(
+        'question_id, question_number, statement, category, explanation, attempts, correct_attempts, incorrect_attempts, last_answered_at, last_incorrect_at'
+      )
+      .eq('curriculum', curriculum)
+      .gt('incorrect_attempts', 0)
+      .order('incorrect_attempts', { ascending: false })
+      .limit(fetchLimit)
+  ]);
+
+  if (statsResponse.error) {
+    throw statsResponse.error;
+  }
+
+  const questionsById = new Map(questions.map((question) => [question.id, question] as const));
+
+  return ((statsResponse.data ?? []) as Array<Record<string, unknown>>)
+    .map((row) => {
+      const stat = mapQuestionStat(row);
+      const question = questionsById.get(stat.questionId);
+      if (!question) return null;
+
+      return {
+        question,
+        stat: {
+          ...stat,
+          questionNumber: stat.questionNumber ?? question.number,
+          statement: stat.statement || question.statement,
+          category: stat.category ?? question.category,
+          questionScope: stat.questionScope ?? question.questionScope ?? null,
+          explanation: stat.explanation ?? question.explanation,
+          editorialExplanation:
+            stat.editorialExplanation ?? question.editorialExplanation ?? null
+        }
+      } satisfies WeakQuestionInsight;
+    })
+    .filter((item): item is WeakQuestionInsight => Boolean(item))
+    .sort(compareWeakInsights)
+    .slice(0, limit);
+};
+
 export const getPracticeCatalogSummary = async (
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ): Promise<PracticeCatalogSummary> => {
+  if (questionScope !== 'all') {
+    const questions = await getPracticeQuestions(curriculum, questionScope);
+    return {
+      totalQuestions: questions.length
+    };
+  }
+
   const { data, error } = await supabase
     .schema('app')
     .rpc('get_practice_catalog_summary', {
@@ -67,8 +189,14 @@ export const getPracticeCatalogSummary = async (
 export const getStandardPracticeBatch = async (
   batchStartIndex: number,
   batchSize: number,
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ) => {
+  if (questionScope !== 'all') {
+    const questions = await getPracticeQuestions(curriculum, questionScope);
+    return questions.slice(batchStartIndex, batchStartIndex + batchSize);
+  }
+
   const { data, error } = await supabase
     .schema('app')
     .rpc('get_standard_practice_batch', {
@@ -86,28 +214,20 @@ export const getStandardPracticeBatch = async (
 
 export const getWeakPracticeInsights = async (
   curriculum = DEFAULT_CURRICULUM,
-  limit = 5
-) => {
-  const { data, error } = await supabase
-    .schema('app')
-    .rpc('get_weak_practice_batch', {
-      p_curriculum: curriculum,
-      p_limit: limit
-    });
-
-  if (error) {
-    throw error;
-  }
-
-  return ((data ?? []) as Array<Record<string, unknown>>)
-    .map(mapWeakQuestionInsight)
-    .filter((item): item is WeakQuestionInsight => Boolean(item));
-};
+  limit = 5,
+  questionScope: PracticeQuestionScopeFilter = 'all'
+) => getWeakPracticeInsightsFromTables(curriculum, limit, questionScope);
 
 export const getRandomPracticeBatch = async (
   batchSize: number,
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ) => {
+  if (questionScope !== 'all') {
+    const questions = await getPracticeQuestions(curriculum, questionScope);
+    return shuffleQuestions(questions).slice(0, Math.max(1, batchSize));
+  }
+
   const { data, error } = await supabase
     .schema('app')
     .rpc('get_random_practice_batch', {
@@ -127,7 +247,7 @@ export const getGuestPracticeBatch = async (
   curriculum = DEFAULT_CURRICULUM
 ) => {
   try {
-    const questions = await getPracticeQuestions();
+    const questions = await getPracticeQuestions(curriculum, 'common');
     return shuffleQuestions(questions).slice(0, Math.max(1, batchSize));
   } catch (directReadError) {
     const { data, error } = await supabase
@@ -147,13 +267,14 @@ export const getGuestPracticeBatch = async (
       );
     }
 
-    return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+    return mapPayloadRowsWithScope((data ?? []) as Array<Record<string, unknown>>, 'common');
   }
 };
 
 export const getMixedPracticeBatch = async (
   batchSize: number,
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ) => {
   const { data, error } = await supabase
     .schema('app')
@@ -166,12 +287,29 @@ export const getMixedPracticeBatch = async (
     throw error;
   }
 
-  return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+  if (questionScope === 'all') {
+    return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+  }
+
+  const filteredQuestions = mapPayloadRowsWithScope(
+    (data ?? []) as Array<Record<string, unknown>>,
+    questionScope
+  );
+  if (filteredQuestions.length >= batchSize) {
+    return filteredQuestions.slice(0, batchSize);
+  }
+
+  const questions = await getPracticeQuestions(curriculum, questionScope);
+  return takeUniqueQuestions(
+    [...filteredQuestions, ...shuffleQuestions(questions)],
+    Math.max(1, batchSize)
+  );
 };
 
 export const getAntiTrapPracticeBatch = async (
   batchSize: number,
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ) => {
   const { data, error } = await supabase
     .schema('app')
@@ -184,12 +322,29 @@ export const getAntiTrapPracticeBatch = async (
     throw error;
   }
 
-  return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+  if (questionScope === 'all') {
+    return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+  }
+
+  const filteredQuestions = mapPayloadRowsWithScope(
+    (data ?? []) as Array<Record<string, unknown>>,
+    questionScope
+  );
+  if (filteredQuestions.length >= batchSize) {
+    return filteredQuestions.slice(0, batchSize);
+  }
+
+  const questions = await getPracticeQuestions(curriculum, questionScope);
+  return takeUniqueQuestions(
+    [...filteredQuestions, ...shuffleQuestions(questions)],
+    Math.max(1, batchSize)
+  );
 };
 
 export const getSimulacroPracticeBatch = async (
   batchSize: number,
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
 ) => {
   const { data, error } = await supabase
     .schema('app')
@@ -202,10 +357,29 @@ export const getSimulacroPracticeBatch = async (
     throw error;
   }
 
-  return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+  if (questionScope === 'all') {
+    return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+  }
+
+  const filteredQuestions = mapPayloadRowsWithScope(
+    (data ?? []) as Array<Record<string, unknown>>,
+    questionScope
+  );
+  if (filteredQuestions.length >= batchSize) {
+    return filteredQuestions.slice(0, batchSize);
+  }
+
+  const questions = await getPracticeQuestions(curriculum, questionScope);
+  return takeUniqueQuestions(
+    [...filteredQuestions, ...shuffleQuestions(questions)],
+    Math.max(20, batchSize)
+  );
 };
 
-export const getPracticeQuestions = async () => {
+export const getPracticeQuestions = async (
+  _curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
+) => {
   const runQuery = (orderField: string | null, from: number, to: number) => {
     let query = supabase.from('preguntas').select('*').range(from, to);
 
@@ -256,7 +430,9 @@ export const getPracticeQuestions = async () => {
     throw response.error;
   }
 
-  return ((response.data ?? []) as Array<Record<string, unknown>>)
+  const questions = ((response.data ?? []) as Array<Record<string, unknown>>)
     .map(mapQuestion)
     .filter((question): question is PracticeQuestion => Boolean(question));
+
+  return filterQuestionsByScope(questions, questionScope);
 };

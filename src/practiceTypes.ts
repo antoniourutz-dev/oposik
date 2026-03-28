@@ -1,4 +1,6 @@
 export type OptionKey = 'a' | 'b' | 'c' | 'd';
+export type PracticeQuestionScope = 'common' | 'specific';
+export type PracticeQuestionScopeFilter = 'all' | PracticeQuestionScope;
 export type PracticeMode =
   | 'standard'
   | 'weakest'
@@ -15,6 +17,7 @@ export interface PracticeQuestion {
   options: Record<OptionKey, string>;
   correctOption: OptionKey;
   category: string | null;
+  questionScope?: PracticeQuestionScope | null;
   explanation: string | null;
   editorialExplanation?: string | null;
 }
@@ -44,6 +47,7 @@ export interface PracticeQuestionStat {
   questionNumber: number | null;
   statement: string;
   category: string | null;
+  questionScope?: PracticeQuestionScope | null;
   explanation: string | null;
   editorialExplanation?: string | null;
   attempts: number;
@@ -160,6 +164,7 @@ export interface ActivePracticeSession {
   timeLimitSeconds: number | null;
   batchNumber: number;
   totalBatches: number;
+  questionScope?: PracticeQuestionScopeFilter;
   batchStartIndex: number | null;
   continueLabel: string;
   nextStandardBatchStartIndex: number | null;
