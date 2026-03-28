@@ -188,27 +188,6 @@ const HeroMiniStat: React.FC<{ label: string; value: string }> = ({ label, value
   </div>
 );
 
-const StatusStripItem: React.FC<{
-  label: string;
-  value: string;
-  caption?: string;
-  accent?: boolean;
-}> = ({ label, value, caption, accent = false }) => (
-  <div
-    className={`h-full rounded-[1rem] border px-3 py-2.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)] ${
-      accent
-        ? 'border-[#d2defb] bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(237,245,255,0.94))]'
-        : 'border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))]'
-    }`}
-  >
-    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-    <p className="mt-1.5 text-[1.15rem] font-black leading-none text-slate-950 sm:text-[1.22rem]">
-      {value}
-    </p>
-    {caption ? <p className="mt-1 text-[10px] font-semibold leading-4 text-slate-400">{caption}</p> : null}
-  </div>
-);
-
 const HomeStatusBandMetric: React.FC<{
   label: string;
   value: string;
@@ -321,71 +300,6 @@ const TrendBars: React.FC<{
     ))}
   </div>
 );
-
-const CircularStat: React.FC<{
-  label: string;
-  value: number | null | undefined;
-  valueText: string;
-  caption: string;
-  tone?: 'primary' | 'secondary';
-}> = ({ label, value, valueText, caption, tone = 'primary' }) => {
-  const gradientId = React.useId();
-  const percent = toPercentNumber(value);
-  const size = 116;
-  const stroke = 9;
-  const radius = size / 2 - stroke - 4;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference - (percent / 100) * circumference;
-  const gradientStops =
-    tone === 'secondary'
-      ? ['#bfdbfe', '#7cb6e8', '#5b8fe5']
-      : ['#7cb6e8', '#8aa6ee', '#8d93f2'];
-
-  return (
-    <div className="rounded-[1.35rem] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-4 py-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.16)]">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-          <p className="mt-2 text-xl font-black tracking-[-0.03em] text-slate-950">{valueText}</p>
-          <p className="mt-1.5 text-xs font-semibold leading-5 text-slate-400">{caption}</p>
-        </div>
-        <div className="relative flex h-[7.25rem] w-[7.25rem] items-center justify-center">
-          <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90">
-            <defs>
-              <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={gradientStops[0]} />
-                <stop offset="55%" stopColor={gradientStops[1]} />
-                <stop offset="100%" stopColor={gradientStops[2]} />
-              </linearGradient>
-            </defs>
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="none"
-              stroke="rgba(226,232,240,0.95)"
-              strokeWidth={stroke}
-            />
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="none"
-              stroke={`url(#${gradientId})`}
-              strokeWidth={stroke}
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={dashOffset}
-            />
-          </svg>
-          <div className="absolute inset-[22px] flex items-center justify-center rounded-full border border-slate-100 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-            <span className="text-lg font-black tracking-[-0.04em] text-slate-950">{valueText}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const RankedMeterRow: React.FC<{
   label: string;
@@ -669,8 +583,9 @@ const StatsDisclosure: React.FC<
           <p className="text-sm font-extrabold tracking-[-0.02em] text-slate-950">{title}</p>
           <p className="mt-1 text-sm leading-6 text-slate-500">{hint}</p>
         </div>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-          detalle
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+          ver
+          <ArrowRight size={12} />
         </span>
       </div>
     </summary>
@@ -958,6 +873,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     topRiskBreakdown[0]?.label
       ? `Vigila ${topRiskBreakdown[0].label.toLowerCase()} antes de ampliar carga.`
       : coachPlan.reasons[0] ?? coachPlan.impactLabel;
+  const showRecommendedStudyCard = coachPlan.mode === 'standard';
+  const mixedIsRecommended = coachPlan.mode === 'mixed';
+  const randomIsRecommended = coachPlan.mode === 'random';
+  const antiTrapIsRecommended = coachPlan.mode === 'anti_trap';
+  const simulacroIsRecommended = coachPlan.mode === 'simulacro';
   const weakQuestionsVisible = weakQuestions.slice(0, 4);
   const statsLeadLabel = pressureGapPoints && pressureGapPoints >= 12
     ? 'Presion alta'
@@ -967,11 +887,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const statsLeadMessage =
     pressureGapPoints && pressureGapPoints >= 12
       ? `Tu rendimiento cae ${pressureGapPoints} puntos bajo presion. Conviene afinar lectura y simulacro.`
-      : coachPlan.impactLabel;
-  const statsLeadCompactMessage =
-    pressureGapPoints && pressureGapPoints >= 12
-      ? 'Conviene afinar lectura y simulacro.'
-      : coachPlan.reasons[0] ?? coachPlan.focusLabel;
+      : coachPlan.summary;
 
   React.useEffect(() => {
     setExamDateInput(toDateInputValue(examTarget?.examDate));
@@ -1196,114 +1112,144 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   if (activeTab === 'stats') {
     return (
       <div className="grid gap-3 sm:gap-4">
-        <SectionCard title="Panel de rendimiento" hint="Lectura matematica del avance real, sin ruido innecesario">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,0.92fr)]">
-            <div className="grid gap-4">
-              <div className="grid gap-3">
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(237,245,255,0.94))] px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                    {statsLeadLabel}
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                    Rango {readinessRangeLabel}
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                    Proyeccion {projectedReadinessLabel}
-                  </span>
-                </div>
+        <SectionCard className="relative overflow-hidden border-[#c8d8fb]/70 bg-[linear-gradient(135deg,rgba(244,249,255,0.98),rgba(235,243,255,0.96),rgba(242,241,255,0.94))] p-4 shadow-[0_24px_60px_-42px_rgba(141,147,242,0.22)] sm:p-5">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#8d93f2]/12 blur-3xl" />
+            <div className="absolute -left-14 bottom-0 h-28 w-28 rounded-full bg-[#7cb6e8]/10 blur-3xl" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.26),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.24),transparent_46%)]" />
+          </div>
 
-                <div className="min-w-0">
-                  <p className="text-[2.35rem] font-black leading-none tracking-[-0.05em] text-slate-950">
-                    {readinessLabel}
-                  </p>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-600 sm:hidden">
-                    {statsLeadCompactMessage}
-                  </p>
-                  <p className="mt-2 hidden max-w-[38rem] text-sm font-semibold leading-6 text-slate-600 sm:block">
-                    {statsLeadMessage}
-                  </p>
-                </div>
-              </div>
-
-              {learningDashboard ? (
-                <RangeMeter
-                  current={learningDashboard.readiness}
-                  lower={learningDashboard.readinessLower}
-                  upper={learningDashboard.readinessUpper}
-                  projected={learningDashboard.projectedReadiness}
-                />
-              ) : (
-                <p className="text-sm font-medium text-slate-500">
-                  Aun no hay base suficiente para proyectar readiness.
-                </p>
-              )}
-
-              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-                <AnalyticsMiniTile
-                  label="Cobertura"
-                  value={formatPercent(coverageRate)}
-                  caption={
-                    learningDashboard
-                      ? `${learningDashboard.seenQuestions} de ${learningDashboard.totalQuestions}`
-                      : 'Banco sin muestra'
-                  }
-                />
-                <AnalyticsMiniTile
-                  label="Precision"
-                  value={`${accuracy}%`}
-                  caption="rendimiento global"
-                />
-                <AnalyticsMiniTile
-                  label="Dominio util"
-                  value={formatPercent(usefulMasteryRate)}
-                  caption={
-                    learningDashboard
-                      ? `${learningDashboard.solidCount + learningDashboard.masteredCount} preguntas`
-                      : 'sin muestra'
-                  }
-                  accent
-                />
-                <AnalyticsMiniTile
-                  label="Backlog"
-                  value={learningDashboard ? String(learningDashboard.backlogCount) : '--'}
-                  caption={
-                    learningDashboard
-                      ? `${learningDashboard.overdueCount} urgentes`
-                      : 'sin carga vencida'
-                  }
-                />
-              </div>
+          <div className="relative grid gap-4">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-white/88 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]">
+                {statsLeadLabel}
+              </span>
+              <span className="rounded-full bg-white/78 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.76)]">
+                Rango {readinessRangeLabel}
+              </span>
+              <span className="rounded-full bg-white/78 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.76)]">
+                {pressureGapPoints && pressureGapPoints >= 12
+                  ? `Brecha ${pressureGapLabel}`
+                  : `Proyeccion ${projectedReadinessLabel}`}
+              </span>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <CircularStat
-                label="Readiness"
-                value={learningDashboard?.readiness}
-                valueText={readinessLabel}
-                caption={
-                  learningDashboard?.projectedReadiness === null ||
-                  learningDashboard?.projectedReadiness === undefined
-                    ? 'sin fecha objetivo'
-                    : `proyeccion ${formatPercent(learningDashboard.projectedReadiness)}`
-                }
-              />
-              <CircularStat
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(16rem,0.92fr)]">
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  Preparacion real
+                </p>
+                <p className="mt-2 text-[2.75rem] font-black leading-none tracking-[-0.06em] text-slate-950 sm:text-[3.1rem]">
+                  {readinessLabel}
+                </p>
+                <p className="mt-3 max-w-[35rem] text-sm font-semibold leading-6 text-slate-600">
+                  {statsLeadMessage}
+                </p>
+              </div>
+
+              <article className="flex min-h-[11.5rem] flex-col justify-between rounded-[1.28rem] border border-white/88 bg-white/94 px-4 py-4 text-left text-slate-950 shadow-[0_22px_38px_-28px_rgba(141,147,242,0.16)]">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                    Lectura de hoy
+                  </p>
+                  <p className="mt-2 text-[1.2rem] font-black leading-6 tracking-[-0.03em] text-slate-950">
+                    {coachPlan.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">{studyFocusLine}</p>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(138,144,244,0.18))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
+                    {primaryCtaMetaLabel}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
+                    {recommendedToday > 0
+                      ? `${recommendedToday} preguntas`
+                      : `${recommendedSessionSize} preguntas`}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
+                    {recommendedReview} repasos
+                  </span>
+                </div>
+              </article>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              <AnalyticsMiniTile
                 label="Cobertura"
-                value={coverageRate}
-                valueText={formatPercent(coverageRate)}
+                value={formatPercent(coverageRate)}
                 caption={
                   learningDashboard
-                    ? `${learningDashboard.seenQuestions} vistas`
-                    : 'sin muestra suficiente'
+                    ? `${learningDashboard.seenQuestions} de ${learningDashboard.totalQuestions}`
+                    : 'Banco sin muestra'
                 }
-                tone="secondary"
+                accent
+              />
+              <AnalyticsMiniTile
+                label="Precision"
+                value={`${accuracy}%`}
+                caption="rendimiento global"
+              />
+              <AnalyticsMiniTile
+                label="Pendientes"
+                value={learningDashboard ? String(learningDashboard.backlogCount) : '--'}
+                caption={
+                  learningDashboard
+                    ? `${learningDashboard.overdueCount} urgentes`
+                    : 'sin carga vencida'
+                }
               />
             </div>
           </div>
         </SectionCard>
 
+        <StatsDisclosure
+          title="Lectura del indicador"
+          hint="Margen esperado hoy, carga rentable y capacidad para ejecutar sin ruido."
+          defaultOpen
+        >
+          {learningDashboard ? (
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(14rem,0.92fr)]">
+              <RangeMeter
+                current={learningDashboard.readiness}
+                lower={learningDashboard.readinessLower}
+                upper={learningDashboard.readinessUpper}
+                projected={learningDashboard.projectedReadiness}
+              />
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <AnalyticsMiniTile
+                  label="Recomendado hoy"
+                  value={String(recommendedToday)}
+                  caption={coachPlan.focusLabel}
+                  accent
+                />
+                <AnalyticsMiniTile
+                  label="Dominio util"
+                  value={formatPercent(usefulMasteryRate)}
+                  caption={`${learningDashboard.solidCount + learningDashboard.masteredCount} preguntas`}
+                />
+                <AnalyticsMiniTile
+                  label="Repaso hoy"
+                  value={String(recommendedReview)}
+                  caption={`${learningDashboard.dailyReviewCapacity} de capacidad`}
+                />
+                <AnalyticsMiniTile
+                  label="Nuevas hoy"
+                  value={String(recommendedNew)}
+                  caption={`${learningDashboard.dailyNewCapacity} objetivo`}
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-slate-500">
+              Aun no hay base suficiente para proyectar readiness.
+            </p>
+          )}
+        </StatsDisclosure>
+
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)]">
-          <SectionCard title="Dominio del banco" hint="Distribucion real y carga de mantenimiento">
+          <StatsDisclosure title="Dominio del banco" hint="Distribucion real y carga de mantenimiento">
             {learningDashboard ? (
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)]">
                 <div className="grid gap-4">
@@ -1343,14 +1289,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     caption={formatPercent(fragilityRate)}
                   />
                   <AnalyticsMiniTile
-                    label="Repaso hoy"
-                    value={String(recommendedReview)}
-                    caption={`${learningDashboard.dailyReviewCapacity} de capacidad`}
+                    label="Solidas"
+                    value={String(learningDashboard.solidCount)}
+                    caption={`${Math.round((learningDashboard.solidCount / masteryBase) * 100)}% del banco`}
                   />
                   <AnalyticsMiniTile
-                    label="Nuevas hoy"
-                    value={String(recommendedNew)}
-                    caption={`${learningDashboard.dailyNewCapacity} objetivo`}
+                    label="Dominadas"
+                    value={String(learningDashboard.masteredCount)}
+                    caption={`${Math.round((learningDashboard.masteredCount / masteryBase) * 100)}% del banco`}
                   />
                 </div>
               </div>
@@ -1359,9 +1305,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 Aun no hay suficiente informacion de dominio.
               </p>
             )}
-          </SectionCard>
+          </StatsDisclosure>
 
-          <SectionCard title="Presion de examen" hint="Distancia entre entrenar bien y sostener nota bajo tiempo">
+          <StatsDisclosure title="Presion de examen" hint="Distancia entre entrenar bien y sostener nota bajo tiempo">
             {pressureInsights ? (
               <div className="grid gap-4">
                 <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
@@ -1409,11 +1355,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 Aun no hay senal suficiente de simulacro para comparar aprendizaje y examen.
               </p>
             )}
-          </SectionCard>
+          </StatsDisclosure>
         </div>
 
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <SectionCard title="Tendencia reciente" hint="Serie corta para ver deriva, consistencia y ritmo real">
+          <StatsDisclosure title="Tendencia reciente" hint="Serie corta para ver deriva, consistencia y ritmo real">
             {recentTrendItems.length > 0 ? (
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(15rem,0.96fr)]">
                 <div className="space-y-3">
@@ -1436,7 +1382,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       caption={`${recentTrendItems.length} cierres`}
                     />
                     <AnalyticsMiniTile
-                      label="Dispersión"
+                      label="Dispersion"
                       value={trendSpreadValue === null ? '--' : `${trendSpreadValue} pts`}
                       caption={trendPeakValue === null ? 'sin muestra' : `pico ${trendPeakValue}%`}
                     />
@@ -1453,42 +1399,42 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     </span>
                   </div>
                   <div className="space-y-2">
-                  {recentSessions.slice(0, 5).map((session) => (
-                    <article
-                      key={session.id}
-                      className="rounded-[1rem] border border-white/85 bg-white/88 px-3 py-2.5 shadow-[0_14px_24px_-22px_rgba(15,23,42,0.12)]"
-                    >
-                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-extrabold text-slate-900">{session.title}</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-400">
-                            {formatSessionDate(session.finishedAt)}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <p className="text-lg font-black leading-none text-slate-950">
-                              {Math.round((session.score / Math.max(session.total, 1)) * 100)}%
-                            </p>
-                            <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                              {session.score}/{session.total}
+                    {recentSessions.slice(0, 5).map((session, index) => (
+                      <article
+                        key={`${session.id}-${session.finishedAt}-${index}`}
+                        className="rounded-[1rem] border border-white/85 bg-white/88 px-3 py-2.5 shadow-[0_14px_24px_-22px_rgba(15,23,42,0.12)]"
+                      >
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-extrabold text-slate-900">{session.title}</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-400">
+                              {formatSessionDate(session.finishedAt)}
                             </p>
                           </div>
-                          <div className="h-9 w-1.5 overflow-hidden rounded-full bg-slate-100">
-                            <div
-                              className="w-full rounded-full bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)]"
-                              style={{
-                                height: `${Math.max(
-                                  10,
-                                  Math.round((session.score / Math.max(session.total, 1)) * 100)
-                                )}%`
-                              }}
-                            />
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="text-lg font-black leading-none text-slate-950">
+                                {Math.round((session.score / Math.max(session.total, 1)) * 100)}%
+                              </p>
+                              <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                                {session.score}/{session.total}
+                              </p>
+                            </div>
+                            <div className="h-9 w-1.5 overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="w-full rounded-full bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)]"
+                                style={{
+                                  height: `${Math.max(
+                                    10,
+                                    Math.round((session.score / Math.max(session.total, 1)) * 100)
+                                  )}%`
+                                }}
+                              />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1497,9 +1443,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 Aun no hay sesiones suficientes para dibujar tendencia.
               </p>
             )}
-          </SectionCard>
+          </StatsDisclosure>
 
-          <SectionCard title="Riesgo y errores" hint="Mapa de erosion de la nota por tema y patron de fallo">
+          <StatsDisclosure title="Riesgo y errores" hint="Mapa de erosion de la nota por tema y patron de fallo">
             <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
                 <AnalyticsMiniTile
@@ -1597,7 +1543,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 </div>
               </div>
             </div>
-          </SectionCard>
+          </StatsDisclosure>
         </div>
       </div>
     );
@@ -1612,82 +1558,66 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           label="Temario"
         />
 
-        <SectionCard title="Sesion del dia" hint="Inicio decide. Estudio te deja ejecutar o cambiar el modo con criterio.">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.02fr)_minmax(17rem,0.98fr)]">
-            <div className="rounded-[1.35rem] border border-[#c8d8f8] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(138,144,244,0.18))] p-4 shadow-[0_22px_42px_-30px_rgba(141,147,242,0.18)]">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+        <SectionCard
+          title="Modos disponibles"
+          hint="Aqui eliges herramienta. La ruta sugerida te orienta y el resto te deja desviarte con criterio."
+        >
+          <div className="grid gap-4">
+            <div className="rounded-[1.3rem] border border-[#c8d8f8] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(138,144,244,0.16))] p-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]">
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
                   Ruta sugerida
                 </span>
-                <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
                   {coachPlan.focusLabel}
                 </span>
-              </div>
-              <p className="mt-3 text-[1.55rem] font-black leading-[0.98] tracking-[-0.04em] text-slate-950 sm:text-[1.8rem]">
-                {coachPlan.primaryActionLabel}
-              </p>
-              <p className="mt-2 max-w-[34rem] text-sm leading-6 text-slate-600">
-                {studyPrimarySummary}
-              </p>
-
-              <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
                   Readiness {readinessLabel}
                 </span>
+              </div>
+              <p className="mt-3 text-[1.35rem] font-black leading-[1.02] tracking-[-0.04em] text-slate-950 sm:text-[1.55rem]">
+                {coachPlan.primaryActionLabel}
+              </p>
+              <p className="mt-2 max-w-[38rem] text-sm leading-6 text-slate-600">
+                {studyPrimarySummary}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
                 <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
                   {recommendedReview} repasos
                 </span>
                 <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
                   {recommendedNew} nuevas
                 </span>
+                <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                  {pressureGapPoints === null ? 'sin brecha visible' : `${pressureGapPoints} pts de presion`}
+                </span>
               </div>
-
-              <button
-                type="button"
-                onClick={onStartRecommended}
-                className="mt-4 inline-flex w-full items-center justify-between rounded-[1.18rem] border border-white/86 bg-white/94 px-4 py-3 text-left text-slate-950 shadow-[0_20px_34px_-26px_rgba(141,147,242,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_38px_-26px_rgba(141,147,242,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.995] sm:w-auto sm:min-w-[18rem]"
-              >
-                <span>
-                  <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                    Abrir ahora
-                  </span>
-                  <span className="mt-1 block text-[1.04rem] font-extrabold tracking-[-0.02em]">
-                    {coachPlan.primaryActionLabel}
-                  </span>
-                  <span className="mt-1 block text-sm leading-5 text-slate-500">
-                    {studyFocusLine}
-                  </span>
-                </span>
-                <span className="flex h-11 w-11 items-center justify-center rounded-[1rem] border border-[#c4d7fb] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_16px_28px_-20px_rgba(141,147,242,0.28)]">
-                  <ArrowRight size={18} />
-                </span>
-              </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              <AnalyticsMiniTile label="Readiness" value={readinessLabel} caption="nota esperada hoy" accent />
-              <AnalyticsMiniTile label="Repasos" value={String(recommendedReview)} caption="carga rentable" />
-              <AnalyticsMiniTile label="Nuevas" value={String(recommendedNew)} caption="ampliacion controlada" />
-              <AnalyticsMiniTile
-                label="Presion"
-                value={pressureGapPoints === null ? '--' : `${pressureGapPoints} pts`}
-                caption={pressureInsights ? 'brecha de examen' : 'sin simulacro'}
-              />
-            </div>
-          </div>
-        </SectionCard>
-
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)]">
-          <SectionCard title="Modos disponibles" hint="Cada modo sirve para una necesidad distinta. Aqui eliges herramienta, no direccion.">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {showRecommendedStudyCard ? (
+                <StudyActionCard
+                  label="Ruta sugerida"
+                  title={coachPlan.primaryActionLabel}
+                  description={studyPrimarySummary}
+                  meta={primaryCtaMetaLabel}
+                  icon={<Target size={18} />}
+                  onClick={onStartRecommended}
+                  tone="primary"
+                />
+              ) : null}
               <StudyActionCard
-                label="Plan del dia"
-                title="Mixto adaptativo"
-                description="Combina repaso, nuevas y fragiles en una sola sesion rentable."
-                meta={`${recommendedReview} + ${recommendedNew}`}
+                label={mixedIsRecommended ? 'Ruta sugerida' : 'Mixto'}
+                title={mixedIsRecommended ? coachPlan.primaryActionLabel : 'Mixto adaptativo'}
+                description={
+                  mixedIsRecommended
+                    ? studyPrimarySummary
+                    : 'Combina repaso, nuevas y fragiles en una sola sesion rentable.'
+                }
+                meta={mixedIsRecommended ? coachPlan.focusLabel : `${recommendedReview} + ${recommendedNew}`}
                 icon={<Target size={18} />}
-                onClick={onStartMixed}
-                tone="primary"
+                onClick={mixedIsRecommended ? onStartRecommended : onStartMixed}
+                tone={mixedIsRecommended ? 'primary' : 'default'}
               />
               <StudyActionCard
                 label="Repaso"
@@ -1699,12 +1629,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 disabled={weakQuestions.length === 0}
               />
               <StudyActionCard
-                label="Aleatorio"
-                title="20 mezcladas"
-                description="Mide recuperacion real con mezcla completa de banco."
-                meta="sin patron fijo"
+                label={randomIsRecommended ? 'Ruta sugerida' : 'Aleatorio'}
+                title={randomIsRecommended ? coachPlan.primaryActionLabel : '20 mezcladas'}
+                description={
+                  randomIsRecommended
+                    ? studyPrimarySummary
+                    : 'Mide recuperacion real con mezcla completa de banco.'
+                }
+                meta={randomIsRecommended ? coachPlan.focusLabel : 'sin patron fijo'}
                 icon={<Brain size={18} />}
-                onClick={onStartRandom}
+                onClick={randomIsRecommended ? onStartRecommended : onStartRandom}
+                tone={randomIsRecommended ? 'primary' : 'default'}
               />
               <StudyActionCard
                 label="Secuencial"
@@ -1715,25 +1650,43 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 onClick={onStartFromBeginning}
               />
               <StudyActionCard
-                label="Anti-trampas"
-                title="Plazos y excepciones"
-                description="Entrena negaciones, plazos, literalidad y distractores cercanos."
-                meta={dominantRiskLabel}
+                label={antiTrapIsRecommended ? 'Ruta sugerida' : 'Anti-trampas'}
+                title={antiTrapIsRecommended ? coachPlan.primaryActionLabel : 'Plazos y excepciones'}
+                description={
+                  antiTrapIsRecommended
+                    ? studyPrimarySummary
+                    : 'Entrena negaciones, plazos, literalidad y distractores cercanos.'
+                }
+                meta={antiTrapIsRecommended ? coachPlan.focusLabel : dominantRiskLabel}
                 icon={<Shield size={18} />}
-                onClick={onStartAntiTrap}
+                onClick={antiTrapIsRecommended ? onStartRecommended : onStartAntiTrap}
+                tone={antiTrapIsRecommended ? 'primary' : 'default'}
               />
               <StudyActionCard
-                label="Simulacro"
-                title="Examen real"
-                description="Sin feedback inmediato y con temporizador global."
-                meta={pressureInsights?.lastSimulacroFinishedAt ? 'con muestra real' : 'sin ultima muestra'}
+                label={simulacroIsRecommended ? 'Ruta sugerida' : 'Simulacro'}
+                title={simulacroIsRecommended ? coachPlan.primaryActionLabel : 'Examen real'}
+                description={
+                  simulacroIsRecommended
+                    ? studyPrimarySummary
+                    : 'Sin feedback inmediato y con temporizador global.'
+                }
+                meta={
+                  simulacroIsRecommended
+                    ? coachPlan.focusLabel
+                    : pressureInsights?.lastSimulacroFinishedAt
+                      ? 'con muestra real'
+                      : 'sin ultima muestra'
+                }
                 icon={<ChartNoAxesColumn size={18} />}
-                onClick={onStartSimulacro}
+                onClick={simulacroIsRecommended ? onStartRecommended : onStartSimulacro}
+                tone={simulacroIsRecommended ? 'primary' : 'default'}
               />
             </div>
-          </SectionCard>
+          </div>
+        </SectionCard>
 
-          <SectionCard title="Radar de hoy" hint="Senales operativas para ajustar la sesion antes de empezar">
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)]">
+          <StatsDisclosure title="Senales de hoy" hint="Abre esto si quieres ajustar la sesion antes de empezar.">
             <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-2.5">
                 <AnalyticsMiniTile
@@ -1780,89 +1733,92 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 </div>
               </div>
             </div>
-          </SectionCard>
-        </div>
+          </StatsDisclosure>
 
-        <SectionCard title="Preguntas delicadas" hint="Las que mas erosionan la precision y conviene revisar con detalle">
-          {weakQuestionsVisible.length === 0 ? (
-            <p className="text-sm font-medium text-slate-500">
-              Todavia no hay preguntas marcadas como debiles.
-            </p>
-          ) : (
-            <div className="grid gap-3 xl:grid-cols-2">
-              {weakQuestionsVisible.map(({ question, stat }, index) => (
-                <details
-                  key={question.id}
-                  className="rounded-[1.22rem] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] px-4 py-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]"
-                >
-                  <summary className="cursor-pointer list-none">
-                    <div className="grid gap-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(138,144,244,0.2))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
-                              Top {index + 1}
-                            </span>
-                            {question.category ? (
-                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                                {question.category}
+          <StatsDisclosure
+            title="Material de repaso"
+            hint="Preguntas debiles para revisar solo si quieres entrar fino antes de ejecutar."
+          >
+            {weakQuestionsVisible.length === 0 ? (
+              <p className="text-sm font-medium text-slate-500">
+                Todavia no hay preguntas marcadas como debiles.
+              </p>
+            ) : (
+              <div className="grid gap-3">
+                {weakQuestionsVisible.map(({ question, stat }, index) => (
+                  <details
+                    key={`${question.id}-${question.number ?? 'na'}-${index}`}
+                    className="rounded-[1.22rem] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] px-4 py-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]"
+                  >
+                    <summary className="cursor-pointer list-none">
+                      <div className="grid gap-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(138,144,244,0.2))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
+                                Top {index + 1}
                               </span>
-                            ) : null}
+                              {question.category ? (
+                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
+                                  {question.category}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="mt-3 text-base font-extrabold text-slate-900">
+                              Pregunta {question.number ?? question.id}
+                            </p>
                           </div>
-                          <p className="mt-3 text-base font-extrabold text-slate-900">
-                            Pregunta {question.number ?? question.id}
-                          </p>
+                          <div className="rounded-[1.05rem] border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(138,144,244,0.18))] px-3 py-2 text-right">
+                            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
+                              Fallos
+                            </p>
+                            <p className="mt-1 text-lg font-black text-slate-900">
+                              {stat.incorrectAttempts}
+                            </p>
+                          </div>
                         </div>
-                        <div className="rounded-[1.05rem] border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(138,144,244,0.18))] px-3 py-2 text-right">
-                          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                            Fallos
-                          </p>
-                          <p className="mt-1 text-lg font-black text-slate-900">
-                            {stat.incorrectAttempts}
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <AnalyticsMiniTile
-                          label="Intentos"
-                          value={String(stat.attempts)}
-                          caption="muestra actual"
-                        />
-                        <AnalyticsMiniTile
-                          label="Precision"
-                          value={`${getAccuracy(stat.correctAttempts, stat.attempts)}%`}
-                          caption="sobre esta pregunta"
-                        />
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <AnalyticsMiniTile
+                            label="Intentos"
+                            value={String(stat.attempts)}
+                            caption="muestra actual"
+                          />
+                          <AnalyticsMiniTile
+                            label="Precision"
+                            value={`${getAccuracy(stat.correctAttempts, stat.attempts)}%`}
+                            caption="sobre esta pregunta"
+                          />
+                        </div>
+                      </div>
+                    </summary>
+                    <div className="mt-4 grid gap-3">
+                      <div className="rounded-[1.15rem] bg-[linear-gradient(180deg,rgba(236,246,255,0.9),rgba(241,247,255,0.92))] px-4 py-3">
+                        <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                          Respuesta correcta
+                        </p>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
+                          {question.correctOption.toUpperCase()}) {question.options[question.correctOption]}
+                        </p>
+                      </div>
+                      <div className="rounded-[1.15rem] bg-[linear-gradient(180deg,rgba(232,240,255,0.92),rgba(241,247,255,0.92))] px-4 py-3">
+                        <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-indigo-700">
+                          Explicacion
+                        </p>
+                        <div className="mt-2">
+                          <QuestionExplanation
+                            explanation={question.explanation}
+                            editorialExplanation={question.editorialExplanation}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </summary>
-                  <div className="mt-4 grid gap-3">
-                    <div className="rounded-[1.15rem] bg-[linear-gradient(180deg,rgba(236,246,255,0.9),rgba(241,247,255,0.92))] px-4 py-3">
-                      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                        Respuesta correcta
-                      </p>
-                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
-                        {question.correctOption.toUpperCase()}) {question.options[question.correctOption]}
-                      </p>
-                    </div>
-                    <div className="rounded-[1.15rem] bg-[linear-gradient(180deg,rgba(232,240,255,0.92),rgba(241,247,255,0.92))] px-4 py-3">
-                      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-indigo-700">
-                        Explicacion
-                      </p>
-                      <div className="mt-2">
-                        <QuestionExplanation
-                          explanation={question.explanation}
-                          editorialExplanation={question.editorialExplanation}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </details>
-              ))}
-            </div>
-          )}
-        </SectionCard>
+                  </details>
+                ))}
+              </div>
+            )}
+          </StatsDisclosure>
+        </div>
       </div>
     );
   }
@@ -1874,130 +1830,121 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
       }`}
     >
       <div className="grid gap-3 sm:gap-4">
-        <SectionCard className="relative overflow-hidden border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-4 text-white shadow-[0_28px_72px_-52px_rgba(141,147,242,0.24)] sm:p-5">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/16 blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_44%)]" />
-        </div>
-        <div className="relative flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] border border-white/18 bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-[10px] sm:h-14 sm:w-14 sm:rounded-[1.35rem]">
-              <UserRound size={22} />
+        <SectionCard title="Cuenta" hint="Acceso activo y configuracion personal">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] border border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.12),rgba(141,147,242,0.16))] text-slate-700 shadow-[0_14px_24px_-22px_rgba(141,147,242,0.18)]">
+                <UserRound size={22} />
+              </div>
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  Cuenta activa
+                </p>
+                <p className="mt-1.5 text-[1.35rem] font-black leading-none tracking-[-0.03em] text-slate-950">
+                  {identity.current_username}
+                </p>
+                <p className="mt-1.5 text-sm font-medium text-slate-500">
+                  Perfil {identity.is_admin ? 'administrador' : 'alumno'}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-50/84">
-                Cuenta activa
-              </p>
-              <p className="mt-1.5 text-[1.45rem] font-black leading-none text-white sm:mt-2 sm:text-[1.7rem]">
-                {identity.current_username}
-              </p>
-              <p className="mt-1.5 text-sm font-medium text-sky-50/84 sm:mt-2">
-                Perfil {identity.is_admin ? 'administrador' : 'alumno'}
-              </p>
-            </div>
-          </div>
-          <div className="rounded-[1.15rem] border border-white/18 bg-white/12 px-3 py-2 text-right backdrop-blur-[10px]">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-sky-50/74">
-              Rol
-            </p>
-            <p className="mt-1 text-sm font-black text-white">
+            <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.12),rgba(141,147,242,0.16))] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
               {identity.is_admin ? 'Admin' : 'Alumno'}
-            </p>
+            </span>
           </div>
-        </div>
         </SectionCard>
 
-        <SectionCard title="Panel de cuenta" hint="Resumen rapido del perfil">
-          <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-3">
-            <StatusStripItem label="Rol" value={identity.is_admin ? 'Admin' : 'Alumno'} />
-            <StatusStripItem label="Banco" value={String(questionsCount)} />
-            <StatusStripItem label="Bloques" value={String(totalBatches)} />
-            <StatusStripItem label="Tamano" value={String(batchSize)} />
-            {learningDashboard ? (
-              <>
-                <StatusStripItem label="Readiness" value={readinessLabel} />
-                <StatusStripItem
-                  label="Capacidad"
-                  value={String(learningDashboard.dailyReviewCapacity)}
+        <SectionCard
+          title="Configuracion de examen"
+          hint={
+            examTargetUpdatedLabel
+              ? `Ultima actualizacion ${examTargetUpdatedLabel}`
+              : 'Ajusta fecha y carga diaria solo cuando lo necesites.'
+          }
+        >
+          <form onSubmit={handleExamTargetSubmit} className="grid gap-4">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+              <label className="col-span-2 grid gap-2 xl:col-span-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                  Fecha de examen
+                </span>
+                <input
+                  type="date"
+                  value={examDateInput}
+                  onChange={(event) => setExamDateInput(event.target.value)}
+                  className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
                 />
-              </>
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                  Repasos diarios
+                </span>
+                <input
+                  type="number"
+                  min={5}
+                  max={200}
+                  step={1}
+                  value={dailyReviewCapacityInput}
+                  onChange={(event) => setDailyReviewCapacityInput(event.target.value)}
+                  className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                  Nuevas al dia
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={dailyNewCapacityInput}
+                  onChange={(event) => setDailyNewCapacityInput(event.target.value)}
+                  className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
+                />
+              </label>
+            </div>
+
+            {examTargetError ? (
+              <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                {examTargetError}
+              </div>
             ) : null}
-          </div>
 
-          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-            <StatsDisclosure
-              title="Configuracion de examen"
-              hint={
-                examTargetUpdatedLabel
-                  ? `Ultima actualizacion ${examTargetUpdatedLabel}`
-                  : 'Ajusta fecha y carga diaria solo cuando lo necesites.'
-              }
-            >
-              <form onSubmit={handleExamTargetSubmit} className="grid gap-4">
-                <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
-                  <label className="col-span-2 grid gap-2 xl:col-span-1">
-                    <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                      Fecha de examen
-                    </span>
-                    <input
-                      type="date"
-                      value={examDateInput}
-                      onChange={(event) => setExamDateInput(event.target.value)}
-                      className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                    />
-                  </label>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs font-semibold leading-5 text-slate-400">
+                Sin fecha, el sistema sigue guiando el estudio pero sin compresion por examen.
+              </p>
+              <button
+                type="submit"
+                disabled={savingExamTarget}
+                className="inline-flex items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold text-white shadow-[0_18px_30px_-24px_rgba(141,147,242,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_34px_-24px_rgba(141,147,242,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+              >
+                {savingExamTarget ? 'Guardando...' : 'Guardar configuracion'}
+              </button>
+            </div>
+          </form>
+        </SectionCard>
 
-                  <label className="grid gap-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                      Repasos diarios
-                    </span>
-                    <input
-                      type="number"
-                      min={5}
-                      max={200}
-                      step={1}
-                      value={dailyReviewCapacityInput}
-                      onChange={(event) => setDailyReviewCapacityInput(event.target.value)}
-                      className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                    />
-                  </label>
-
-                  <label className="grid gap-2">
-                    <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                      Nuevas al dia
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={dailyNewCapacityInput}
-                      onChange={(event) => setDailyNewCapacityInput(event.target.value)}
-                      className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                    />
-                  </label>
-                </div>
-
-                {examTargetError ? (
-                  <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-                    {examTargetError}
-                  </div>
+        <SectionCard title="Cuenta y acceso" hint="Acciones de esta sesion y contexto basico del entorno">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="grid gap-3">
+              <p className="text-sm leading-6 text-slate-600">
+                Banco visible: {questionsCount} preguntas en {totalBatches} bloques de {batchSize}.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
+                  Rol {identity.is_admin ? 'admin' : 'alumno'}
+                </span>
+                {learningDashboard ? (
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
+                    Readiness {readinessLabel}
+                  </span>
                 ) : null}
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs font-semibold leading-5 text-slate-400">
-                    Sin fecha, el sistema sigue guiando el estudio pero sin compresion por examen.
-                  </p>
-                  <button
-                    type="submit"
-                    disabled={savingExamTarget}
-                    className="inline-flex items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold text-white shadow-[0_18px_30px_-24px_rgba(141,147,242,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_34px_-24px_rgba(141,147,242,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
-                  >
-                    {savingExamTarget ? 'Guardando...' : 'Guardar configuracion'}
-                  </button>
-                </div>
-              </form>
-            </StatsDisclosure>
+              </div>
+            </div>
 
             <button
               type="button"
@@ -2012,10 +1959,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
       </div>
 
       {identity.is_admin ? (
-        <SectionCard title="Panel admin" hint="Abre la gestion solo cuando la necesites">
+        <SectionCard title="Herramientas admin" hint="Gestion y mantenimiento solo cuando lo necesites">
           <StatsDisclosure
             title="Gestion de alumnos"
-            hint="La administracion ya no ocupa toda la pantalla del perfil."
+            hint="La administracion queda contenida aqui, sin invadir la cuenta."
           >
             <div className="rounded-[1.25rem] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] p-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]">
               <Suspense
