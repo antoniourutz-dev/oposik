@@ -240,12 +240,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
       : 'idle';
   const feedbackSurfaceClass =
     feedbackState === 'correct'
-      ? 'border-emerald-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(236,253,245,0.92))] shadow-[0_24px_64px_-42px_rgba(16,185,129,0.28)]'
+      ? 'border-emerald-200/90 bg-[linear-gradient(180deg,rgba(245,253,249,0.98),rgba(236,253,245,0.94))] shadow-[0_24px_64px_-42px_rgba(16,185,129,0.28)]'
       : feedbackState === 'wrong'
-        ? 'border-rose-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.92))] shadow-[0_24px_64px_-42px_rgba(244,63,94,0.22)]'
+        ? 'border-rose-200/90 bg-[linear-gradient(180deg,rgba(255,248,249,0.98),rgba(255,241,242,0.94))] shadow-[0_24px_64px_-42px_rgba(244,63,94,0.22)]'
         : feedbackState === 'armed'
-          ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(237,245,255,0.94))] shadow-[0_24px_64px_-42px_rgba(141,147,242,0.22)]'
-          : 'border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.94))] shadow-[0_22px_64px_-42px_rgba(15,23,42,0.24)]';
+          ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(240,247,255,0.98),rgba(237,245,255,0.96))] shadow-[0_24px_64px_-42px_rgba(141,147,242,0.22)]'
+          : 'border-[#d8e4fb] bg-[linear-gradient(180deg,rgba(239,245,255,0.98),rgba(247,250,255,0.96))] shadow-[0_22px_64px_-42px_rgba(15,23,42,0.22)]';
   const feedbackAccentGlowClass =
     feedbackState === 'correct'
       ? 'from-emerald-200/35 via-transparent to-transparent'
@@ -384,6 +384,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
               isDecisionVisible ? 'decision-soft-pulse' : ''
             }`}
           >
+            <div className="absolute inset-y-4 left-0 w-1.5 rounded-r-full bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)] opacity-85" />
             <div
               className={`absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_18%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_38%)]`}
             />
@@ -392,6 +393,14 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
             />
             <div className="absolute right-0 top-0 p-2.5 text-sky-200/26 sm:p-4">
               <AlertCircle size={44} className="sm:h-[72px] sm:w-[72px]" />
+            </div>
+            <div className="relative z-10 mb-3 flex items-center gap-2 sm:mb-4">
+              <span className="inline-flex items-center rounded-full border border-[#cbdcf9] bg-white/78 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
+                Enunciado
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                Lee antes de elegir
+              </span>
             </div>
             <h3 className="relative z-10 pr-6 text-[1.06rem] font-extrabold leading-[1.82] tracking-[-0.02em] text-slate-900 sm:pr-14 sm:text-[1.62rem] sm:leading-[2.7rem]">
               {question.statement}
@@ -484,6 +493,14 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         </div>
 
         <div className="grid gap-2.5 sm:gap-3">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+              Respuestas
+            </p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+              Elige una opcion
+            </p>
+          </div>
           {optionEntries.map(([key, value]) => {
             const isCorrectOption = revealedCorrectKey === key;
             const isWrongSelected =
@@ -537,14 +554,14 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                   isDeferredMode
                     ? isDeferredSelected
                       ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(237,245,255,0.96))] shadow-[0_24px_38px_-28px_rgba(141,147,242,0.22)] ring-1 ring-sky-200'
-                      : 'border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)] hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-white hover:shadow-[0_24px_38px_-28px_rgba(141,147,242,0.18)] active:translate-y-0 active:scale-[0.99]'
+                      : 'border-slate-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.94))] shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-white hover:shadow-[0_24px_38px_-28px_rgba(141,147,242,0.16)] active:translate-y-0 active:scale-[0.99]'
                     : isCorrectOption
                     ? 'border-emerald-300 bg-[linear-gradient(180deg,rgba(236,253,245,1),rgba(220,252,231,0.92))] shadow-[0_16px_35px_-24px_rgba(16,185,129,0.32)] ring-1 ring-emerald-100'
                     : isWrongSelected
                       ? 'border-rose-300 bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))] shadow-[0_16px_35px_-24px_rgba(244,63,94,0.26)] ring-1 ring-rose-100'
-                      : isOtherSelected
+                    : isOtherSelected
                         ? 'border-slate-200/90 bg-white/55 opacity-60 saturate-75'
-                        : 'border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)] hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-white hover:shadow-[0_24px_38px_-28px_rgba(141,147,242,0.18)] active:translate-y-0 active:scale-[0.99]'
+                        : 'border-slate-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.94))] shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-white hover:shadow-[0_24px_38px_-28px_rgba(141,147,242,0.16)] active:translate-y-0 active:scale-[0.99]'
                 } ${selectedKey === key && isDecisionVisible ? 'decision-commit-in' : ''}`}
               >
                 <span
