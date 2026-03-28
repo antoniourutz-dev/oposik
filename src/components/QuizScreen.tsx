@@ -314,14 +314,14 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         selectedKey !== null ? 'pb-28 sm:pb-32' : ''
       }`}
     >
-      <div className="relative mb-4 overflow-hidden rounded-[1.6rem] border border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-3.5 text-white shadow-[0_28px_72px_-42px_rgba(141,147,242,0.32)] sm:rounded-[1.7rem] sm:p-5">
+      <div className="relative mb-3 overflow-hidden rounded-[1.5rem] border border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-3 text-white shadow-[0_24px_60px_-40px_rgba(141,147,242,0.3)] sm:mb-4 sm:rounded-[1.7rem] sm:p-5">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/16 blur-3xl" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_42%)]" />
           <div className="absolute right-4 top-4 h-24 w-24 rounded-full border border-white/14" />
         </div>
 
-        <div className="relative grid gap-3">
+        <div className="relative grid gap-2.5 sm:gap-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/12 px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.18em] text-sky-50/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
@@ -355,66 +355,92 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
 
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="text-[1.18rem] font-black tracking-[-0.02em] text-white sm:text-[1.55rem]">
+              <h2 className="text-[1.08rem] font-black tracking-[-0.03em] text-white sm:text-[1.55rem]">
                 Pregunta {displayQuestionNumber}
               </h2>
-              <p className="mt-1 text-sm font-semibold text-white/84 sm:text-[0.98rem]">
+              <p className="mt-0.5 text-[13px] font-semibold text-white/82 sm:mt-1 sm:text-[0.98rem]">
                 {questionIndex + 1} de {totalQuestions}
               </p>
               <p className="mt-1 hidden max-w-[30rem] text-xs font-semibold leading-5 text-white/68 sm:block">
                 {title}. {subtitle}
               </p>
             </div>
-            <span className="rounded-full border border-white/16 bg-white/10 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/86 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+            <span className="rounded-full border border-white/16 bg-white/10 px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/86 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] sm:px-3 sm:text-[10px]">
               {sessionPresentation.compactLabel}
             </span>
           </div>
         </div>
       </div>
 
-      <div
-        className={`mb-5 rounded-[1.15rem] border bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,249,255,0.88))] p-2.5 backdrop-blur transition-all duration-300 ${
-          feedbackState === 'correct'
-            ? 'border-emerald-100/90 shadow-[0_18px_34px_-26px_rgba(16,185,129,0.18)]'
-            : feedbackState === 'wrong'
-              ? 'border-rose-100/90 shadow-[0_18px_34px_-26px_rgba(244,63,94,0.14)]'
-              : feedbackState === 'armed'
-                ? 'border-[#d5e2fa] shadow-[0_18px_34px_-26px_rgba(141,147,242,0.18)]'
-                : 'border-white/75 shadow-[0_18px_34px_-28px_rgba(15,23,42,0.18)]'
-        } ${isDecisionVisible ? 'decision-soft-pulse' : ''}`}
+      <section
+        key={question.id}
+        className={`flex flex-1 flex-col transition-all duration-300 ease-out ${
+          isQuestionVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+        }`}
       >
-        <div className="flex gap-1.5">
-          {Array.from({ length: totalQuestions }).map((_, index) => (
+        <div className="sticky top-3 z-20 -mx-1 rounded-[1.9rem] bg-[linear-gradient(180deg,rgba(255,253,248,0.97)_0%,rgba(248,250,252,0.94)_78%,rgba(248,250,252,0)_100%)] px-1 pb-2 pt-0.5 sm:top-4 sm:pb-3 sm:pt-1">
+          <div
+            className={`relative overflow-hidden rounded-[1.45rem] border p-3.5 backdrop-blur transition-all duration-300 sm:rounded-[1.75rem] sm:p-6 ${feedbackSurfaceClass} ${
+              isDecisionVisible ? 'decision-soft-pulse' : ''
+            }`}
+          >
             <div
-              key={index}
-              className={`h-3 rounded-full transition-all duration-300 ${
-                index === questionIndex ? 'flex-[1.8]' : 'flex-1'
-              } ${
-                isDeferredMode
-                  ? index < answers.length
-                    ? 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
-                    : index === questionIndex && hasAnsweredCurrentQuestion
-                      ? 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
-                      : index === questionIndex
-                        ? 'border border-[#bfd2f6] bg-white shadow-[0_10px_18px_-16px_rgba(148,163,184,0.4)]'
-                        : 'bg-slate-100/90'
-                  : index === questionIndex
-                    ? hasAnsweredCurrentQuestion
-                      ? isCurrentAnswerCorrect
-                        ? 'bg-emerald-400 shadow-[0_10px_18px_-14px_rgba(16,185,129,0.45)]'
-                        : 'bg-rose-500 shadow-[0_10px_18px_-14px_rgba(244,63,94,0.4)]'
-                      : 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
-                    : answers[index]
-                      ? answers[index].isCorrect
-                        ? 'bg-emerald-400'
-                        : 'bg-rose-500'
-                      : 'bg-slate-100/90'
-              }`}
+              className={`absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_18%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_38%)]`}
             />
-          ))}
+            <div
+              className={`absolute inset-0 bg-[radial-gradient(circle_at_top_left,var(--tw-gradient-stops))] ${feedbackAccentGlowClass}`}
+            />
+            <div className="absolute right-0 top-0 p-2.5 text-sky-200/26 sm:p-4">
+              <AlertCircle size={44} className="sm:h-[72px] sm:w-[72px]" />
+            </div>
+            <h3 className="relative z-10 pr-6 text-[1.06rem] font-extrabold leading-[1.82] tracking-[-0.02em] text-slate-900 sm:pr-14 sm:text-[1.62rem] sm:leading-[2.7rem]">
+              {question.statement}
+            </h3>
+          </div>
         </div>
-        <div className="mt-2.5 rounded-[1rem] border border-slate-100/90 bg-white/85 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+
+        <div
+          className={`mb-3 rounded-[1rem] border bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,249,255,0.88))] p-2 backdrop-blur transition-all duration-300 sm:mb-4 sm:rounded-[1.15rem] sm:p-2.5 ${
+            feedbackState === 'correct'
+              ? 'border-emerald-100/90 shadow-[0_16px_28px_-24px_rgba(16,185,129,0.18)]'
+              : feedbackState === 'wrong'
+                ? 'border-rose-100/90 shadow-[0_16px_28px_-24px_rgba(244,63,94,0.14)]'
+                : feedbackState === 'armed'
+                  ? 'border-[#d5e2fa] shadow-[0_16px_28px_-24px_rgba(141,147,242,0.18)]'
+                  : 'border-white/75 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.16)]'
+          } ${isDecisionVisible ? 'decision-soft-pulse' : ''}`}
+        >
+          <div className="flex gap-1">
+            {Array.from({ length: totalQuestions }).map((_, index) => (
+              <div
+                key={index}
+                className={`h-2.5 rounded-full transition-all duration-300 sm:h-3 ${
+                  index === questionIndex ? 'flex-[1.8]' : 'flex-1'
+                } ${
+                  isDeferredMode
+                    ? index < answers.length
+                      ? 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
+                      : index === questionIndex && hasAnsweredCurrentQuestion
+                        ? 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
+                        : index === questionIndex
+                          ? 'border border-[#bfd2f6] bg-white shadow-[0_10px_18px_-16px_rgba(148,163,184,0.4)]'
+                          : 'bg-slate-100/90'
+                    : index === questionIndex
+                      ? hasAnsweredCurrentQuestion
+                        ? isCurrentAnswerCorrect
+                          ? 'bg-emerald-400 shadow-[0_10px_18px_-14px_rgba(16,185,129,0.45)]'
+                          : 'bg-rose-500 shadow-[0_10px_18px_-14px_rgba(244,63,94,0.4)]'
+                        : 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
+                      : answers[index]
+                        ? answers[index].isCorrect
+                          ? 'bg-emerald-400'
+                          : 'bg-rose-500'
+                        : 'bg-slate-100/90'
+                }`}
+              />
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-[0.95rem] border border-slate-100/90 bg-white/88 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-3 sm:py-2.5">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
@@ -424,19 +450,19 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                   {previewAnsweredCount}/{totalQuestions}
                 </span>
               </div>
-              <p className="mt-1 text-sm font-black tracking-[-0.01em] text-slate-900 sm:text-[0.96rem]">
+              <p className="mt-1 text-[13px] font-black tracking-[-0.01em] text-slate-900 sm:text-[0.96rem]">
                 {stageName} del bloque
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
               <span
-                className={`inline-flex items-center rounded-full border px-2.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] ${rhythmToneClass}`}
+                className={`inline-flex items-center rounded-full border px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.14em] sm:text-[10px] ${rhythmToneClass}`}
               >
                 {rhythmLabel}
               </span>
               <span
-                className={`inline-flex items-center rounded-full border px-2.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] ${signalToneClass}`}
+                className={`inline-flex items-center rounded-full border px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.14em] sm:text-[10px] ${signalToneClass}`}
               >
                 {signalLabel}
               </span>
@@ -456,36 +482,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
             ))}
           </div>
         </div>
-      </div>
 
-      <section
-        key={question.id}
-        className={`flex flex-1 flex-col transition-all duration-300 ease-out ${
-          isQuestionVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
-        }`}
-      >
-        <div className="sticky top-3 z-20 -mx-1 rounded-[1.9rem] bg-[linear-gradient(180deg,rgba(255,253,248,0.97)_0%,rgba(248,250,252,0.94)_78%,rgba(248,250,252,0)_100%)] px-1 pb-2.5 pt-0.5 sm:top-4 sm:pb-3 sm:pt-1">
-          <div
-            className={`relative overflow-hidden rounded-[1.6rem] border p-4 backdrop-blur transition-all duration-300 sm:rounded-[1.75rem] sm:p-6 ${feedbackSurfaceClass} ${
-              isDecisionVisible ? 'decision-soft-pulse' : ''
-            }`}
-          >
-            <div
-              className={`absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_18%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_38%)]`}
-            />
-            <div
-              className={`absolute inset-0 bg-[radial-gradient(circle_at_top_left,var(--tw-gradient-stops))] ${feedbackAccentGlowClass}`}
-            />
-            <div className="absolute right-0 top-0 p-3 text-sky-200/32 sm:p-4">
-              <AlertCircle size={56} className="sm:h-[72px] sm:w-[72px]" />
-            </div>
-            <h3 className="relative z-10 pr-8 text-[1.08rem] font-extrabold leading-8 tracking-[-0.02em] text-slate-900 sm:pr-14 sm:text-[1.62rem] sm:leading-[2.7rem]">
-              {question.statement}
-            </h3>
-          </div>
-        </div>
-
-        <div className="mt-1 grid gap-2.5 sm:mt-2 sm:gap-3">
+        <div className="grid gap-2.5 sm:gap-3">
           {optionEntries.map(([key, value]) => {
             const isCorrectOption = revealedCorrectKey === key;
             const isWrongSelected =
