@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 type TopBarProps = {
   title?: string;
@@ -10,34 +11,36 @@ const TopBar: React.FC<TopBarProps> = ({ title = 'Oposik', section }) => {
   const isIntegrated = !section;
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 px-3 pt-[max(env(safe-area-inset-top),0.55rem)] sm:px-6 lg:px-8">
+    <header className="fixed inset-x-0 top-0 z-40 px-6 pt-[max(env(safe-area-inset-top),1.25rem)] sm:px-12 xl:px-16">
       <div
         className={`${
           isIntegrated
-            ? 'mx-auto flex h-[38px] w-full max-w-full items-center justify-start gap-2.5 px-1.5'
-            : 'chrome-float chrome-sheen mx-auto flex h-[56px] w-full max-w-full items-center justify-between rounded-[1.3rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(245,249,255,0.9))] px-4 shadow-[0_22px_54px_-42px_rgba(141,147,242,0.15)] backdrop-blur-xl'
+            ? 'mx-auto flex h-[48px] w-full max-w-7xl items-center justify-between'
+            : 'mx-auto flex h-[64px] w-full max-w-7xl items-center justify-between rounded-[2rem] border border-white/40 bg-white/60 px-6 shadow-[0_32px_64px_-32px_rgba(15,23,42,0.2)] backdrop-blur-2xl transition-all duration-500 hover:bg-white/70'
         }`}
       >
-        <div className={`flex min-w-0 items-center ${isIntegrated ? 'gap-2.5' : 'gap-3'}`}>
-          <span
-            className={`rounded-full bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_20px_-10px_rgba(141,147,242,0.42)] ${
-              isIntegrated ? 'h-3 w-3' : 'h-3 w-3'
-            }`}
-          />
-          <p
-            className={`truncate font-extrabold tracking-[-0.03em] text-slate-950 ${
-              isIntegrated ? 'text-[1rem]' : 'text-[1rem]'
-            }`}
-          >
-            {title}
-          </p>
-        </div>
-        {section ? (
-          <div className="inline-flex shrink-0 items-center gap-2 rounded-full border border-sky-100/80 bg-[linear-gradient(135deg,rgba(125,211,252,0.1),rgba(165,180,252,0.12))] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-700 shadow-[0_12px_24px_-22px_rgba(141,147,242,0.18)] transition-transform duration-300 hover:-translate-y-0.5">
-            <Sparkles size={13} className="text-sky-400" />
-            <span>{section}</span>
+        <div className="flex items-center gap-4">
+          <div aria-hidden="true" className="relative flex h-8 w-8 items-center justify-center">
+             <motion.div
+               animate={{ rotate: 360 }}
+               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+               className="absolute inset-0 rounded-xl bg-gradient-to-tr from-indigo-500/20 via-sky-400/20 to-indigo-500/20 blur-md"
+             />
+             <div className="relative h-2.5 w-2.5 rounded-full bg-slate-950 shadow-[0_0_12px_rgba(15,23,42,0.4)]" />
           </div>
-        ) : null}
+          <h1 className="text-xl font-black tracking-tight text-slate-950 opacity-90">
+             {title}
+          </h1>
+        </div>
+
+        {section && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50/50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 shadow-sm transition-transform hover:-translate-y-0.5">
+              <Sparkles size={14} className="text-indigo-400" />
+              <span>{section}</span>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );

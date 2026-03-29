@@ -64,7 +64,8 @@ export const usePracticeSessionFlow = ({
     startMixed,
     startRandom,
     startSimulacro,
-    startStandardSession
+    startStandardSession,
+    startLawSession
   } = usePracticeSessionStarters({
     guestBlocksRemaining,
     guestBlocksUsed,
@@ -130,6 +131,7 @@ export const usePracticeSessionFlow = ({
     startFromBeginning,
     startGenericRecommended,
     startGuest,
+    startLawSession,
     startMixed,
     startRandom,
     startSimulacro,

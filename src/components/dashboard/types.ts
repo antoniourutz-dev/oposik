@@ -47,6 +47,7 @@ export type DashboardScreenProps = {
   onStartRandom: () => void;
   onStartFromBeginning: () => void;
   onStartWeakReview: () => void;
+  onStartLawTraining: (ley: string) => void;
   onReloadQuestions: () => void;
   onSaveExamTarget: (payload: DashboardExamTargetPayload) => void;
   onSignOut: () => void;

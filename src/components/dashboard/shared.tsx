@@ -1,5 +1,6 @@
 import React from 'react';
-import { ArrowLeft, ArrowRight, ChevronRight, TrendingUp, Info, Activity, Target, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, TrendingUp, CheckCircle, ChevronRight, Activity, CalendarDays, BookOpen, Clock, Target, ListTodo, Shield, Scale, FileText, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const formatSessionDate = (value: string) => {
   const date = new Date(value);
@@ -39,10 +40,10 @@ export const toDateInputValue = (value: string | null | undefined) => {
 };
 
 export const SectionCard: React.FC<
-  React.PropsWithChildren<{ title?: string; hint?: string; className?: string; translucent?: boolean }>
-> = ({ title, hint, className = '', translucent = true, children }) => (
+  React.PropsWithChildren<{ title?: string; hint?: string; className?: string }>
+> = ({ title, hint, className = '', children }) => (
   <section
-    className={`group relative overflow-hidden rounded-[1.6rem] border border-slate-200/60 p-5 transition-all duration-500 hover:shadow-[0_45px_100px_-50px_rgba(31,38,135,0.14)] sm:p-6 ${translucent ? 'bg-white/88 backdrop-blur-xl' : 'bg-white'} ${className}`}
+    className={`group relative overflow-hidden rounded-[2.2rem] border border-white/40 bg-white/60 p-6 shadow-2xl shadow-indigo-500/5 transition-all duration-500 backdrop-blur-2xl hover:shadow-indigo-500/10 sm:p-8 ${className}`}
   >
     <div className="relative z-10">
       {title ? (
@@ -62,6 +63,144 @@ export const SectionCard: React.FC<
   </section>
 );
 
+export const LawPerformanceCard: React.FC<{
+  ley_referencia: string;
+  accuracyRate?: number;
+  accuracy?: number;
+  attempts: number;
+  questionCount?: number;
+  onClick?: (ley: string) => void;
+}> = ({ ley_referencia, accuracyRate, accuracy, attempts, questionCount, onClick }) => {
+  const resolvedAccuracy = accuracyRate ?? accuracy ?? 0;
+  const displayAccuracy = Math.round(Number(resolvedAccuracy) || 0);
+  const isHealthy = displayAccuracy >= 75;
+  const isCritical = displayAccuracy < 50;
+  const hasAttempted = attempts > 0;
+
+  const getStatusColor = () => {
+    if (!hasAttempted) return {
+       bg: 'bg-slate-300', softBg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-200', shadow: 'shadow-slate-500/10'
+    };
+    if (isHealthy) return {
+       bg: 'bg-emerald-500', softBg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200', shadow: 'shadow-emerald-500/20'
+    };
+    if (isCritical) return {
+       bg: 'bg-rose-500', softBg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-200', shadow: 'shadow-rose-500/20'
+    };
+    return {
+       bg: 'bg-amber-500', softBg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', shadow: 'shadow-amber-500/20'
+    };
+  };
+
+  const colors = getStatusColor();
+
+  return (
+    <div
+      onClick={() => onClick?.(ley_referencia)}
+      className={`group relative flex flex-col gap-4 overflow-hidden rounded-[1.8rem] border bg-white/70 backdrop-blur-md p-6 transition-all duration-300 ${
+        onClick ? 'cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:bg-white' : ''
+      } ${colors.border} shadow-sm`}
+    >
+       <div className="flex items-start justify-between gap-5">
+          <div className="flex-1 min-w-0">
+             <div className="flex items-start gap-2.5 mb-2">
+               <FileText size={16} className={`shrink-0 mt-0.5 ${hasAttempted ? colors.text : 'text-slate-400'}`} />
+               <p className="line-clamp-3 text-[14px] leading-tight font-black uppercase text-slate-800" title={ley_referencia}>
+                 {ley_referencia}
+               </p>
+             </div>
+             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-3">
+               {questionCount !== undefined && <span className="text-slate-800 font-black">{questionCount} preg. &bull; </span>} 
+               {hasAttempted ? `${attempts} vistas` : 'Sin empezar'}
+             </p>
+          </div>
+          
+          <div className={`flex h-[3.25rem] w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-[1.1rem] border border-white/60 ${colors.softBg} shadow-sm transition-transform duration-500 group-hover:scale-105 group-hover:rotate-2`}>
+             <span className={`text-[1.15rem] font-black leading-none tracking-tight ${colors.text}`}>
+               {hasAttempted ? displayAccuracy : '--'}<span className="text-[10px]">%</span>
+             </span>
+          </div>
+       </div>
+
+       <div className="relative mt-auto pt-2">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/60 shadow-inner">
+             {hasAttempted && (
+               <motion.div
+                 initial={{ width: 0 }}
+                 animate={{ width: `${displayAccuracy}%` }}
+                 transition={{ duration: 1, ease: 'easeOut', delay: 0.1 }}
+                 className={`h-full rounded-full ${colors.bg} ${colors.shadow}`}
+               />
+             )}
+          </div>
+          {onClick && (
+            <div className={`absolute -right-3 top-0 flex h-7 w-7 translate-y-[1px] items-center justify-center rounded-full bg-white opacity-0 shadow-md border ${colors.border} transition-all duration-300 group-hover:-right-1 group-hover:opacity-100`}>
+               <ChevronRight size={14} className={colors.text} />
+            </div>
+          )}
+       </div>
+    </div>
+  );
+};
+
+export const NormativeRadar: React.FC<{
+  laws: Array<{ ley_referencia: string; accuracy?: number; accuracyRate?: number; attempts: number; scope?: string }>;
+  onLawClick?: (ley: string) => void;
+}> = ({ laws, onLawClick }) => {
+  const common = laws.filter(l => l.scope === 'common');
+  const specific = laws.filter(l => l.scope === 'specific');
+  const unknown = laws.filter(l => l.scope !== 'common' && l.scope !== 'specific');
+
+  const renderSection = (title: string, list: typeof laws, icon: React.ReactNode, wrapperColors: string, headerColors: string) => {
+    if (list.length === 0) return null;
+    return (
+      <div className={`mb-8 overflow-hidden rounded-[2.5rem] border ${wrapperColors} transition-all`}>
+        <div className={`flex items-center gap-3 border-b px-8 py-5 ${headerColors}`}>
+          <div className="flex bg-white/50 backdrop-blur-sm shadow-sm h-10 w-10 items-center justify-center rounded-xl">
+             {icon}
+          </div>
+          <h4 className="text-lg font-black text-slate-900 tracking-tight">{title}</h4>
+          <span className="ml-auto rounded-full bg-white/60 px-3 py-1 text-[10px] font-black tracking-widest text-slate-500">{list.length}</span>
+        </div>
+        <div className="p-8">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-2">
+            {list.map((law, idx) => (
+              <LawPerformanceCard key={idx} {...law} onClick={onLawClick} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {renderSection(
+        'Legislación Común', 
+        common, 
+        <Scale size={18} className="text-indigo-600" />, 
+        'border-indigo-100/50 bg-indigo-50/10',
+        'border-indigo-100/50 bg-indigo-50/30'
+      )}
+      {renderSection(
+        'Temario Específico', 
+        specific, 
+        <BookOpen size={18} className="text-emerald-600" />, 
+        'border-emerald-100/50 bg-emerald-50/10',
+        'border-emerald-100/50 bg-emerald-50/30'
+      )}
+      {renderSection(
+        'Otros Marcos / Sin Clasificar', 
+        unknown, 
+        <ListTodo size={18} className="text-slate-500" />, 
+        'border-slate-100 bg-slate-50/10',
+        'border-slate-100 bg-slate-50'
+      )}
+    </div>
+  );
+};
+
+
 export const AnalyticsMiniTile: React.FC<{
   label: string;
   value: string;
@@ -69,14 +208,14 @@ export const AnalyticsMiniTile: React.FC<{
   accent?: boolean;
 }> = ({ label, value, caption, accent = false }) => (
   <div
-    className={`rounded-[1.4rem] border px-4 py-4.5 shadow-[0_12px_24px_-18px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-0.5 ${
+    className={`rounded-[1.8rem] border p-5 shadow-xl transition-all duration-300 hover:-translate-y-1 ${
       accent
-        ? 'border-sky-200/50 bg-sky-50/50 backdrop-blur-lg'
-        : 'border-white/60 bg-white/60 backdrop-blur-lg'
+        ? 'border-indigo-100 bg-indigo-50/40 backdrop-blur-xl'
+        : 'border-white/40 bg-white/40 backdrop-blur-xl shadow-slate-200/40'
     }`}
   >
-    <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-500/80">{label}</p>
-    <p className="mt-2 text-2xl font-black leading-none tracking-tight text-slate-950">{value}</p>
+    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
+    <p className="mt-2 text-[1.75rem] font-black leading-none tracking-tight text-slate-950">{value}</p>
     {caption ? (
       <p className="mt-1.5 text-[11px] font-semibold leading-relaxed text-slate-400">
         {caption}
@@ -91,15 +230,17 @@ export const SegmentedProgressBar: React.FC<{
   const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0);
 
   return (
-    <div className="overflow-hidden rounded-full border border-white/82 bg-slate-100/90 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+    <div className="overflow-hidden rounded-full border border-white/80 bg-slate-100/50 p-1 backdrop-blur-sm shadow-inner">
       <div className="flex h-4 overflow-hidden rounded-full">
         {segments.map((segment) => {
           const width = total === 0 ? 0 : (Math.max(0, segment.value) / total) * 100;
           return (
-            <div
+            <motion.div
               key={segment.label}
-              className={segment.className}
-              style={{ width: `${width}%` }}
+              initial={{ width: 0 }}
+              animate={{ width: `${width}%` }}
+              transition={{ duration: 1, ease: "circOut" }}
+              className={`${segment.className} h-full shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]`}
               title={`${segment.label}: ${segment.value}`}
             />
           );
@@ -121,7 +262,7 @@ export const RankedMeterRow: React.FC<{
   const barClassName =
     tone === 'secondary'
       ? 'bg-[linear-gradient(90deg,#cbd5e1_0%,#94a3b8_100%)]'
-      : 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)]';
+      : 'brand-gradient-h';
 
   return (
     <div className="rounded-[1.08rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-4 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
@@ -136,8 +277,13 @@ export const RankedMeterRow: React.FC<{
           {valueLabel}
         </span>
       </div>
-      <div className="mt-3 h-2.5 rounded-full bg-slate-100">
-        <div className={`h-2.5 rounded-full ${barClassName}`} style={{ width: `${width}%` }} />
+      <div className="mt-3 h-2.5 rounded-full bg-slate-100 shadow-inner">
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${width}%` }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className={`h-2.5 rounded-full ${barClassName} shadow-[0_4px_12px_rgba(141,147,242,0.2)]`} 
+        />
       </div>
     </div>
   );
@@ -149,15 +295,14 @@ export const RadialProgress: React.FC<{
   size?: number;
   strokeWidth?: number;
   color?: string;
-  accentColor?: string;
-}> = ({ value, label, size = 180, strokeWidth = 14, color = "rgba(226, 232, 240, 0.4)", accentColor = "url(#radialGradient)" }) => {
+}> = ({ value, label, size = 180, strokeWidth = 14, color = "rgba(226, 232, 240, 0.4)" }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (value / 100) * circumference;
   const id = React.useId();
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+    <div className="relative flex items-center justify-center" style={{ width: `${size}px`, height: `${size}px` }}>
       <svg className="rotate-[-90deg] transform" width={size} height={size}>
         <defs>
           <linearGradient id={`${id}-gradient`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -184,7 +329,6 @@ export const RadialProgress: React.FC<{
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          transition-all="true"
           className="transition-all duration-1000 ease-out"
         />
       </svg>
@@ -324,7 +468,7 @@ export const RangeMeter: React.FC<{
     <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)] sm:px-4">
       <div className="mb-2.5 flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
         <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <span className="h-2 w-2 rounded-full bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)]" />
+          <span className="h-2 w-2 rounded-full korrika-bg-gradient" />
           actual
         </span>
         <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
@@ -348,7 +492,7 @@ export const RangeMeter: React.FC<{
           }}
         />
         <div
-          className="h-full rounded-full bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_12px_24px_-18px_rgba(141,147,242,0.4)]"
+          className="h-full rounded-full brand-gradient-h shadow-[0_12px_24px_-18px_rgba(141,147,242,0.4)]"
           style={{ width: `${currentPercent}%` }}
         />
         {projectedPercent !== null ? (
@@ -418,7 +562,7 @@ export const PressureComparisonMeter: React.FC<{
           {
             label: 'Aprendizaje',
             value: learningPercent,
-            gradient: 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)]',
+            gradient: 'brand-gradient-h',
             valueClass: 'text-slate-950'
           },
           {
@@ -501,7 +645,7 @@ export const StudyActionCard: React.FC<{
       <span
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] ${
           tone === 'primary'
-            ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.3)]'
+            ? 'korrika-bg-gradient text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.3)]'
             : 'bg-slate-100 text-slate-600'
         }`}
       >
@@ -538,7 +682,7 @@ export const CircularGauge: React.FC<{
   const idValue = React.useId().replace(/:/g, '');
 
   return (
-    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+    <div className="relative flex items-center justify-center shrink-0" style={{ width: `${size}px`, height: `${size}px` }}>
       <svg className="rotate-[-90deg] transform" width={size} height={size}>
         <defs>
           <linearGradient id={`gauge-${idValue}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -554,7 +698,7 @@ export const CircularGauge: React.FC<{
           strokeWidth={strokeWidth}
           fill="transparent"
         />
-        <circle
+        <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -562,9 +706,10 @@ export const CircularGauge: React.FC<{
           strokeWidth={strokeWidth}
           fill="transparent"
           strokeDasharray={circumference}
-          strokeDashoffset={offset}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
           strokeLinecap="round"
-          className="transition-all duration-1000 ease-in-out"
+          transition={{ duration: 1.5, ease: "circOut" }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">

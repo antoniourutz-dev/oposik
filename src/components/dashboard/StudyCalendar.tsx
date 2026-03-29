@@ -97,7 +97,7 @@ export const StudyCalendar: React.FC<StudyCalendarProps> = ({ sessions, classNam
               key={day}
               className={`relative flex h-9 w-full items-center justify-center rounded-lg text-sm font-bold transition-all ${
                 isStudied
-                  ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-md'
+                  ? 'korrika-bg-gradient text-white shadow-md'
                   : 'bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600'
               } ${isToday ? 'ring-2 ring-korrika-pink ring-offset-2' : ''}`}
             >
@@ -112,7 +112,7 @@ export const StudyCalendar: React.FC<StudyCalendarProps> = ({ sessions, classNam
 
       <div className="mt-8 flex items-center gap-4 border-t border-slate-100 pt-6">
         <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-md bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)]" />
+          <div className="h-3 w-3 rounded-md korrika-bg-gradient" />
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Estudiado</span>
         </div>
         <div className="flex items-center gap-2">

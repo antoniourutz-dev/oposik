@@ -233,6 +233,8 @@ export const mapLearningDashboardV2 = (
 ): PracticeLearningDashboardV2 | null => {
   if (!value) return null;
 
+  const rawLawBreakdown = Array.isArray(value.law_breakdown) ? value.law_breakdown : [];
+
   return {
     totalQuestions: toNumber(value.total_questions),
     seenQuestions: toNumber(value.seen_questions),
@@ -261,7 +263,15 @@ export const mapLearningDashboardV2 = (
     recommendedMode: mapPracticeMode(value.recommended_mode),
     focusMessage:
       toNullableString(value.focus_message) ??
-      'La preparacion compuesta aun se esta estabilizando.'
+      'La preparacion compuesta aun se esta estabilizando.',
+    lawBreakdown: rawLawBreakdown.map((law: any) => ({
+      ley_referencia: String(law.ley_referencia || 'Otras Normas'),
+      scope: normalizeQuestionScope(law.raw_scope) ?? 'unknown',
+      attempts: toNumber(law.attempts),
+      questionCount: toNumber(law.question_count),
+      correctAttempts: toNumber(law.correct_attempts),
+      accuracyRate: toNumber(law.accuracy_rate)
+    }))
   };
 };
 

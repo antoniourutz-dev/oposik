@@ -265,3 +265,29 @@ export const restartPracticeSession = (
   id: buildSessionId(),
   startedAt: new Date().toISOString()
 });
+
+export const buildLawPracticeSession = (
+  questions: PracticeQuestion[],
+  law: string
+): ActivePracticeSession | null => {
+  const uniqueQuestions = dedupeQuestions(questions);
+  if (uniqueQuestions.length === 0) return null;
+
+  return {
+    id: buildSessionId(),
+    // Use random mode for focused law training sessions
+    mode: 'random',
+    feedbackMode: 'immediate',
+    title: law,
+    subtitle: `Entrenamiento monográfico sobre la base normativa de ${law}.`,
+    questions: uniqueQuestions,
+    startedAt: new Date().toISOString(),
+    timeLimitSeconds: null,
+    batchNumber: 1,
+    totalBatches: 1,
+    questionScope: 'all',
+    batchStartIndex: null,
+    continueLabel: 'Volver al panel',
+    nextStandardBatchStartIndex: null
+  };
+};

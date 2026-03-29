@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ArrowRight, Check, Clock3, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/button';
 import { inferAttemptErrorType } from '../domain/learningEngine';
 import {
@@ -12,6 +13,8 @@ import {
 } from '../practiceTypes';
 import { getSessionPresentation } from '../sessionPresentation';
 import { getQuestionScopeLabel } from '../utils/practiceQuestionScope';
+import { useQuizTelemetry } from '../hooks/useQuizTelemetry';
+import { computeSessionFatigueScore } from '../domain/learningEngine/fatigue';
 
 type QuizScreenProps = {
   mode: PracticeMode;
@@ -34,26 +37,6 @@ type QuizScreenProps = {
   onTimeExpired: (submission: PracticeAnswerSubmission | null) => void;
 };
 
-type ProgressSegment = {
-  key: number;
-  isCurrent: boolean;
-  className: string;
-};
-
-const ProgressTrack = React.memo(({ segments }: { segments: ProgressSegment[] }) => (
-  <div className="flex gap-1">
-    {segments.map(({ key, isCurrent, className }) => (
-      <div
-        key={key}
-        className={`h-2.5 rounded-full transition-all duration-300 sm:h-3 ${
-          isCurrent ? 'flex-[1.8]' : 'flex-1'
-        } ${className}`}
-      />
-    ))}
-  </div>
-));
-
-ProgressTrack.displayName = 'ProgressTrack';
 
 const QuizScreen: React.FC<QuizScreenProps> = ({
   mode,
@@ -65,11 +48,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   question,
   questionIndex,
   totalQuestions,
-  batchNumber,
-  totalBatches,
   questionScope = 'all',
   simplified = false,
-  showCompactProgress = false,
   answers,
   onAnswer,
   onEndSession,
@@ -80,7 +60,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   const [firstSelectionElapsedMs, setFirstSelectionElapsedMs] = useState<number | null>(null);
   const [selectionElapsedMs, setSelectionElapsedMs] = useState<number | null>(null);
   const [changedAnswer, setChangedAnswer] = useState(false);
-  const [isQuestionVisible, setIsQuestionVisible] = useState(false);
+  const [, setIsQuestionVisible] = useState(false);
   const [isDecisionVisible, setIsDecisionVisible] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(
     timeLimitSeconds
@@ -91,6 +71,30 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   const timeExpiredRef = useRef(false);
   const actionBarRef = useRef<HTMLDivElement | null>(null);
   const optionRefs = useRef<Partial<Record<OptionKey, HTMLButtonElement | null>>>({});
+  useQuizTelemetry(question.id);
+
+  const fatigueScore = useMemo(() => {
+    if (answers.length < 4) return 0;
+    const sessionInsights = answers.map(a => ({
+      isCorrect: a.isCorrect,
+      responseTimeMs: a.responseTimeMs ?? 0,
+      errorTypeInferred: a.errorTypeInferred
+    }));
+    return computeSessionFatigueScore(sessionInsights);
+  }, [answers]);
+
+  const focusStatus = fatigueScore < 0.3 ? 'Optimo' : fatigueScore < 0.6 ? 'Degradación' : 'Agotado';
+  const focusColor = fatigueScore < 0.3 ? 'text-emerald-400' : fatigueScore < 0.6 ? 'text-amber-400' : 'text-rose-400';
+
+  const [hasShownFatigueWarning, setHasShownFatigueWarning] = useState(false);
+  const [isFatigueModalOpen, setIsFatigueModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (fatigueScore >= 0.7 && !hasShownFatigueWarning) {
+      setIsFatigueModalOpen(true);
+      setHasShownFatigueWarning(true);
+    }
+  }, [fatigueScore, hasShownFatigueWarning]);
 
   useLayoutEffect(() => {
     setSelectedKey(null);
@@ -209,160 +213,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     totalQuestions,
     answers.length + (hasAnsweredCurrentQuestion ? 1 : 0)
   );
-  const answerMetrics = useMemo(() => {
-    let correctCount = 0;
-    let trailingCorrectStreak = 0;
-    let responseTimeTotal = 0;
-    let responseTimeCount = 0;
-
-    for (const answer of answers) {
-      if (answer.isCorrect) {
-        correctCount += 1;
-      }
-      if (answer.responseTimeMs !== null) {
-        responseTimeTotal += answer.responseTimeMs;
-        responseTimeCount += 1;
-      }
-    }
-
-    for (let index = answers.length - 1; index >= 0; index -= 1) {
-      if (!answers[index].isCorrect) break;
-      trailingCorrectStreak += 1;
-    }
-
-    return {
-      correctCount,
-      trailingCorrectStreak,
-      responseTimeTotal,
-      responseTimeCount
-    };
-  }, [answers]);
   const isCurrentAnswerCorrect =
     selectedKey !== null && selectedKey === question.correctOption;
-  const previewCorrectCount = isDeferredMode
-    ? answerMetrics.correctCount
-    : answerMetrics.correctCount + (hasAnsweredCurrentQuestion && isCurrentAnswerCorrect ? 1 : 0);
-  const immediateStreak =
-    !isDeferredMode && hasAnsweredCurrentQuestion
-      ? isCurrentAnswerCorrect
-        ? answerMetrics.trailingCorrectStreak + 1
-        : 0
-      : answerMetrics.trailingCorrectStreak;
-  const currentStage = Math.min(
-    4,
-    Math.max(
-      1,
-      Math.ceil(((previewAnsweredCount > 0 ? previewAnsweredCount : questionIndex + 1) / totalQuestions) * 4)
-    )
-  );
-  const stageName =
-    ['Arranque', 'Traccion', 'Cruce', 'Cierre'][currentStage - 1] ?? 'Pulso';
-  const rhythmLabel = useMemo(() => {
-    if (isDeferredMode && timeLimitSeconds) {
-      const elapsedSeconds =
-        remainingSeconds !== null
-          ? Math.max(1, timeLimitSeconds - remainingSeconds)
-          : Math.max(1, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
-      const answeredForRhythm = Math.max(previewAnsweredCount, 1);
-      const idealSpentSeconds = (timeLimitSeconds / totalQuestions) * answeredForRhythm;
-      const ratio = elapsedSeconds / Math.max(idealSpentSeconds, 1);
-
-      if (ratio <= 0.85) return 'Con margen';
-      if (ratio <= 1.05) return 'Ritmo exacto';
-      return 'Ritmo justo';
-    }
-
-    const hasCurrentResponseTime =
-      !isDeferredMode && hasAnsweredCurrentQuestion && selectionElapsedMs !== null;
-    const responseSampleCount = answerMetrics.responseTimeCount + (hasCurrentResponseTime ? 1 : 0);
-    if (responseSampleCount === 0) return 'En arranque';
-
-    const responseSampleTotal =
-      answerMetrics.responseTimeTotal + (hasCurrentResponseTime ? selectionElapsedMs ?? 0 : 0);
-    const averageSeconds = responseSampleTotal / responseSampleCount / 1000;
-
-    if (averageSeconds <= 15) return 'Agil';
-    if (averageSeconds <= 28) return 'Estable';
-    return 'Pausado';
-  }, [
-    answerMetrics.responseTimeCount,
-    answerMetrics.responseTimeTotal,
-    hasAnsweredCurrentQuestion,
-    isDeferredMode,
-    previewAnsweredCount,
-    remainingSeconds,
-    selectionElapsedMs,
-    startedAt,
-    timeLimitSeconds,
-    totalQuestions
-  ]);
-  const signalLabel = isDeferredMode
-    ? `${previewAnsweredCount}/${totalQuestions}`
-    : immediateStreak >= 3
-      ? `Racha ${immediateStreak}`
-      : hasAnsweredCurrentQuestion && selectedKey !== question.correctOption
-        ? 'Recoloca'
-        : previewCorrectCount > 0
-          ? `${previewCorrectCount} bien`
-          : 'En curso';
-  const rhythmToneClass =
-    rhythmLabel === 'Agil' || rhythmLabel === 'Con margen'
-      ? 'border-emerald-100/80 bg-emerald-50/90 text-emerald-700'
-      : rhythmLabel === 'Estable' || rhythmLabel === 'Ritmo exacto'
-        ? 'border-sky-100/80 bg-sky-50/90 text-sky-700'
-        : rhythmLabel === 'En arranque'
-          ? 'border-slate-100/80 bg-slate-50/90 text-slate-700'
-          : 'border-amber-100/80 bg-amber-50/90 text-amber-700';
-  const signalToneClass = isDeferredMode
-    ? 'border-indigo-100/80 bg-indigo-50/90 text-indigo-700'
-    : immediateStreak >= 3
-      ? 'border-emerald-100/80 bg-emerald-50/90 text-emerald-700'
-      : hasAnsweredCurrentQuestion && selectedKey !== question.correctOption
-        ? 'border-rose-100/80 bg-rose-50/90 text-rose-700'
-        : previewCorrectCount > 0
-          ? 'border-sky-100/80 bg-sky-50/90 text-sky-700'
-          : 'border-slate-100/80 bg-slate-50/90 text-slate-700';
-  const progressSegments = useMemo(
-    () =>
-      Array.from({ length: totalQuestions }, (_, index) => {
-        let className = 'bg-slate-100/90';
-
-        if (isDeferredMode) {
-          if (index < answers.length || (index === questionIndex && hasAnsweredCurrentQuestion)) {
-            className =
-              'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]';
-          } else if (index === questionIndex) {
-            className =
-              'border border-[#bfd2f6] bg-white shadow-[0_10px_18px_-16px_rgba(148,163,184,0.4)]';
-          }
-        } else if (index === questionIndex) {
-          if (hasAnsweredCurrentQuestion) {
-            className = isCurrentAnswerCorrect
-              ? 'bg-emerald-400 shadow-[0_10px_18px_-14px_rgba(16,185,129,0.45)]'
-              : 'bg-rose-500 shadow-[0_10px_18px_-14px_rgba(244,63,94,0.4)]';
-          } else {
-            className =
-              'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]';
-          }
-        } else if (answers[index]) {
-          className = answers[index].isCorrect ? 'bg-emerald-400' : 'bg-rose-500';
-        }
-
-        return {
-          key: index,
-          isCurrent: index === questionIndex,
-          className
-        };
-      }),
-    [
-      answers,
-      hasAnsweredCurrentQuestion,
-      isCurrentAnswerCorrect,
-      isDeferredMode,
-      questionIndex,
-      totalQuestions
-    ]
-  );
   const feedbackState = isDeferredMode
     ? selectedKey !== null
       ? 'armed'
@@ -395,13 +247,13 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
             label: 'Correcta',
             className:
               'border-emerald-200/90 bg-emerald-50/92 text-emerald-700 shadow-[0_12px_24px_-20px_rgba(16,185,129,0.28)]',
-            icon: <Check size={14} strokeWidth={3} />
+            icon: <Check aria-hidden="true" size={14} strokeWidth={3} />
           }
         : {
             label: 'Fallo',
             className:
               'border-rose-200/90 bg-rose-50/92 text-rose-700 shadow-[0_12px_24px_-20px_rgba(244,63,94,0.24)]',
-            icon: <X size={14} strokeWidth={3} />
+            icon: <X aria-hidden="true" size={14} strokeWidth={3} />
           }
       : null;
   const nextButtonLabel =
@@ -469,10 +321,16 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         {nextButtonLabel}
       </span>
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/18 bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-        <ArrowRight size={18} />
+        <ArrowRight aria-hidden="true" size={18} />
       </span>
     </Button>
   );
+
+  const feedbackAnnouncement = !isDeferredMode && selectedKey !== null
+    ? isCurrentAnswerCorrect
+      ? `Respuesta correcta. Opción ${selectedKey.toUpperCase()}.`
+      : `Respuesta incorrecta. La opción correcta es la ${question.correctOption.toUpperCase()}.`
+    : '';
 
   return (
     <div
@@ -480,6 +338,15 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         selectedKey !== null ? 'pb-32' : 'pb-10'
       }`}
     >
+      <div
+        role="status"
+        aria-live="assertive"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {feedbackAnnouncement}
+      </div>
+      <AnimatePresence mode="wait">
       <div className="relative mb-3 overflow-hidden rounded-[1.5rem] border border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-3 text-white shadow-[0_24px_60px_-40px_rgba(141,147,242,0.3)] sm:mb-4 sm:rounded-[1.7rem] sm:p-5 xl:mb-5 xl:rounded-[1.95rem] xl:p-6">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/16 blur-3xl" />
@@ -521,16 +388,17 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
             <div className="flex shrink-0 items-center gap-2">
               {formattedRemainingTime ? (
                 <div className="inline-flex items-center justify-center gap-2 rounded-full border border-white/22 bg-white/12 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
-                  <Clock3 size={13} />
-                  {formattedRemainingTime}
+                  <Clock3 aria-hidden="true" size={13} />
+                  <span aria-label={`Tiempo restante: ${formattedRemainingTime}`}>{formattedRemainingTime}</span>
                 </div>
               ) : null}
               <button
                 type="button"
+                aria-label="Salir de la sesión"
                 onClick={() => onEndSession(buildSubmission())}
                 className="inline-flex items-center gap-1.5 rounded-full border border-rose-200/55 bg-[linear-gradient(180deg,rgba(251,113,133,0.28),rgba(244,63,94,0.24))] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white shadow-[0_12px_22px_-18px_rgba(244,63,94,0.34)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(251,113,133,0.34),rgba(244,63,94,0.3))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-100/70 active:translate-y-0 active:scale-[0.98]"
               >
-                <X size={13} strokeWidth={3} />
+                <X aria-hidden="true" size={13} strokeWidth={3} />
                 Salir
               </button>
             </div>
@@ -555,11 +423,13 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         </div>
       </div>
 
-      <section
+      <motion.section
         key={question.id}
-        className={`flex flex-1 flex-col gap-6 transition-all duration-300 ease-out ${
-          isQuestionVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
-        }`}
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className="flex flex-1 flex-col gap-6"
       >
         {/* --- QUESTION AREA: MOBILE STICKY + DESKTOP FULL WIDTH --- */}
         <div className="sticky top-1 z-30 -mx-1 px-1 pb-1 pt-2 sm:top-2 sm:pb-2 xl:static xl:z-auto xl:mx-0 xl:p-0 xl:pb-0 xl:pt-0">
@@ -568,7 +438,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                isDecisionVisible ? 'decision-soft-pulse' : ''
              }`}
            >
-             <div className="absolute inset-y-4 left-0 w-1.5 rounded-r-full bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)] opacity-85" />
+             <div className="absolute inset-y-4 left-0 w-1.5 rounded-r-full korrika-bg-gradient opacity-85" />
              <div className="relative z-10 mb-4 flex items-start justify-between gap-3 sm:mb-6">
                <div className="flex items-center gap-3">
                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600 shadow-sm sm:px-3 sm:py-1.5 sm:text-[10px]">
@@ -593,12 +463,32 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         {/* --- ANSWERS AREA: GRID FOR HORIZONTAL EFFICIENCY --- */}
         <div className="grid gap-4 w-full">
            <div className="flex items-center justify-between px-2">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                 Selecciona la respuesta correcta
-              </p>
+              <div className="flex items-center gap-6">
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sesion</span>
+                  <span className="text-sm font-black text-slate-600">{previewAnsweredCount}/{totalQuestions}</span>
+                </div>
+                
+                <div className="h-8 w-[1px] bg-slate-200" />
+
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Foco</span>
+                  <div className="flex items-center gap-1.5">
+                    <motion.div
+                      aria-hidden="true"
+                      animate={{ scale: [1, 1.25, 1], opacity: [1, 0.7, 1] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                      className={`h-2.5 w-2.5 rounded-full ${fatigueScore < 0.3 ? 'bg-emerald-400' : fatigueScore < 0.6 ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.4)]' : 'bg-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.6)]'}`}
+                    />
+                    <span className={`text-[13px] font-black ${focusColor} tracking-tight`}>
+                      {focusStatus}
+                    </span>
+                  </div>
+                </div>
+              </div>
               <div className="hidden lg:flex items-center gap-4">
                  <div className="flex items-center gap-2 text-[11px] font-black text-slate-400">
-                    <Clock3 size={14} /> {formattedRemainingTime ?? 'Sin límite'}
+                    <Clock3 aria-hidden="true" size={14} /> {formattedRemainingTime ?? 'Sin límite'}
                  </div>
               </div>
            </div>
@@ -611,20 +501,30 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
               const isOtherSelected = selectedKey !== null && selectedKey !== key && !isCorrectOption;
               const isDeferredSelected = isDeferredMode && selectedKey === key;
               const feedbackAccentClass = isDeferredSelected
-                ? 'bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)] opacity-95'
+                ? 'korrika-bg-gradient opacity-95'
                 : isCorrectOption
                   ? 'bg-[linear-gradient(180deg,#34d399_0%,#10b981_100%)] opacity-95'
                   : isWrongSelected
                     ? 'bg-[linear-gradient(180deg,#fb7185_0%,#f43f5e_100%)] opacity-95'
                     : 'bg-white/0 opacity-0';
 
+              const ariaLabel = isCorrectOption
+                ? `Opción ${key.toUpperCase()}: ${value} — Correcta`
+                : isWrongSelected
+                  ? `Opción ${key.toUpperCase()}: ${value} — Incorrecta`
+                  : `Opción ${key.toUpperCase()}: ${value}`;
+
               return (
-                <button
+                <motion.button
                   key={key}
                   ref={(node) => {
                     optionRefs.current[key] = node;
                   }}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
                   type="button"
+                  aria-label={ariaLabel}
+                  aria-pressed={selectedKey === key ? 'true' : 'false'}
                   onClick={() => {
                     if (!isDeferredMode && selectedKey !== null) return;
                     const nowPerformance =
@@ -678,7 +578,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                     className={`relative z-10 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.9rem] text-base font-extrabold sm:mt-1 sm:h-10 sm:w-10 sm:rounded-[1rem] sm:text-[1.02rem] xl:h-11 xl:w-11 xl:text-[1.08rem] ${
                       isDeferredMode
                         ? isDeferredSelected
-                          ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.45)]'
+                          ? 'korrika-bg-gradient text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.45)]'
                           : 'bg-[linear-gradient(135deg,rgba(125,182,232,0.18),rgba(141,147,242,0.18))] text-slate-700'
                         : isCorrectOption
                         ? 'bg-emerald-500 text-white shadow-[0_14px_24px_-18px_rgba(16,185,129,0.38)]'
@@ -710,32 +610,45 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                     </span>
                   ) : null}
                   {!isDeferredMode && isCorrectOption ? (
-                    <span className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-[0_12px_24px_-20px_rgba(16,185,129,0.32)]">
+                    <span aria-hidden="true" className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-[0_12px_24px_-20px_rgba(16,185,129,0.32)]">
                       <Check size={15} strokeWidth={3} />
                     </span>
                   ) : null}
                   {!isDeferredMode && isWrongSelected ? (
-                    <span className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-rose-100 bg-rose-50 text-rose-600 shadow-[0_12px_24px_-20px_rgba(244,63,94,0.28)]">
+                    <span aria-hidden="true" className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-rose-100 bg-rose-50 text-rose-600 shadow-[0_12px_24px_-20px_rgba(244,63,94,0.28)]">
                       <X size={15} strokeWidth={3} />
                     </span>
                   ) : null}
-                </button>
+                </motion.button>
               );
             })}
 
-            {selectedKey !== null ? (
-              <div className="hidden xl:block lg:col-span-2 mt-8">
-                <div className="rounded-[2.5rem] border border-white/75 bg-white/95 p-3 shadow-xl backdrop-blur">
-                  {renderActionButton()}
-                </div>
-              </div>
-            ) : null}
+            <AnimatePresence>
+              {selectedKey !== null && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="hidden xl:block lg:col-span-2 mt-8"
+                >
+                  <div className="rounded-[2.5rem] border border-white/75 bg-white/95 p-3 shadow-xl backdrop-blur">
+                    {renderActionButton()}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
-      </section>
+      </motion.section>
+    </AnimatePresence>
 
-      {selectedKey !== null ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 xl:hidden">
+    <AnimatePresence>
+      {selectedKey !== null && (
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 40 }}
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-40 xl:hidden"
+        >
           <div className="mx-auto w-full max-w-2xl bg-[linear-gradient(180deg,rgba(248,250,252,0)_0%,rgba(248,250,252,0.95)_38%,rgba(248,250,252,1)_100%)] px-3 pb-4 pt-8 sm:px-6 sm:pb-6">
             <div className="pointer-events-auto">
               <div
@@ -746,8 +659,67 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
               </div>
             </div>
           </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    <AnimatePresence>
+      {isFatigueModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-slate-950/45 backdrop-blur-md"
+            onClick={() => setIsFatigueModalOpen(false)}
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative w-full max-w-md overflow-hidden rounded-[2.5rem] border border-white/20 bg-white shadow-2xl"
+          >
+            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-rose-50 blur-3xl" />
+            
+            <div className="p-8 text-center sm:p-10">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-rose-50 text-rose-500 shadow-inner">
+                 <AlertCircle aria-hidden="true" size={40} strokeWidth={1.5} />
+              </div>
+
+              <h3 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                Señal de <span className="text-rose-600">Fatiga</span>
+              </h3>
+
+              <p className="mt-4 text-sm font-semibold leading-relaxed text-slate-500">
+                Llevas muchas preguntas seguidas. Un descanso ahora puede ayudarte a consolidar mejor lo que has repasado.
+              </p>
+
+              <div className="mt-8 space-y-3">
+                <Button 
+                  onClick={() => setIsFatigueModalOpen(false)}
+                  className="w-full h-14 rounded-2xl bg-rose-600 text-lg font-bold text-white shadow-lg hover:bg-rose-700 hover:shadow-rose-600/20 active:scale-[0.98]"
+                >
+                  Continuar bajo mi riesgo
+                </Button>
+                <Button 
+                  onClick={() => window.location.href = '/dashboard'}
+                  variant="ghost"
+                  className="w-full h-14 rounded-2xl text-base font-bold text-slate-500 hover:bg-slate-50 active:scale-[0.98]"
+                >
+                  Pausar sesión (Recomendado)
+                </Button>
+              </div>
+
+              <div className="mt-6 flex items-center justify-center gap-2">
+                 <span className="h-1 w-1 rounded-full bg-slate-300" />
+                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Protección de memoria activa</p>
+                 <span className="h-1 w-1 rounded-full bg-slate-300" />
+              </div>
+            </div>
+          </motion.div>
         </div>
-      ) : null}
+      )}
+    </AnimatePresence>
     </div>
   );
 };

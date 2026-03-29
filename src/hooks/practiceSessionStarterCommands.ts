@@ -7,6 +7,7 @@ import {
 import {
   getAntiTrapPracticeBatch,
   getGuestPracticeBatch,
+  getLawPracticeBatch,
   getMixedPracticeBatch,
   getRandomPracticeBatch,
   getSimulacroPracticeBatch,
@@ -15,6 +16,7 @@ import {
 import {
   buildAntiTrapPracticeSession,
   buildGuestPracticeSession,
+  buildLawPracticeSession,
   buildMixedPracticeSession,
   buildRandomPracticeSession,
   buildSimulacroPracticeSession,
@@ -187,4 +189,20 @@ export const loadSimulacroSessionCommand = async ({
 
     throw error;
   }
+};
+
+export const loadLawSessionCommand = async ({
+  law
+}: {
+  law: string;
+}): Promise<SessionStarterCommandResult> => {
+  const lawQuestions = await getLawPracticeBatch(
+    law,
+    PRACTICE_BATCH_SIZE,
+    DEFAULT_CURRICULUM
+  );
+
+  return {
+    session: buildLawPracticeSession(lawQuestions, law)
+  };
 };

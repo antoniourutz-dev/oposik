@@ -319,3 +319,29 @@ export const getSimulacroPracticeBatch = async (
     { curriculum, questionScope, batchSize }
   );
 };
+
+export const getLawPracticeBatch = async (
+  law: string,
+  batchSize: number,
+  curriculum = DEFAULT_CURRICULUM
+) => {
+  return trackAsyncOperation(
+    'preguntas.getLawPracticeBatch',
+    async () => {
+      const { data, error } = await supabase
+        .schema('app')
+        .rpc('get_law_practice_batch', {
+          p_law: law,
+          p_curriculum: curriculum,
+          p_batch_size: batchSize
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+    },
+    { curriculum, law, batchSize }
+  );
+};

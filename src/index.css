@@ -1,11 +1,29 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
 
 @theme {
-    --font-montserrat: 'Manrope', sans-serif;
+    --font-outfit: 'Outfit', 'Inter', sans-serif;
+
+    /* Brand ink (near-black, used where "korrika-pink" is referenced in legacy code) */
     --color-korrika-pink: #0f172a;
+
+    /* Brand gradient palette */
     --color-korrika-gradient-start: #7cb6e8;
     --color-korrika-gradient-end: #8d93f2;
     --color-korrika-glow: rgba(141, 147, 242, 0.2);
+
+    /* Brand border & surface tokens */
+    --color-brand-border: #c8d8fb;
+    --color-brand-border-muted: rgba(200, 216, 251, 0.7);
+    --color-brand-surface: rgba(121, 182, 233, 0.12);
+    --color-brand-surface-mid: rgba(138, 147, 242, 0.18);
+
+    /* Shadow tokens — use as shadow-[var(--shadow-brand-*)] */
+    --shadow-brand-soft: 0 18px 34px -28px rgba(141, 147, 242, 0.14);
+    --shadow-brand-card: 0 28px 80px -50px rgba(15, 23, 42, 0.36);
+    --shadow-brand-hero: 0 32px 64px -24px rgba(141, 147, 242, 0.45);
+    --shadow-brand-hero-hover: 0 45px 100px -35px rgba(141, 147, 242, 0.55);
+    --shadow-ink-subtle: 0 14px 24px -24px rgba(15, 23, 42, 0.12);
 
     --animate-in: animate-in 0.5s ease-out;
 }
@@ -17,13 +35,14 @@ html {
 }
 
 body {
-    font-family: var(--font-montserrat);
-    background-color: #f5f8ff;
+    font-family: var(--font-outfit);
+    background-color: #f8faff;
     background-image:
         radial-gradient(at 0% 0%, rgba(124, 182, 232, 0.14) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(141, 147, 242, 0.12) 0, transparent 44%),
         linear-gradient(180deg, #f6f9ff 0%, #f7faff 42%, #eef4ff 100%);
     -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
     user-select: none;
     margin: 0;
     min-height: 100dvh;
@@ -231,9 +250,20 @@ body {
     background-color: var(--color-korrika-pink);
 }
 
+/* Brand gradient utilities — compose with your own shadow classes */
 @utility korrika-bg-gradient {
     background: linear-gradient(135deg, var(--color-korrika-gradient-start) 0%, var(--color-korrika-gradient-end) 100%);
-    box-shadow: 0 8px 24px var(--color-korrika-glow);
+}
+
+@utility brand-gradient-h {
+    background: linear-gradient(90deg, var(--color-korrika-gradient-start) 0%, var(--color-korrika-gradient-end) 100%);
+}
+
+@utility brand-gradient-clip {
+    background: linear-gradient(90deg, var(--color-korrika-gradient-start) 0%, var(--color-korrika-gradient-end) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 }
 
 @utility safe-pt {
@@ -250,4 +280,33 @@ body {
 
 @utility safe-pr {
     padding-right: max(env(safe-area-inset-right), 1rem);
+}
+
+.elite-glass {
+    background: rgba(255, 255, 255, 0.45);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06),
+        inset 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.premium-tooltip {
+    background: white !important;
+    border: none !important;
+    border-radius: 20px !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+    padding: 14px 18px !important;
+    font-family: 'Outfit', sans-serif !important;
+}
+
+.premium-tooltip .recharts-tooltip-label {
+    font-weight: 900 !important;
+    color: #0f172a !important;
+    margin-bottom: 4px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    font-size: 11px !important;
 }

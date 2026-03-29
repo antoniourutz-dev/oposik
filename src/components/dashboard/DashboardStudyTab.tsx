@@ -1,5 +1,6 @@
 import React from 'react';
-import { Brain, ChartNoAxesColumn, Flame, Layers3, Shield, Target } from 'lucide-react';
+import { Brain, ChartNoAxesColumn, Flame, Layers3, Shield, Target, Sparkles, Wand2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { DEFAULT_CURRICULUM } from '../../practiceConfig';
 import { recordQuestionExplanationOpened } from '../../services/practiceCloudApi';
 import QuestionExplanation from '../QuestionExplanation';
@@ -101,8 +102,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
     topRiskBreakdown[0]?.label
       ? `Vigila ${topRiskBreakdown[0].label.toLowerCase()} antes de ampliar carga.`
       : learningDashboardV2?.focusMessage ?? coachPlan.reasons[0] ?? coachPlan.impactLabel;
-  const showRecommendedStudyCard = coachPlan.mode === 'standard';
-  const mixedIsRecommended = coachPlan.mode === 'mixed';
+  const mixedIsRecommended = coachPlan.mode === 'mixed' || coachPlan.mode === 'standard';
   const randomIsRecommended = coachPlan.mode === 'random';
   const antiTrapIsRecommended = coachPlan.mode === 'anti_trap';
   const simulacroIsRecommended = coachPlan.mode === 'simulacro';
@@ -128,24 +128,72 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
     : pressureGapPoints === null
       ? 'sin muestra de simulacro'
       : 'lectura simple';
-  const primaryCtaMetaLabel =
-    coachPlan.mode === 'standard'
-      ? 'Bloque recomendado'
-      : coachPlan.mode === 'simulacro'
-        ? 'Examen real'
-        : coachPlan.mode === 'anti_trap'
-          ? 'Errores caros'
-          : coachPlan.mode === 'random'
-            ? 'Recuperacion'
-            : coachPlan.focusLabel;
 
   return (
-    <div className="grid gap-3 sm:gap-4">
+    <div className="grid gap-6">
       <QuestionScopePicker
         value={questionScope}
         onChange={onQuestionScopeChange}
         label="Temario"
       />
+
+      {/* 🔮 EL SESIÓN SASHIMI: OPTIMIZADOR PROACTIVO */}
+      <motion.section 
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="relative overflow-hidden rounded-[2.5rem] border border-[#dbeafe] bg-white p-6 shadow-[0_32px_80px_-40px_rgba(15,23,42,0.18)] lg:p-10"
+      >
+        <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-sky-50 blur-3xl opacity-60" />
+        <div className="absolute -right-24 -bottom-24 h-80 w-80 rounded-full bg-indigo-50 blur-3xl opacity-60" />
+        
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-10">
+          <div className="flex-1">
+             <div className="flex items-center gap-2.5 mb-5">
+               <span className="flex h-9 w-9 items-center justify-center rounded-2xl korrika-bg-gradient text-white shadow-lg ring-4 ring-white">
+                 <Wand2 size={18} />
+               </span>
+               <span className="text-[12px] font-black uppercase tracking-[0.2em] text-sky-600">Sesión recomendada</span>
+             </div>
+
+             <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+               Tu sesión <span className="brand-gradient-h bg-clip-text text-transparent">adaptada a hoy</span>
+             </h2>
+
+             <p className="mt-5 max-w-2xl text-[16px] font-semibold leading-relaxed text-slate-600">
+               Mezcla repaso, preguntas frágiles y material nuevo para avanzar sin dejar huecos. El mix cambia cada día según tu estado real.
+             </p>
+
+             <div className="mt-8 flex flex-wrap gap-4">
+               {[
+                 { label: 'Repaso Crítico', value: `${recommendedReview}`, color: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+                 { label: 'Fragilidad Alta', value: `${weakQuestions.length}`, color: 'bg-rose-50 text-rose-600 border-rose-100' },
+                 { label: 'Nuevas Capas', value: `${recommendedNew}`, color: 'bg-sky-50 text-sky-600 border-sky-100' }
+               ].map((chip) => (
+                 <div key={chip.label} className={`flex items-center gap-3 rounded-[1.25rem] border px-4 py-2.5 ${chip.color} shadow-sm transition-all hover:-translate-y-0.5`}>
+                   <span className="text-sm font-black">{chip.value}</span>
+                   <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{chip.label}</span>
+                 </div>
+               ))}
+             </div>
+          </div>
+
+          <div className="shrink-0 xl:w-[22rem]">
+             <motion.button
+               whileHover={{ scale: 1.02, y: -2 }}
+               whileTap={{ scale: 0.98 }}
+               onClick={onStartRecommended}
+               className="group relative w-full overflow-hidden rounded-[2rem] bg-slate-950 px-8 py-7 text-white shadow-2xl transition-all hover:bg-slate-900"
+             >
+                <div className="absolute inset-x-0 bottom-0 h-1 brand-gradient-h" />
+                <div className="flex items-center justify-center gap-3">
+                   <Sparkles size={20} className="text-sky-400" />
+                   <span className="text-xl font-bold tracking-tight">Empezar sesión</span>
+                </div>
+                <p className="mt-2 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 group-hover:text-sky-300 transition-colors">{recommendedReview} repasos · {recommendedNew} nuevas</p>
+             </motion.button>
+          </div>
+        </div>
+      </motion.section>
 
       <section className="rounded-[1.55rem] border border-white/72 bg-white/88 p-4 shadow-[0_28px_80px_-50px_rgba(15,23,42,0.36)] backdrop-blur sm:p-5">
         <div className="mb-3">
@@ -221,26 +269,11 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {showRecommendedStudyCard ? (
-            <StudyActionCard
-              label="Ruta sugerida"
-              title={coachPlan.primaryActionLabel}
-              description={studyPrimarySummary}
-              meta={primaryCtaMetaLabel}
-              icon={<Target size={18} />}
-              onClick={onStartRecommended}
-              tone="primary"
-            />
-          ) : null}
           <StudyActionCard
-            label={mixedIsRecommended ? 'Ruta sugerida' : 'Mixto'}
-            title={mixedIsRecommended ? coachPlan.primaryActionLabel : 'Mixto adaptativo'}
-            description={
-              mixedIsRecommended
-                ? studyPrimarySummary
-                : 'Combina repaso, nuevas y fragiles en una sola sesion rentable.'
-            }
-            meta={mixedIsRecommended ? coachPlan.focusLabel : `${recommendedReview} + ${recommendedNew}`}
+            label={mixedIsRecommended ? 'Recomendado hoy' : 'Mixto'}
+            title="Mixto adaptativo"
+            description="Combina repaso, nuevas y frágiles en una sola sesión rentable."
+            meta={`${recommendedReview} repasos · ${recommendedNew} nuevas`}
             icon={<Target size={18} />}
             onClick={mixedIsRecommended ? onStartRecommended : onStartMixed}
             tone={mixedIsRecommended ? 'primary' : 'default'}
@@ -248,21 +281,17 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
           <StudyActionCard
             label="Repaso"
             title="Top falladas"
-            description="Ataca las preguntas que mas castigan tu precision actual."
+            description="Ataca las preguntas que más castigan tu precisión actual."
             meta={`${weakQuestions.length} visibles`}
             icon={<Flame size={18} />}
             onClick={onStartWeakReview}
             disabled={weakQuestions.length === 0}
           />
           <StudyActionCard
-            label={randomIsRecommended ? 'Ruta sugerida' : 'Aleatorio'}
-            title={randomIsRecommended ? coachPlan.primaryActionLabel : '20 mezcladas'}
-            description={
-              randomIsRecommended
-                ? studyPrimarySummary
-                : 'Mide recuperacion real con mezcla completa de banco.'
-            }
-            meta={randomIsRecommended ? coachPlan.focusLabel : 'sin patron fijo'}
+            label={randomIsRecommended ? 'Recomendado hoy' : 'Aleatorio'}
+            title="20 mezcladas"
+            description="Mide recuperación real con mezcla completa de banco."
+            meta="sin patrón fijo"
             icon={<Brain size={18} />}
             onClick={randomIsRecommended ? onStartRecommended : onStartRandom}
             tone={randomIsRecommended ? 'primary' : 'default'}
@@ -276,35 +305,19 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             onClick={onStartFromBeginning}
           />
           <StudyActionCard
-            label={antiTrapIsRecommended ? 'Ruta sugerida' : 'Anti-trampas'}
-            title={antiTrapIsRecommended ? coachPlan.primaryActionLabel : 'Plazos y excepciones'}
-            description={
-              antiTrapIsRecommended
-                ? studyPrimarySummary
-                : 'Entrena negaciones, plazos, literalidad y distractores cercanos.'
-            }
-            meta={antiTrapIsRecommended ? coachPlan.focusLabel : dominantRiskLabel}
+            label={antiTrapIsRecommended ? 'Recomendado hoy' : 'Anti-trampas'}
+            title="Plazos y excepciones"
+            description="Entrena negaciones, plazos, literalidad y distractores cercanos."
+            meta={dominantRiskLabel}
             icon={<Shield size={18} />}
             onClick={antiTrapIsRecommended ? onStartRecommended : onStartAntiTrap}
             tone={antiTrapIsRecommended ? 'primary' : 'default'}
           />
           <StudyActionCard
-            label={simulacroIsRecommended ? 'Ruta sugerida' : 'Simulacro'}
-            title={simulacroIsRecommended ? coachPlan.primaryActionLabel : 'Examen real'}
-            description={
-              simulacroIsRecommended
-                ? studyPrimarySummary
-                : 'Sin feedback inmediato y con temporizador global.'
-            }
-            meta={
-              simulacroIsRecommended
-                ? coachPlan.focusLabel
-                : pressureInsightsV2
-                  ? pressureSupportLabel
-                  : pressureInsights?.lastSimulacroFinishedAt
-                    ? 'con muestra real'
-                    : 'sin ultima muestra'
-            }
+            label={simulacroIsRecommended ? 'Recomendado hoy' : 'Simulacro'}
+            title="Examen real"
+            description="Sin feedback inmediato y con temporizador global."
+            meta={pressureSupportLabel}
             icon={<ChartNoAxesColumn size={18} />}
             onClick={simulacroIsRecommended ? onStartRecommended : onStartSimulacro}
             tone={simulacroIsRecommended ? 'primary' : 'default'}

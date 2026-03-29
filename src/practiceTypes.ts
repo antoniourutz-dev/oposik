@@ -17,6 +17,7 @@ export interface PracticeQuestion {
   options: Record<OptionKey, string>;
   correctOption: OptionKey;
   category: string | null;
+  ley_referencia?: string | null;
   questionScope?: PracticeQuestionScope | null;
   explanation: string | null;
   editorialExplanation?: string | null;
@@ -134,6 +135,15 @@ export interface PracticeLearningDashboard {
   riskBreakdown: PracticeRiskInsight[];
 }
 
+export interface PracticeLawPerformance {
+  ley_referencia: string;
+  scope?: 'common' | 'specific' | 'unknown';
+  attempts: number;
+  questionCount?: number;
+  correctAttempts: number;
+  accuracyRate: number;
+}
+
 export interface PracticeLearningDashboardV2 {
   totalQuestions: number;
   seenQuestions: number;
@@ -161,6 +171,7 @@ export interface PracticeLearningDashboardV2 {
   recommendedTodayCount: number;
   recommendedMode: PracticeMode;
   focusMessage: string;
+  lawBreakdown?: PracticeLawPerformance[];
 }
 
 export interface PracticeExamTarget {

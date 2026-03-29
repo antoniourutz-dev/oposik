@@ -1,15 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, BookOpenText, CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpenText, CheckCircle2, RotateCcw, XCircle, Target } from 'lucide-react';
+import { motion } from 'framer-motion';
 import {
   computeOverconfidenceScore,
   computeSessionFatigueScore,
-  getErrorTypeLabel
+  getErrorTypeLabel,
+  ErrorType
 } from '../domain/learningEngine';
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { recordQuestionExplanationOpened } from '../services/practiceCloudApi';
 import QuestionExplanation from './QuestionExplanation';
-import { PracticeAnswer } from '../practiceTypes';
+import { PracticeAnswer, PracticeMode } from '../practiceTypes';
 import { getSessionPresentation } from '../sessionPresentation';
+import {
+  LawPerformanceCard
+} from './dashboard/shared';
 
 type ReviewFilter = 'incorrect' | 'all';
 
@@ -18,7 +23,7 @@ type PracticeReviewScreenProps = {
   batchNumber: number;
   totalBatches: number;
   hasNextBatch: boolean;
-  sessionMode?: 'standard' | 'weakest' | 'random' | 'review' | 'mixed' | 'simulacro' | 'anti_trap';
+  sessionMode?: PracticeMode;
   sessionStartedAt?: string;
   sessionQuestionCount?: number;
   sessionId?: string | null;
@@ -158,6 +163,11 @@ const ReviewEntryCard = React.memo(
                 <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.18))] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
                   Pregunta {reviewIndex + 1}
                 </span>
+                {answer.changedAnswer && (
+                  <span className="rounded-full bg-amber-50 border border-amber-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-600 flex items-center gap-1">
+                    <RotateCcw size={10} /> Indecisión
+                  </span>
+                )}
                 {answer.question.category ? (
                   <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
                     {answer.question.category}
@@ -206,16 +216,35 @@ const ReviewEntryCard = React.memo(
             </div>
           </div>
 
-          {!answer.isCorrect && answer.errorTypeInferred ? (
-            <div className="rounded-[1rem] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(254,243,199,0.72))] px-3.5 py-2.5">
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-700">
-                Clave del fallo
-              </p>
-              <p className="mt-1.5 text-[13px] font-semibold leading-5 text-amber-950 sm:text-sm sm:leading-6">
-                {getErrorTypeLabel(answer.errorTypeInferred) ?? 'Memoria fragil'}
-              </p>
-            </div>
-          ) : null}
+            {!answer.isCorrect && answer.errorTypeInferred ? (
+              <div className="rounded-[1rem] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(254,243,199,0.72))] px-3.5 py-2.5">
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-700">
+                  Clave del fallo
+                </p>
+                <p className="mt-1.5 text-[13px] font-semibold leading-5 text-amber-950 sm:text-sm sm:leading-6">
+                  {getErrorTypeLabel(answer.errorTypeInferred as ErrorType) ?? 'Memoria fragil'}
+                </p>
+              </div>
+            ) : null}
+
+            {answer.timeToFirstSelectionMs && (
+              <div className="flex items-center gap-4 px-1">
+                <div className="flex-1">
+                  <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Velocidad de decisión</p>
+                  <div className="mt-1.5 h-1 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, (answer.timeToFirstSelectionMs / 15000) * 100)}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className={`h-full rounded-full ${answer.responseTimeMs && (answer.timeToFirstSelectionMs / answer.responseTimeMs > 0.7) ? 'bg-indigo-400' : 'bg-sky-400'}`} 
+                    />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-slate-600">{Math.round(answer.timeToFirstSelectionMs / 100) / 10}s</p>
+                </div>
+              </div>
+            )}
 
           <details
             className="rounded-[1rem] border border-white/80 bg-[linear-gradient(180deg,rgba(232,240,255,0.9),rgba(241,247,255,0.92))] px-3.5 py-2.5"
@@ -357,7 +386,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
       : resolvedContinueLabel.includes('panel')
         ? 'Panel'
         : 'Reiniciar';
-  const sessionPresentation = getSessionPresentation(sessionMode);
+  const sessionPresentation = getSessionPresentation((sessionMode || 'standard') as PracticeMode);
   const primarySignalLabel =
     overconfidenceScore > fatigueScore ? overconfidenceLabel : fatigueLabel;
   const resolvedTimeLabel =
@@ -371,7 +400,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
       getReviewClosure({
         percentage,
         unansweredCount,
-        sessionMode,
+        sessionMode: (sessionMode || 'standard') as PracticeMode,
         fatigueScore,
         overconfidenceScore,
         hasNextBatch
@@ -516,6 +545,26 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
     };
   }, [hasMoreEntries, loadMoreEntries, renderedEntryCount]);
 
+  const sessionLawBreakdown = useMemo(() => {
+    const breakdown: Record<string, { ley_referencia: string; attempts: number; correctAttempts: number }> = {};
+    
+    answers.forEach(answer => {
+      const ley = answer.question.ley_referencia || 'Otras Normas';
+      if (!breakdown[ley]) {
+        breakdown[ley] = { ley_referencia: ley, attempts: 0, correctAttempts: 0 };
+      }
+      breakdown[ley].attempts += 1;
+      if (answer.isCorrect) {
+        breakdown[ley].correctAttempts += 1;
+      }
+    });
+
+    return Object.values(breakdown).map(item => ({
+      ...item,
+      accuracyRate: Math.round((item.correctAttempts / item.attempts) * 100)
+    })).sort((a, b) => a.accuracyRate - b.accuracyRate);
+  }, [answers]);
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-0 py-3 pb-32 sm:px-2 sm:pb-32 lg:px-4">
       <section className="space-y-3.5">
@@ -541,6 +590,92 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
               {title || `Bloque ${batchNumber} de ${totalBatches}`}
             </p>
           </div>
+        </div>
+
+        {/* ⚖️ EL BLOQUE DE IMPACTO NORMATIVO */}
+        {sessionLawBreakdown.length > 0 && (
+          <div className="rounded-[1.4rem] overflow-hidden border border-indigo-100 bg-white p-5 shadow-sm">
+             <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                   <Target size={20} />
+                </div>
+                <div>
+                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rendimiento por norma</p>
+                   <h3 className="text-lg font-black text-slate-950 tracking-tight">Impacto Normativo</h3>
+                </div>
+             </div>
+             <div className="grid gap-3 sm:grid-cols-2">
+                {sessionLawBreakdown.map((law, idx) => (
+                  <LawPerformanceCard 
+                    key={idx} 
+                    ley_referencia={law.ley_referencia}
+                    accuracy={law.accuracyRate}
+                    attempts={law.attempts}
+                  />
+                ))}
+             </div>
+          </div>
+        )}
+
+        {/* 🧠 EL BLOQUE DE DIAGNÓSTICO CONDUCTUAL */}
+        <div className="rounded-[1.4rem] overflow-hidden border border-[#d7e4fb] bg-white p-5 shadow-sm">
+           <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                 <Target size={20} />
+              </div>
+              <div>
+                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Análisis conductual</p>
+                 <h3 className="text-lg font-black text-slate-950 tracking-tight">Anatomía de tu ejecución</h3>
+              </div>
+           </div>
+           
+           <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                   <div className="flex justify-between items-center mb-2">
+                      <span className="text-[11px] font-bold text-slate-500">Decisión Impulsiva</span>
+                      <span className="text-[11px] font-black text-slate-900">{answers.filter(a => a.timeToFirstSelectionMs && a.timeToFirstSelectionMs < 3000).length} q.</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(answers.filter(a => a.timeToFirstSelectionMs && a.timeToFirstSelectionMs < 3000).length / Math.max(1, answers.length)) * 100}%` }}
+                        transition={{ duration: 1, ease: "circOut" }}
+                        className="h-full bg-rose-400 rounded-full" 
+                      />
+                   </div>
+                   <p className="mt-2 text-[10px] text-slate-400 leading-relaxed font-medium">Marcadas en menos de 3s. Alto riesgo de error por literalidad.</p>
+                </div>
+                
+                <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                   <div className="flex justify-between items-center mb-2">
+                      <span className="text-[11px] font-bold text-slate-500">Duda Resuelta</span>
+                      <span className="text-[11px] font-black text-slate-900">{answers.filter(a => a.changedAnswer && a.isCorrect).length} q.</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(answers.filter(a => a.changedAnswer && a.isCorrect).length / Math.max(1, answers.length)) * 100}%` }}
+                        transition={{ duration: 1, ease: "circOut" }}
+                        className="h-full bg-emerald-400 rounded-full" 
+                      />
+                   </div>
+                   <p className="mt-2 text-[10px] text-slate-400 leading-relaxed font-medium">Cambiadas a favor del acierto. Refleja un proceso analítico lento pero eficaz.</p>
+                </div>
+              </div>
+              
+              <div className="flex flex-col justify-center p-4 rounded-2xl bg-indigo-950 text-white relative overflow-hidden">
+                 <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-indigo-500/20 blur-2xl" />
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Resumen del Preparador</p>
+                 <p className="mt-3 text-sm font-bold leading-relaxed">
+                   "{overconfidenceScore > 0.3 
+                      ? "Hoy has pecado de exceso de confianza. Lee el enunciado completo antes de tocar la pantalla: tu nota subirá un 8% solo con eso." 
+                      : fatigueScore > 0.4
+                        ? "Tu rendimiento ha caído en picado en el último tercio. La fatiga te ha robado 3 aciertos netos."
+                        : "Sesión impecable en ritmo y consciencia. Estás en zona de dominio funcional."}"
+                 </p>
+              </div>
+           </div>
         </div>
 
         <div className="grid gap-2.5">
@@ -633,7 +768,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                 disabled={incorrectCount === 0}
                 className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] transition-all duration-200 ${
                   reviewFilter === 'incorrect'
-                    ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
+                    ? 'korrika-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
                     : 'text-slate-500 hover:bg-sky-50/80'
                 } ${incorrectCount === 0 ? 'cursor-not-allowed opacity-45 hover:bg-transparent' : ''}`}
               >
@@ -644,7 +779,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                 onClick={() => setReviewFilter('all')}
                 className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] transition-all duration-200 ${
                   reviewFilter === 'all'
-                    ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
+                    ? 'korrika-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
                     : 'text-slate-500 hover:bg-sky-50/80'
                 }`}
               >
@@ -731,7 +866,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
             <button
               type="button"
               onClick={onContinue}
-              className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-2.5 py-2 text-white shadow-[0_16px_28px_-18px_rgba(141,147,242,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98] xl:min-h-[88px] xl:flex-col xl:gap-2"
+              className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/70 korrika-bg-gradient px-2.5 py-2 text-white shadow-[0_16px_28px_-18px_rgba(141,147,242,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98] xl:min-h-[88px] xl:flex-col xl:gap-2"
             >
               <ArrowRight size={15} />
               <span className="text-[10px] font-extrabold uppercase tracking-[0.1em]">

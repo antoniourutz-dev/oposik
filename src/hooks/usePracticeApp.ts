@@ -126,6 +126,7 @@ export const usePracticeApp = () => {
     startRandom,
     startSimulacro,
     startStandardSession,
+    startLawSession,
     startWeakReview,
     view
   } = usePracticeSessionFlow({
@@ -362,6 +363,7 @@ export const usePracticeApp = () => {
     view,
     weakCategories,
     weakQuestions,
+    onStartLawTraining: startLawSession,
     setActiveTab
   };
 };

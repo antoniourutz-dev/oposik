@@ -12,7 +12,12 @@ import {
   Cell,
   PieChart,
   Pie,
-  Cell as PieCell
+  Cell as PieCell,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis
 } from 'recharts';
 
 // --- STYLES & TOKENS ---
@@ -30,17 +35,8 @@ const COLORS = {
 const CHART_STYLES = {
   grid: { stroke: 'rgba(148,163,184,0.06)', strokeDasharray: '3 3' },
   tooltip: {
-    contentStyle: {
-      backgroundColor: '#fff',
-      border: 'none',
-      borderRadius: '16px',
-      boxShadow: '0 20px 40px -20px rgba(15,23,42,0.18)',
-      padding: '12px 16px',
-      fontSize: '13px',
-      fontWeight: '700',
-      color: '#0f172a'
-    },
-    itemStyle: { padding: '2px 0' }
+    contentStyle: { display: 'none' },
+    wrapperClassName: 'premium-tooltip'
   }
 };
 
@@ -168,4 +164,36 @@ export const KPIPulseCard: React.FC<{
       <p className="mt-1 text-3xl font-black tracking-[-0.03em] text-slate-950">{value}</p>
     </div>
   </div>
+);
+
+/**
+ * BehavioralRadarChart
+ * Polar chart for multi-dimensional cognitive analysis
+ */
+export const BehavioralRadarChart: React.FC<{ data: any[] }> = ({ data }) => (
+  <ResponsiveContainer width="100%" height={300}>
+    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+      <PolarGrid stroke={COLORS.muted} strokeWidth={1} />
+      <PolarAngleAxis 
+        dataKey="subject" 
+        tick={{ fill: COLORS.text, fontSize: 10, fontWeight: 800 }} 
+      />
+      <PolarRadiusAxis 
+        angle={30} 
+        domain={[0, 100]} 
+        tick={false} 
+        axisLine={false} 
+      />
+      <Radar
+        name="Performance"
+        dataKey="value"
+        stroke={COLORS.primary}
+        strokeWidth={3}
+        fill={COLORS.primary}
+        fillOpacity={0.15}
+        animationDuration={2000}
+      />
+      <Tooltip {...CHART_STYLES.tooltip} />
+    </RadarChart>
+  </ResponsiveContainer>
 );

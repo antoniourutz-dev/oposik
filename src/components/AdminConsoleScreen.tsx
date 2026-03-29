@@ -580,7 +580,7 @@ const AdminConsoleScreen: React.FC = () => {
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <AdminSurface>
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_16px_24px_-18px_rgba(141,147,242,0.3)]">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] korrika-bg-gradient text-white shadow-[0_16px_24px_-18px_rgba(141,147,242,0.3)]">
             <Shield size={18} />
           </div>
           <div>
@@ -627,7 +627,7 @@ const AdminConsoleScreen: React.FC = () => {
               <button
                 type="submit"
                 disabled={creating || !createUsername.trim() || !createPassword.trim()}
-                className="inline-flex items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-[1rem] border border-white/70 korrika-bg-gradient px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
               >
                 {creating ? (
                   <LoaderCircle size={16} className="animate-spin" />
@@ -812,7 +812,7 @@ const AdminConsoleScreen: React.FC = () => {
                       <button
                         type="submit"
                         disabled={savingPlayerMode || editPlayerMode === selectedUser.player_mode}
-                        className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                        className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-[1rem] border border-white/70 korrika-bg-gradient px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
                       >
                         {savingPlayerMode ? (
                           <LoaderCircle size={16} className="animate-spin" />
@@ -849,7 +849,7 @@ const AdminConsoleScreen: React.FC = () => {
                           !editUsername.trim() ||
                           editUsername.trim() === (selectedUser.current_username ?? '')
                         }
-                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-white/70 korrika-bg-gradient px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
                       >
                         {savingUsername ? (
                           <LoaderCircle size={16} className="animate-spin" />
@@ -881,7 +881,7 @@ const AdminConsoleScreen: React.FC = () => {
                       <button
                         type="submit"
                         disabled={savingPassword || !editPassword.trim()}
-                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[1rem] border border-white/70 korrika-bg-gradient px-4 py-3 text-sm font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_18px_30px_-20px_rgba(141,147,242,0.26)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
                       >
                         {savingPassword ? (
                           <LoaderCircle size={16} className="animate-spin" />

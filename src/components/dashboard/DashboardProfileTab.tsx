@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { LogOut, UserRound } from 'lucide-react';
+import { motion } from 'framer-motion';
 import type { DashboardContentProps } from './types';
 import {
   SectionCard,
@@ -78,27 +79,50 @@ const DashboardProfileTab: React.FC<DashboardContentProps> = ({
       }`}
     >
       <div className="grid gap-3 sm:gap-4">
-        <SectionCard title="Cuenta" hint="Acceso activo y configuracion personal">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] border border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.12),rgba(141,147,242,0.16))] text-slate-700 shadow-[0_14px_24px_-22px_rgba(141,147,242,0.18)]">
-                <UserRound size={22} />
+        <SectionCard className="p-0 border-none bg-transparent overflow-visible">
+          <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-950 p-8 text-white shadow-2xl shadow-indigo-500/20">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.2),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(56,189,248,0.15),transparent_40%)]" />
+            
+            <div className="relative flex flex-col sm:flex-row items-center gap-6">
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[2rem] border-4 border-white/10 bg-white/5 p-1 backdrop-blur-xl">
+                <div className="flex h-full w-full items-center justify-center rounded-[1.6rem] bg-indigo-500/20 text-indigo-100 shadow-inner">
+                  <UserRound size={40} />
+                </div>
+                <motion.div 
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ repeat: Infinity, duration: 4 }}
+                  className="absolute inset-0 bg-indigo-500/10 blur-xl"
+                />
               </div>
-              <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                  Cuenta activa
-                </p>
-                <p className="mt-1.5 text-[1.35rem] font-black leading-none tracking-[-0.03em] text-slate-950">
+              
+              <div className="flex-1 text-center sm:text-left">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                  <span className="rounded-full bg-indigo-500/10 border border-indigo-400/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">
+                    Opositor Nivel {Math.ceil(learningDashboard?.seenQuestions || 0 / 100) + 1}
+                  </span>
+                  <span className="rounded-full bg-emerald-500/10 border border-emerald-400/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">
+                    Suscripción Activa
+                  </span>
+                </div>
+                <h2 className="mt-4 text-4xl font-black tracking-tight text-white sm:text-5xl">
                   {identity.current_username}
+                </h2>
+                <p className="mt-2 text-indigo-200/60 font-medium">
+                  Perfil de {identity.is_admin ? 'Elite Administrator' : 'Opositor Preparado'}
                 </p>
-                <p className="mt-1.5 text-sm font-medium text-slate-500">
-                  Perfil {identity.is_admin ? 'administrador' : 'alumno'}
-                </p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="flex flex-col items-center p-3 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-md">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Readiness</span>
+                    <span className="text-xl font-black text-white">{readinessLabel}</span>
+                 </div>
+                 <div className="flex flex-col items-center p-3 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-md">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Vistas</span>
+                    <span className="text-xl font-black text-white">{learningDashboard?.seenQuestions || 0}</span>
+                 </div>
               </div>
             </div>
-            <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.12),rgba(141,147,242,0.16))] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
-              {identity.is_admin ? 'Admin' : 'Alumno'}
-            </span>
           </div>
         </SectionCard>
 
@@ -168,7 +192,7 @@ const DashboardProfileTab: React.FC<DashboardContentProps> = ({
               <button
                 type="submit"
                 disabled={savingExamTarget}
-                className="inline-flex items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold text-white shadow-[0_18px_30px_-24px_rgba(141,147,242,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_34px_-24px_rgba(141,147,242,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+                className="inline-flex items-center justify-center rounded-[1rem] korrika-bg-gradient px-4 py-3 text-sm font-extrabold text-white shadow-[0_18px_30px_-24px_rgba(141,147,242,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_34px_-24px_rgba(141,147,242,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
               >
                 {savingExamTarget ? 'Guardando...' : 'Guardar configuracion'}
               </button>

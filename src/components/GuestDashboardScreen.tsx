@@ -60,7 +60,7 @@ const GuestDashboardScreen: React.FC<GuestDashboardScreenProps> = ({
                 type="button"
                 onClick={isLocked ? onExit : onStart}
                 disabled={loading}
-                className="group inline-flex min-h-[52px] flex-1 items-center justify-between rounded-[1.15rem] border border-[#c4d7fb] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-left text-white shadow-[0_18px_34px_-22px_rgba(141,147,242,0.34)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55"
+                className="group inline-flex min-h-[52px] flex-1 items-center justify-between rounded-[1.15rem] border border-[#c4d7fb] korrika-bg-gradient px-4 py-3 text-left text-white shadow-[0_18px_34px_-22px_rgba(141,147,242,0.34)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55"
               >
                 <span>
                   <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/82">

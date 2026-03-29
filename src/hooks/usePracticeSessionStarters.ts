@@ -170,6 +170,15 @@ export const usePracticeSessionStarters = ({
     startMixed: () => void startMixedSession(),
     startRandom: () => void startRandomSession(),
     startSimulacro: () => void startSimulacroSession(),
-    startStandardSession
+    startStandardSession,
+    startLawSession: (law: string) =>
+      void executeStarter({
+        command: async () => {
+          const { loadLawSessionCommand } = await import('./practiceSessionStarterCommands');
+          return loadLawSessionCommand({ law });
+        },
+        emptyMessage: `No se han encontrado preguntas para la ley: ${law}.`,
+        fallbackErrorMessage: 'No se ha podido iniciar el entrenamiento por ley.'
+      })
   };
 };
