@@ -27,6 +27,13 @@ const DEFAULT_NOTIFICATION_BADGE = '/minimal_dark_128.png';
 const DEFAULT_NOTIFICATION_URL = '/';
 const PRECACHE_BLOCKLIST = [
   /^assets\/AdminConsoleScreen-.*\.js$/,
+  /^assets\/DashboardProfileTab-.*\.js$/,
+  /^assets\/DashboardStatsTab-.*\.js$/,
+  /^assets\/DashboardStudyTab-.*\.js$/,
+  /^assets\/QuestionExplanation-.*\.js$/,
+  /^assets\/practiceSessionStarterCommands-.*\.js$/,
+  /^assets\/telemetryClient-.*\.js$/,
+  /^assets\/webVitals-.*\.js$/,
   /^assets\/react-dom-.*\.js$/,
   /^assets\/supabase-.*\.js$/,
   /^minimal_dark_(512|1024)\.png$/

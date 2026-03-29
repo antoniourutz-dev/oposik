@@ -66,6 +66,13 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
         globIgnores: [
           'assets/AdminConsoleScreen-*.js',
+          'assets/DashboardProfileTab-*.js',
+          'assets/DashboardStatsTab-*.js',
+          'assets/DashboardStudyTab-*.js',
+          'assets/QuestionExplanation-*.js',
+          'assets/practiceSessionStarterCommands-*.js',
+          'assets/telemetryClient-*.js',
+          'assets/webVitals-*.js',
           'assets/react-dom-*.js',
           'assets/supabase-*.js',
           'minimal_dark_1024.png',

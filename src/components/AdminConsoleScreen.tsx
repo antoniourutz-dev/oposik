@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyRound,
   Layers3,
@@ -26,9 +26,18 @@ import {
   getAdminWeakPracticeQuestions
 } from '../services/adminApi';
 import type { AccountPlayerMode } from '../services/accountApi';
+import ScreenTelemetryBoundary from '../telemetry/ScreenTelemetryBoundary';
+import AdminTelemetryPanel from './AdminTelemetryPanel';
 import QuestionExplanation from './QuestionExplanation';
 import { DEFAULT_CURRICULUM, PRACTICE_BATCH_SIZE } from '../practiceConfig';
 import { PracticeSessionSummary } from '../practiceTypes';
+
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('es-ES', {
+  dateStyle: 'medium',
+  timeStyle: 'short'
+});
+const INITIAL_ADMIN_USERS_RENDER_COUNT = 24;
+const ADMIN_USERS_RENDER_STEP = 18;
 
 const formatPlayerModeLabel = (value: AccountPlayerMode) =>
   value === 'generic' ? 'Generico' : 'Avanzado';
@@ -39,10 +48,7 @@ const formatDate = (value: string | null) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
 
-  return new Intl.DateTimeFormat('es-ES', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(parsed);
+  return DATE_TIME_FORMATTER.format(parsed);
 };
 
 const isInternalAuthEmail = (value: string | null) =>
@@ -99,6 +105,125 @@ const EmptyState: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
+const AdminUserListItem = React.memo(
+  ({
+    entry,
+    isSelected,
+    onSelect
+  }: {
+    entry: AdminUserDirectoryEntry;
+    isSelected: boolean;
+    onSelect: (userId: string) => void;
+  }) => (
+    <button
+      type="button"
+      onClick={() => onSelect(entry.user_id)}
+      className={`w-full rounded-[1.1rem] border px-4 py-3.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.995] ${
+        isSelected
+          ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(235,245,255,0.92),rgba(245,249,255,0.96))] shadow-[0_18px_34px_-28px_rgba(141,147,242,0.16)]'
+          : 'border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.9))] hover:-translate-y-0.5 hover:border-[#c8d8f8] hover:shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-extrabold text-slate-900">
+            {entry.current_username ?? entry.user_id}
+          </p>
+          <p className="mt-1 truncate text-xs font-semibold text-slate-500">
+            {isInternalAuthEmail(entry.auth_email)
+              ? `Acceso: ${entry.current_username ?? 'sin usuario'}`
+              : entry.auth_email ?? entry.user_id}
+          </p>
+          <p className="mt-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+            {entry.total_sessions} sesiones · {entry.accuracy}% acierto
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          {entry.is_admin ? (
+            <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
+              admin
+            </span>
+          ) : null}
+          <span className="rounded-full border border-slate-200 bg-white/85 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
+            {formatPlayerModeLabel(entry.player_mode)}
+          </span>
+        </div>
+      </div>
+    </button>
+  )
+);
+
+AdminUserListItem.displayName = 'AdminUserListItem';
+
+const AdminRecentSessionCard = React.memo(({ session }: { session: PracticeSessionSummary }) => (
+  <article className="rounded-[1.1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.16)]">
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-extrabold text-slate-900">{session.title}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500">{formatDate(session.finishedAt)}</p>
+      </div>
+      <p className="text-lg font-black text-slate-950">
+        {session.score}
+        <span className="text-sm text-slate-400">/{session.total}</span>
+      </p>
+    </div>
+  </article>
+));
+
+AdminRecentSessionCard.displayName = 'AdminRecentSessionCard';
+
+const AdminWeakQuestionCard = React.memo(
+  ({ question }: { question: AdminWeakPracticeQuestion }) => {
+    const [isExplanationOpen, setIsExplanationOpen] = useState(false);
+
+    return (
+      <details
+        className="rounded-[1.1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
+        onToggle={(event) => {
+          setIsExplanationOpen(event.currentTarget.open);
+        }}
+      >
+        <summary className="cursor-pointer list-none">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-extrabold text-slate-900">
+                Pregunta {question.question_number ?? question.question_id}
+              </p>
+              <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                {question.category ?? 'Sin grupo'}
+              </p>
+            </div>
+            <div className="rounded-[0.95rem] bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))] px-3 py-2 text-center">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-rose-700">
+                Fallos
+              </p>
+              <p className="mt-1 text-lg font-black text-slate-900">
+                {question.incorrect_attempts}
+              </p>
+            </div>
+          </div>
+        </summary>
+        <p className="mt-3 text-sm font-semibold leading-6 text-slate-800">{question.statement}</p>
+        {isExplanationOpen ? (
+          <div className="mt-3 rounded-[1rem] bg-[linear-gradient(180deg,rgba(232,240,255,0.92),rgba(241,247,255,0.92))] px-4 py-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-indigo-700">
+              Explicacion
+            </p>
+            <div className="mt-2">
+              <QuestionExplanation
+                explanation={question.explanation}
+                editorialExplanation={question.editorial_explanation}
+              />
+            </div>
+          </div>
+        ) : null}
+      </details>
+    );
+  }
+);
+
+AdminWeakQuestionCard.displayName = 'AdminWeakQuestionCard';
+
 const AdminConsoleScreen: React.FC = () => {
   const [search, setSearch] = useState('');
   const [users, setUsers] = useState<AdminUserDirectoryEntry[]>([]);
@@ -122,10 +247,44 @@ const AdminConsoleScreen: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [resettingProgress, setResettingProgress] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [renderedUserCount, setRenderedUserCount] = useState(INITIAL_ADMIN_USERS_RENDER_COUNT);
+  const userListRef = useRef<HTMLDivElement | null>(null);
+  const userLoadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
 
   const selectedUser = useMemo(
     () => users.find((entry) => entry.user_id === selectedUserId) ?? null,
     [selectedUserId, users]
+  );
+  const visibleUsers = useMemo(() => users.slice(0, renderedUserCount), [renderedUserCount, users]);
+  const hasMoreUsers = renderedUserCount < users.length;
+  const remainingUsers = Math.max(users.length - renderedUserCount, 0);
+  const visibleRecentSessions = useMemo(() => recentSessions.slice(0, 4), [recentSessions]);
+  const visibleWeakQuestions = useMemo(() => weakQuestions.slice(0, 3), [weakQuestions]);
+  const handleSelectUser = useCallback((userId: string) => {
+    setSelectedUserId(userId);
+  }, []);
+  const loadMoreUsers = useCallback(() => {
+    setRenderedUserCount((currentCount) =>
+      Math.min(users.length, currentCount + ADMIN_USERS_RENDER_STEP)
+    );
+  }, [users.length]);
+  const adminTelemetryMeta = useMemo(
+    () => ({
+      loadingDetail,
+      loadingUsers,
+      recentSessionCount: recentSessions.length,
+      selectedUserId: selectedUserId ?? 'none',
+      userCount: users.length,
+      weakQuestionCount: weakQuestions.length
+    }),
+    [
+      loadingDetail,
+      loadingUsers,
+      recentSessions.length,
+      selectedUserId,
+      users.length,
+      weakQuestions.length
+    ]
   );
 
   const loadUsers = async (nextSearch = search, preferredUserId: string | null = null) => {
@@ -201,6 +360,40 @@ const AdminConsoleScreen: React.FC = () => {
     setEditPassword('');
     setEditPlayerMode(selectedUser?.player_mode ?? 'advanced');
   }, [selectedUser?.current_username, selectedUser?.player_mode, selectedUser?.user_id]);
+
+  useEffect(() => {
+    setRenderedUserCount(Math.min(users.length, INITIAL_ADMIN_USERS_RENDER_COUNT));
+  }, [users.length, search]);
+
+  useEffect(() => {
+    if (
+      !hasMoreUsers ||
+      !userListRef.current ||
+      !userLoadMoreSentinelRef.current ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        loadMoreUsers();
+        observer.disconnect();
+      },
+      {
+        root: userListRef.current,
+        rootMargin: '0px 0px 220px 0px',
+        threshold: 0.01
+      }
+    );
+
+    observer.observe(userLoadMoreSentinelRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMoreUsers, loadMoreUsers, renderedUserCount]);
 
   const handleCreateUser = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -383,7 +576,8 @@ const AdminConsoleScreen: React.FC = () => {
     Math.floor((profile?.next_standard_batch_start_index ?? 0) / PRACTICE_BATCH_SIZE) + 1;
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+    <ScreenTelemetryBoundary screen="admin:console" meta={adminTelemetryMeta}>
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <AdminSurface>
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_16px_24px_-18px_rgba(141,147,242,0.3)]">
@@ -480,7 +674,7 @@ const AdminConsoleScreen: React.FC = () => {
           </div>
         ) : null}
 
-        <div className="mt-4 max-h-[40rem] space-y-3 overflow-auto pr-1">
+        <div ref={userListRef} className="mt-4 max-h-[40rem] space-y-3 overflow-auto pr-1">
           {loadingUsers ? (
             <div className="rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.9))] px-4 py-6 text-center text-sm font-semibold text-slate-500">
               Cargando usuarios...
@@ -489,45 +683,37 @@ const AdminConsoleScreen: React.FC = () => {
             <div className="rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.9))] px-4 py-6 text-center text-sm font-semibold text-slate-500">
               No hay usuarios para mostrar.
             </div>
-          ) : (
-            users.map((entry) => (
-              <button
-                key={entry.user_id}
-                type="button"
-                onClick={() => setSelectedUserId(entry.user_id)}
-                className={`w-full rounded-[1.1rem] border px-4 py-3.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.995] ${
-                  selectedUserId === entry.user_id
-                    ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(235,245,255,0.92),rgba(245,249,255,0.96))] shadow-[0_18px_34px_-28px_rgba(141,147,242,0.16)]'
-                    : 'border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.9))] hover:-translate-y-0.5 hover:border-[#c8d8f8] hover:shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold text-slate-900">
-                      {entry.current_username ?? entry.user_id}
-                    </p>
-                    <p className="mt-1 truncate text-xs font-semibold text-slate-500">
-                      {isInternalAuthEmail(entry.auth_email)
-                        ? `Acceso: ${entry.current_username ?? 'sin usuario'}`
-                        : entry.auth_email ?? entry.user_id}
-                    </p>
-                    <p className="mt-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
-                      {entry.total_sessions} sesiones · {entry.accuracy}% acierto
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    {entry.is_admin ? (
-                      <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
-                        admin
-                      </span>
-                    ) : null}
-                    <span className="rounded-full border border-slate-200 bg-white/85 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                      {formatPlayerModeLabel(entry.player_mode)}
-                    </span>
-                  </div>
+                    ) : (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                Mostrando {visibleUsers.length} de {users.length}
+              </p>
+              {visibleUsers.map((entry) => (
+                <AdminUserListItem
+                  key={entry.user_id}
+                  entry={entry}
+                  isSelected={selectedUserId === entry.user_id}
+                  onSelect={handleSelectUser}
+                />
+              ))}
+              {hasMoreUsers ? (
+                <div
+                  ref={userLoadMoreSentinelRef}
+                  className="flex flex-col items-center gap-2 rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,249,255,0.9))] px-4 py-3 text-center shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                    Quedan {remainingUsers} usuarios
+                  </p>
+                  <button
+                    type="button"
+                    onClick={loadMoreUsers}
+                    className="rounded-full border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(141,147,242,0.18))] px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-800 shadow-[0_12px_24px_-20px_rgba(141,147,242,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98]"
+                  >
+                    Cargar {Math.min(ADMIN_USERS_RENDER_STEP, remainingUsers)} mas
+                  </button>
                 </div>
-              </button>
-            ))
+              ) : null}
+            </>
           )}
         </div>
       </AdminSurface>
@@ -752,24 +938,8 @@ const AdminConsoleScreen: React.FC = () => {
                 {recentSessions.length === 0 ? (
                   <p className="text-sm text-slate-500">Todavia no hay sesiones registradas.</p>
                 ) : (
-                  recentSessions.slice(0, 4).map((session) => (
-                    <article
-                      key={session.id}
-                      className="rounded-[1.1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.16)]"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-extrabold text-slate-900">{session.title}</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">
-                            {formatDate(session.finishedAt)}
-                          </p>
-                        </div>
-                        <p className="text-lg font-black text-slate-950">
-                          {session.score}
-                          <span className="text-sm text-slate-400">/{session.total}</span>
-                        </p>
-                      </div>
-                    </article>
+                  visibleRecentSessions.map((session) => (
+                    <AdminRecentSessionCard key={session.id} session={session} />
                   ))
                 )}
               </div>
@@ -783,55 +953,26 @@ const AdminConsoleScreen: React.FC = () => {
                 {weakQuestions.length === 0 ? (
                   <p className="text-sm text-slate-500">Todavia no hay errores acumulados.</p>
                 ) : (
-                  weakQuestions.slice(0, 3).map((question, index) => (
-                    <details
-                      key={`${question.question_id}-${index}`}
-                      className="rounded-[1.1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-4 py-3 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.14)]"
-                    >
-                      <summary className="cursor-pointer list-none">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-extrabold text-slate-900">
-                              Pregunta {question.question_number ?? question.question_id}
-                            </p>
-                            <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
-                              {question.category ?? 'Sin grupo'}
-                            </p>
-                          </div>
-                          <div className="rounded-[0.95rem] bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))] px-3 py-2 text-center">
-                            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-rose-700">
-                              Fallos
-                            </p>
-                            <p className="mt-1 text-lg font-black text-slate-900">
-                              {question.incorrect_attempts}
-                            </p>
-                          </div>
-                        </div>
-                      </summary>
-                      <p className="mt-3 text-sm font-semibold leading-6 text-slate-800">
-                        {question.statement}
-                      </p>
-                      <div className="mt-3 rounded-[1rem] bg-[linear-gradient(180deg,rgba(232,240,255,0.92),rgba(241,247,255,0.92))] px-4 py-3">
-                        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-indigo-700">
-                          Explicacion
-                        </p>
-                        <div className="mt-2">
-                          <QuestionExplanation
-                            explanation={question.explanation}
-                            editorialExplanation={question.editorial_explanation}
-                          />
-                        </div>
-                      </div>
-                    </details>
+                  visibleWeakQuestions.map((question, index) => (
+                    <AdminWeakQuestionCard key={`${question.question_id}-${index}`} question={question} />
                   ))
                 )}
               </div>
             </AdminDisclosure>
+
+            <AdminDisclosure
+              title="Observabilidad local"
+              hint="Resumen vivo de telemetria del navegador para perfilar pantallas y errores."
+            >
+              <AdminTelemetryPanel />
+            </AdminDisclosure>
           </div>
         )}
       </AdminSurface>
-    </div>
+      </div>
+    </ScreenTelemetryBoundary>
   );
 };
 
 export default AdminConsoleScreen;
+

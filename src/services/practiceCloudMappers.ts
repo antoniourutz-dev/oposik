@@ -1,11 +1,16 @@
 import {
+  PracticeCategoryRiskSummary,
   PracticeExamTarget,
+  PracticeConfidenceFlag,
   PracticeLearningDashboard,
+  PracticeLearningDashboardV2,
   PracticePressureInsights,
+  PracticePressureInsightsV2,
   PracticeProfile,
   PracticeQuestionStat,
   PracticeRiskInsight,
-  PracticeSessionSummary
+  PracticeSessionSummary,
+  PracticeWeakCategorySummary
 } from '../practiceTypes';
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { mapAccountApiError } from './accountApi';
@@ -42,8 +47,13 @@ const isMissingPracticeBackend = (error: {
     normalizedMessage.includes('get_my_practice_profile_for_curriculum') ||
     normalizedMessage.includes('get_my_exam_target') ||
     normalizedMessage.includes('upsert_my_exam_target') ||
+    normalizedMessage.includes('record_question_explanation_opened') ||
     normalizedMessage.includes('get_readiness_dashboard') ||
+    normalizedMessage.includes('get_readiness_dashboard_v2') ||
     normalizedMessage.includes('get_pressure_dashboard') ||
+    normalizedMessage.includes('get_pressure_dashboard_v2') ||
+    normalizedMessage.includes('get_weak_category_summary') ||
+    normalizedMessage.includes('get_category_risk_dashboard') ||
     normalizedMessage.includes('get_mixed_practice_batch') ||
     normalizedMessage.includes('get_anti_trap_batch') ||
     normalizedMessage.includes('get_simulacro_batch') ||
@@ -132,6 +142,14 @@ export const mapQuestionStat = (value: Record<string, unknown>): PracticeQuestio
   lastIncorrectAt: toNullableString(value.last_incorrect_at ?? value.lastIncorrectAt)
 });
 
+export const mapWeakCategorySummary = (
+  value: Record<string, unknown>
+): PracticeWeakCategorySummary => ({
+  category: toNullableString(value.category) ?? 'Sin grupo',
+  incorrectAttempts: toNumber(value.incorrect_attempts),
+  attempts: toNumber(value.attempts)
+});
+
 const mapRiskInsight = (value: unknown): PracticeRiskInsight | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
@@ -144,6 +162,23 @@ const mapRiskInsight = (value: unknown): PracticeRiskInsight | null => {
     label,
     count: toNumber(row.count, 0)
   };
+};
+
+const toConfidenceFlag = (value: unknown): PracticeConfidenceFlag => {
+  switch (String(value ?? '').trim()) {
+    case 'high':
+      return 'high';
+    case 'medium':
+      return 'medium';
+    default:
+      return 'low';
+  }
+};
+
+const toNullableNumber = (value: unknown) => {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 export const mapLearningDashboard = (
@@ -193,6 +228,57 @@ export const mapLearningDashboard = (
   };
 };
 
+export const mapLearningDashboardV2 = (
+  value: Record<string, unknown> | null
+): PracticeLearningDashboardV2 | null => {
+  if (!value) return null;
+
+  return {
+    totalQuestions: toNumber(value.total_questions),
+    seenQuestions: toNumber(value.seen_questions),
+    coverageRate: toNumber(value.coverage_rate),
+    observedAccuracyRate: toNumber(value.observed_accuracy_rate),
+    observedAccuracyN: toNumber(value.observed_accuracy_n),
+    observedAccuracyCiLow: toNullableNumber(value.observed_accuracy_ci_low),
+    observedAccuracyCiHigh: toNullableNumber(value.observed_accuracy_ci_high),
+    observedAccuracySampleOk: Boolean(value.observed_accuracy_sample_ok),
+    retentionSeenRate: toNullableNumber(value.retention_seen_rate),
+    retentionSeenN: toNumber(value.retention_seen_n),
+    retentionSeenConfidenceFlag: toConfidenceFlag(value.retention_seen_confidence_flag),
+    unseenPriorRate: toNumber(value.unseen_prior_rate, 0.25),
+    examReadinessRate: toNumber(value.exam_readiness_rate, 0.25),
+    examReadinessCiLow: toNullableNumber(value.exam_readiness_ci_low),
+    examReadinessCiHigh: toNullableNumber(value.exam_readiness_ci_high),
+    examReadinessConfidenceFlag: toConfidenceFlag(value.exam_readiness_confidence_flag),
+    backlogOverdueCount: toNumber(value.backlog_overdue_count),
+    fragileCount: toNumber(value.fragile_count),
+    consolidatingCount: toNumber(value.consolidating_count),
+    solidCount: toNumber(value.solid_count),
+    masteredCount: toNumber(value.mastered_count),
+    recommendedReviewCount: toNumber(value.recommended_review_count),
+    recommendedNewCount: toNumber(value.recommended_new_count),
+    recommendedTodayCount: toNumber(value.recommended_today_count),
+    recommendedMode: mapPracticeMode(value.recommended_mode),
+    focusMessage:
+      toNullableString(value.focus_message) ??
+      'La preparacion compuesta aun se esta estabilizando.'
+  };
+};
+
+export const mapCategoryRiskSummary = (
+  value: Record<string, unknown>
+): PracticeCategoryRiskSummary => ({
+  category: toNullableString(value.category) ?? 'Sin grupo',
+  attempts: toNumber(value.attempts),
+  incorrectAttempts: toNumber(value.incorrect_attempts),
+  rawFailRate: toNullableNumber(value.raw_fail_rate),
+  smoothedFailRate: toNullableNumber(value.smoothed_fail_rate),
+  baselineFailRate: toNullableNumber(value.baseline_fail_rate),
+  excessRisk: toNullableNumber(value.excess_risk),
+  sampleOk: Boolean(value.sample_ok),
+  confidenceFlag: toConfidenceFlag(value.confidence_flag)
+});
+
 export const mapExamTarget = (
   value: Record<string, unknown> | null
 ): PracticeExamTarget | null => {
@@ -206,12 +292,6 @@ export const mapExamTarget = (
     dailyNewCapacity: toNumber(value.daily_new_capacity, 10),
     updatedAt: toNullableString(value.updated_at)
   };
-};
-
-const toNullableNumber = (value: unknown) => {
-  if (value === null || value === undefined) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
 };
 
 export const mapPressureInsights = (
@@ -235,5 +315,33 @@ export const mapPressureInsights = (
     pressureMessage:
       toNullableString(value.pressure_message) ??
       'Sigue combinando practica adaptativa y simulacros para medir la transferencia real.'
+  };
+};
+
+export const mapPressureInsightsV2 = (
+  value: Record<string, unknown> | null
+): PracticePressureInsightsV2 | null => {
+  if (!value) return null;
+
+  const recommendedMode = mapPracticeMode(value.recommended_mode);
+  return {
+    learningAccuracy: toNullableNumber(value.learning_accuracy),
+    simulacroAccuracy: toNullableNumber(value.simulacro_accuracy),
+    pressureGapRaw: toNullableNumber(value.pressure_gap_raw),
+    learningSessionN: toNumber(value.learning_session_n),
+    simulacroSessionN: toNumber(value.simulacro_session_n),
+    learningQuestionN: toNumber(value.learning_question_n),
+    simulacroQuestionN: toNumber(value.simulacro_question_n),
+    avgSimulacroFatigue: toNullableNumber(value.avg_simulacro_fatigue),
+    overconfidenceRate: toNullableNumber(value.overconfidence_rate),
+    sampleOk: Boolean(value.sample_ok),
+    confidenceFlag: toConfidenceFlag(value.confidence_flag),
+    recommendedMode:
+      value.recommended_mode === null || value.recommended_mode === undefined
+        ? null
+        : recommendedMode,
+    pressureMessage:
+      toNullableString(value.pressure_message) ??
+      'Todavia no hay senal suficiente para leer bien la presion de examen.'
   };
 };

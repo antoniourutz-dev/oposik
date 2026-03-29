@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ArrowRight, Check, Clock3, X } from 'lucide-react';
+import { Button } from './ui/button';
 import { inferAttemptErrorType } from '../domain/learningEngine';
 import {
   OptionKey,
@@ -32,6 +33,27 @@ type QuizScreenProps = {
   onEndSession: (submission: PracticeAnswerSubmission | null) => void;
   onTimeExpired: (submission: PracticeAnswerSubmission | null) => void;
 };
+
+type ProgressSegment = {
+  key: number;
+  isCurrent: boolean;
+  className: string;
+};
+
+const ProgressTrack = React.memo(({ segments }: { segments: ProgressSegment[] }) => (
+  <div className="flex gap-1">
+    {segments.map(({ key, isCurrent, className }) => (
+      <div
+        key={key}
+        className={`h-2.5 rounded-full transition-all duration-300 sm:h-3 ${
+          isCurrent ? 'flex-[1.8]' : 'flex-1'
+        } ${className}`}
+      />
+    ))}
+  </div>
+));
+
+ProgressTrack.displayName = 'ProgressTrack';
 
 const QuizScreen: React.FC<QuizScreenProps> = ({
   mode,
@@ -182,28 +204,50 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   const isDeferredMode = feedbackMode === 'deferred';
   const displayQuestionNumber = question.number ?? questionIndex + 1;
   const sessionPresentation = getSessionPresentation(mode);
-  const questionScopeLabel = getQuestionScopeLabel(questionScope);
+  const questionScopeLabel = getQuestionScopeLabel(questionScope as 'all' | 'common' | 'specific');
   const previewAnsweredCount = Math.min(
     totalQuestions,
     answers.length + (hasAnsweredCurrentQuestion ? 1 : 0)
   );
-  const previewCorrectCount = isDeferredMode
-    ? answers.filter((answer) => answer.isCorrect).length
-    : answers.filter((answer) => answer.isCorrect).length +
-      (hasAnsweredCurrentQuestion && selectedKey === question.correctOption ? 1 : 0);
-  const immediateStreak = (() => {
-    const outcomeTrail = answers.map((answer) => answer.isCorrect);
-    if (!isDeferredMode && hasAnsweredCurrentQuestion) {
-      outcomeTrail.push(selectedKey === question.correctOption);
+  const answerMetrics = useMemo(() => {
+    let correctCount = 0;
+    let trailingCorrectStreak = 0;
+    let responseTimeTotal = 0;
+    let responseTimeCount = 0;
+
+    for (const answer of answers) {
+      if (answer.isCorrect) {
+        correctCount += 1;
+      }
+      if (answer.responseTimeMs !== null) {
+        responseTimeTotal += answer.responseTimeMs;
+        responseTimeCount += 1;
+      }
     }
 
-    let streak = 0;
-    for (let index = outcomeTrail.length - 1; index >= 0; index -= 1) {
-      if (!outcomeTrail[index]) break;
-      streak += 1;
+    for (let index = answers.length - 1; index >= 0; index -= 1) {
+      if (!answers[index].isCorrect) break;
+      trailingCorrectStreak += 1;
     }
-    return streak;
-  })();
+
+    return {
+      correctCount,
+      trailingCorrectStreak,
+      responseTimeTotal,
+      responseTimeCount
+    };
+  }, [answers]);
+  const isCurrentAnswerCorrect =
+    selectedKey !== null && selectedKey === question.correctOption;
+  const previewCorrectCount = isDeferredMode
+    ? answerMetrics.correctCount
+    : answerMetrics.correctCount + (hasAnsweredCurrentQuestion && isCurrentAnswerCorrect ? 1 : 0);
+  const immediateStreak =
+    !isDeferredMode && hasAnsweredCurrentQuestion
+      ? isCurrentAnswerCorrect
+        ? answerMetrics.trailingCorrectStreak + 1
+        : 0
+      : answerMetrics.trailingCorrectStreak;
   const currentStage = Math.min(
     4,
     Math.max(
@@ -213,12 +257,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   );
   const stageName =
     ['Arranque', 'Traccion', 'Cruce', 'Cierre'][currentStage - 1] ?? 'Pulso';
-  const rhythmLabel = (() => {
+  const rhythmLabel = useMemo(() => {
     if (isDeferredMode && timeLimitSeconds) {
-      const elapsedSeconds = Math.max(
-        1,
-        Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
-      );
+      const elapsedSeconds =
+        remainingSeconds !== null
+          ? Math.max(1, timeLimitSeconds - remainingSeconds)
+          : Math.max(1, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
       const answeredForRhythm = Math.max(previewAnsweredCount, 1);
       const idealSpentSeconds = (timeLimitSeconds / totalQuestions) * answeredForRhythm;
       const ratio = elapsedSeconds / Math.max(idealSpentSeconds, 1);
@@ -228,24 +272,30 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
       return 'Ritmo justo';
     }
 
-    const knownResponseTimes = answers
-      .map((answer) => answer.responseTimeMs)
-      .filter((value): value is number => value !== null);
-    const currentResponseTime =
-      !isDeferredMode && hasAnsweredCurrentQuestion && selectionElapsedMs !== null
-        ? [selectionElapsedMs]
-        : [];
-    const responseSample = [...knownResponseTimes, ...currentResponseTime];
+    const hasCurrentResponseTime =
+      !isDeferredMode && hasAnsweredCurrentQuestion && selectionElapsedMs !== null;
+    const responseSampleCount = answerMetrics.responseTimeCount + (hasCurrentResponseTime ? 1 : 0);
+    if (responseSampleCount === 0) return 'En arranque';
 
-    if (responseSample.length === 0) return 'En arranque';
-
-    const averageSeconds =
-      responseSample.reduce((total, value) => total + value, 0) / responseSample.length / 1000;
+    const responseSampleTotal =
+      answerMetrics.responseTimeTotal + (hasCurrentResponseTime ? selectionElapsedMs ?? 0 : 0);
+    const averageSeconds = responseSampleTotal / responseSampleCount / 1000;
 
     if (averageSeconds <= 15) return 'Agil';
     if (averageSeconds <= 28) return 'Estable';
     return 'Pausado';
-  })();
+  }, [
+    answerMetrics.responseTimeCount,
+    answerMetrics.responseTimeTotal,
+    hasAnsweredCurrentQuestion,
+    isDeferredMode,
+    previewAnsweredCount,
+    remainingSeconds,
+    selectionElapsedMs,
+    startedAt,
+    timeLimitSeconds,
+    totalQuestions
+  ]);
   const signalLabel = isDeferredMode
     ? `${previewAnsweredCount}/${totalQuestions}`
     : immediateStreak >= 3
@@ -272,8 +322,47 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         : previewCorrectCount > 0
           ? 'border-sky-100/80 bg-sky-50/90 text-sky-700'
           : 'border-slate-100/80 bg-slate-50/90 text-slate-700';
-  const isCurrentAnswerCorrect =
-    selectedKey !== null && selectedKey === question.correctOption;
+  const progressSegments = useMemo(
+    () =>
+      Array.from({ length: totalQuestions }, (_, index) => {
+        let className = 'bg-slate-100/90';
+
+        if (isDeferredMode) {
+          if (index < answers.length || (index === questionIndex && hasAnsweredCurrentQuestion)) {
+            className =
+              'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]';
+          } else if (index === questionIndex) {
+            className =
+              'border border-[#bfd2f6] bg-white shadow-[0_10px_18px_-16px_rgba(148,163,184,0.4)]';
+          }
+        } else if (index === questionIndex) {
+          if (hasAnsweredCurrentQuestion) {
+            className = isCurrentAnswerCorrect
+              ? 'bg-emerald-400 shadow-[0_10px_18px_-14px_rgba(16,185,129,0.45)]'
+              : 'bg-rose-500 shadow-[0_10px_18px_-14px_rgba(244,63,94,0.4)]';
+          } else {
+            className =
+              'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]';
+          }
+        } else if (answers[index]) {
+          className = answers[index].isCorrect ? 'bg-emerald-400' : 'bg-rose-500';
+        }
+
+        return {
+          key: index,
+          isCurrent: index === questionIndex,
+          className
+        };
+      }),
+    [
+      answers,
+      hasAnsweredCurrentQuestion,
+      isCurrentAnswerCorrect,
+      isDeferredMode,
+      questionIndex,
+      totalQuestions
+    ]
+  );
   const feedbackState = isDeferredMode
     ? selectedKey !== null
       ? 'armed'
@@ -369,17 +458,33 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     onAnswer(submission);
   };
 
+  const renderActionButton = () => (
+    <Button
+      variant="premium"
+      size="xl"
+      onClick={submitCurrentAnswer}
+      className="flex w-full items-center justify-between"
+    >
+      <span className="min-w-0 text-left truncate uppercase tracking-[0.14em]">
+        {nextButtonLabel}
+      </span>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/18 bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+        <ArrowRight size={18} />
+      </span>
+    </Button>
+  );
+
   return (
     <div
-      className={`mx-auto flex w-full max-w-3xl flex-1 flex-col px-0 py-3 sm:px-2 lg:px-4 ${
-        selectedKey !== null ? 'pb-28 sm:pb-32' : 'pb-8 sm:pb-10'
+      className={`mx-auto flex w-full max-w-[1920px] flex-1 flex-col px-3 py-3 sm:px-6 sm:py-6 lg:px-10 lg:py-10 2xl:px-16 ${
+        selectedKey !== null ? 'pb-32' : 'pb-10'
       }`}
     >
-      <div className="relative mb-3 overflow-hidden rounded-[1.5rem] border border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-3 text-white shadow-[0_24px_60px_-40px_rgba(141,147,242,0.3)] sm:mb-4 sm:rounded-[1.7rem] sm:p-5">
+      <div className="relative mb-3 overflow-hidden rounded-[1.5rem] border border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-3 text-white shadow-[0_24px_60px_-40px_rgba(141,147,242,0.3)] sm:mb-4 sm:rounded-[1.7rem] sm:p-5 xl:mb-5 xl:rounded-[1.95rem] xl:p-6">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/16 blur-3xl" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_42%)]" />
-          <div className="absolute right-4 top-4 h-24 w-24 rounded-full border border-white/14" />
+          <div className="absolute right-4 top-4 h-24 w-24 rounded-full border border-white/14 xl:h-32 xl:w-32" />
         </div>
 
         <div className="relative grid gap-2.5 sm:gap-3">
@@ -434,11 +539,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
           {!simplified ? (
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0">
-                <h2 className="text-[1.08rem] font-black tracking-[-0.03em] text-white sm:text-[1.55rem]">
+                <h2 className="text-[1.08rem] font-black tracking-[-0.03em] text-white sm:text-[1.55rem] xl:text-[1.85rem]">
                   Pregunta {displayQuestionNumber}{' '}
                   <span className="text-white/82">({questionIndex + 1} de {totalQuestions})</span>
                 </h2>
-                <p className="mt-1 hidden max-w-[30rem] text-xs font-semibold leading-5 text-white/68 sm:block">
+                <p className="mt-1 hidden max-w-[44rem] text-xs font-semibold leading-5 text-white/68 sm:block xl:text-sm xl:leading-6">
                   {title}. {subtitle}
                 </p>
               </div>
@@ -452,317 +557,192 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
 
       <section
         key={question.id}
-        className={`flex flex-1 flex-col transition-all duration-300 ease-out ${
+        className={`flex flex-1 flex-col gap-6 transition-all duration-300 ease-out ${
           isQuestionVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
         }`}
       >
-        <div className="sticky top-3 z-20 -mx-1 rounded-[1.9rem] bg-[linear-gradient(180deg,rgba(255,253,248,0.97)_0%,rgba(248,250,252,0.94)_78%,rgba(248,250,252,0)_100%)] px-1 pb-2 pt-0.5 sm:top-4 sm:pb-3 sm:pt-1">
-          <div
-            className={`relative overflow-hidden rounded-[1.45rem] border p-3.5 backdrop-blur transition-all duration-300 sm:rounded-[1.75rem] sm:p-6 ${feedbackSurfaceClass} ${
-              isDecisionVisible ? 'decision-soft-pulse' : ''
-            }`}
-          >
-            <div className="absolute inset-y-4 left-0 w-1.5 rounded-r-full bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)] opacity-85" />
-            <div
-              className={`absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_18%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_38%)]`}
-            />
-            <div
-              className={`absolute inset-0 bg-[radial-gradient(circle_at_top_left,var(--tw-gradient-stops))] ${feedbackAccentGlowClass}`}
-            />
-            {!feedbackPill ? (
-              <div className="absolute right-0 top-0 p-2.5 text-sky-200/26 sm:p-4">
-                <AlertCircle size={44} className="sm:h-[72px] sm:w-[72px]" />
-              </div>
-            ) : null}
-            <div className="relative z-10 mb-3 flex items-start justify-between gap-3 sm:mb-4">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-full border border-[#cbdcf9] bg-white/78 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
-                  {simplified ? 'Pregunta' : 'Enunciado'}
-                </span>
-                {!simplified ? (
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                    Lee antes de elegir
-                  </span>
-                ) : null}
-              </div>
-              {feedbackPill ? (
-                <span
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] ${feedbackPill.className}`}
-                >
-                  {feedbackPill.icon}
-                  <span>{feedbackPill.label}</span>
-                </span>
-              ) : null}
-            </div>
-            <h3 className="relative z-10 text-[1.06rem] font-extrabold leading-[1.82] tracking-[-0.02em] text-slate-900 sm:text-[1.62rem] sm:leading-[2.7rem]">
-              {question.statement}
-            </h3>
-          </div>
+        {/* --- QUESTION AREA: MOBILE STICKY + DESKTOP FULL WIDTH --- */}
+        <div className="sticky top-1 z-30 -mx-1 px-1 pb-1 pt-2 sm:top-2 sm:pb-2 xl:static xl:z-auto xl:mx-0 xl:p-0 xl:pb-0 xl:pt-0">
+           <div
+             className={`relative overflow-hidden rounded-[1.8rem] border p-5 backdrop-blur-md transition-all duration-300 sm:rounded-[2.5rem] sm:p-7 xl:min-h-[22rem] xl:p-12 ${feedbackSurfaceClass} ${
+               isDecisionVisible ? 'decision-soft-pulse' : ''
+             }`}
+           >
+             <div className="absolute inset-y-4 left-0 w-1.5 rounded-r-full bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)] opacity-85" />
+             <div className="relative z-10 mb-4 flex items-start justify-between gap-3 sm:mb-6">
+               <div className="flex items-center gap-3">
+                 <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600 shadow-sm sm:px-3 sm:py-1.5 sm:text-[10px]">
+                   {simplified ? 'Pregunta' : 'Enunciado del Caso'}
+                 </span>
+               </div>
+               {feedbackPill ? (
+                 <span
+                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-widest sm:gap-2 sm:px-4 sm:py-2 sm:text-[12px] ${feedbackPill.className}`}
+                 >
+                   {feedbackPill.icon}
+                   <span>{feedbackPill.label}</span>
+                 </span>
+               ) : null}
+             </div>
+             <h3 className="relative z-10 text-[1.18rem] font-black leading-[1.6] tracking-tight text-slate-950 sm:text-[1.8rem] sm:leading-snug xl:text-[2.6rem]">
+               {question.statement}
+             </h3>
+           </div>
         </div>
 
-        {simplified && showCompactProgress ? (
-          <div className="mb-3 rounded-[1rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,249,255,0.88))] p-2 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.16)] sm:mb-4 sm:rounded-[1.15rem] sm:p-2.5">
-            <div className="flex gap-1">
-              {Array.from({ length: totalQuestions }).map((_, index) => (
-                <div
-                  key={index}
-                  className={`h-2.5 rounded-full transition-all duration-300 sm:h-3 ${
-                    index === questionIndex ? 'flex-[1.8]' : 'flex-1'
-                  } ${
-                    isDeferredMode
-                      ? index < answers.length
-                        ? 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
-                        : index === questionIndex && hasAnsweredCurrentQuestion
-                          ? 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
-                          : index === questionIndex
-                            ? 'border border-[#bfd2f6] bg-white shadow-[0_10px_18px_-16px_rgba(148,163,184,0.4)]'
-                            : 'bg-slate-100/90'
-                      : index === questionIndex
-                        ? hasAnsweredCurrentQuestion
-                          ? isCurrentAnswerCorrect
-                            ? 'bg-emerald-400 shadow-[0_10px_18px_-14px_rgba(16,185,129,0.45)]'
-                            : 'bg-rose-500 shadow-[0_10px_18px_-14px_rgba(244,63,94,0.4)]'
-                          : 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
-                        : answers[index]
-                          ? answers[index].isCorrect
-                            ? 'bg-emerald-400'
-                            : 'bg-rose-500'
-                          : 'bg-slate-100/90'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {!simplified ? (
-          <div
-            className={`mb-3 rounded-[1rem] border bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,249,255,0.88))] p-2 backdrop-blur transition-all duration-300 sm:mb-4 sm:rounded-[1.15rem] sm:p-2.5 ${
-              feedbackState === 'correct'
-                ? 'border-emerald-100/90 shadow-[0_16px_28px_-24px_rgba(16,185,129,0.18)]'
-                : feedbackState === 'wrong'
-                  ? 'border-rose-100/90 shadow-[0_16px_28px_-24px_rgba(244,63,94,0.14)]'
-                  : feedbackState === 'armed'
-                    ? 'border-[#d5e2fa] shadow-[0_16px_28px_-24px_rgba(141,147,242,0.18)]'
-                    : 'border-white/75 shadow-[0_16px_28px_-26px_rgba(15,23,42,0.16)]'
-            } ${isDecisionVisible ? 'decision-soft-pulse' : ''}`}
-          >
-            <div className="flex gap-1">
-              {Array.from({ length: totalQuestions }).map((_, index) => (
-                <div
-                  key={index}
-                  className={`h-2.5 rounded-full transition-all duration-300 sm:h-3 ${
-                    index === questionIndex ? 'flex-[1.8]' : 'flex-1'
-                  } ${
-                    isDeferredMode
-                      ? index < answers.length
-                        ? 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
-                        : index === questionIndex && hasAnsweredCurrentQuestion
-                          ? 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
-                          : index === questionIndex
-                            ? 'border border-[#bfd2f6] bg-white shadow-[0_10px_18px_-16px_rgba(148,163,184,0.4)]'
-                            : 'bg-slate-100/90'
-                      : index === questionIndex
-                        ? hasAnsweredCurrentQuestion
-                          ? isCurrentAnswerCorrect
-                            ? 'bg-emerald-400 shadow-[0_10px_18px_-14px_rgba(16,185,129,0.45)]'
-                            : 'bg-rose-500 shadow-[0_10px_18px_-14px_rgba(244,63,94,0.4)]'
-                          : 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_10px_18px_-14px_rgba(141,147,242,0.5)]'
-                        : answers[index]
-                          ? answers[index].isCorrect
-                            ? 'bg-emerald-400'
-                            : 'bg-rose-500'
-                          : 'bg-slate-100/90'
-                  }`}
-                />
-              ))}
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-[0.95rem] border border-slate-100/90 bg-white/88 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-3 sm:py-2.5">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                    Pulso
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                    {previewAnsweredCount}/{totalQuestions}
-                  </span>
-                </div>
-                <p className="mt-1 text-[13px] font-black tracking-[-0.01em] text-slate-900 sm:text-[0.96rem]">
-                  {stageName} del bloque
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.14em] sm:text-[10px] ${rhythmToneClass}`}
-                >
-                  {rhythmLabel}
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.14em] sm:text-[10px] ${signalToneClass}`}
-                >
-                  {signalLabel}
-                </span>
-              </div>
-            </div>
-
-          </div>
-        ) : null}
-
-        <div className="grid gap-2.5 sm:gap-3">
-          <div className="flex items-center justify-between px-1">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-              Respuestas
-            </p>
-            {!simplified ? (
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                Elige una opcion
+        {/* --- ANSWERS AREA: GRID FOR HORIZONTAL EFFICIENCY --- */}
+        <div className="grid gap-4 w-full">
+           <div className="flex items-center justify-between px-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                 Selecciona la respuesta correcta
               </p>
-            ) : null}
-          </div>
-          {optionEntries.map(([key, value]) => {
-            const isCorrectOption = revealedCorrectKey === key;
-            const isWrongSelected =
-              selectedKey !== null && selectedKey === key && revealedCorrectKey !== key;
-            const isOtherSelected = selectedKey !== null && selectedKey !== key && !isCorrectOption;
-            const isDeferredSelected = isDeferredMode && selectedKey === key;
-            const feedbackAccentClass = isDeferredSelected
-              ? 'bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)] opacity-95'
-              : isCorrectOption
-                ? 'bg-[linear-gradient(180deg,#34d399_0%,#10b981_100%)] opacity-95'
-                : isWrongSelected
-                  ? 'bg-[linear-gradient(180deg,#fb7185_0%,#f43f5e_100%)] opacity-95'
-                  : 'bg-white/0 opacity-0';
+              <div className="hidden lg:flex items-center gap-4">
+                 <div className="flex items-center gap-2 text-[11px] font-black text-slate-400">
+                    <Clock3 size={14} /> {formattedRemainingTime ?? 'Sin límite'}
+                 </div>
+              </div>
+           </div>
 
-            return (
-              <button
-                key={key}
-                ref={(node) => {
-                  optionRefs.current[key] = node;
-                }}
-                type="button"
-                onClick={() => {
-                  if (!isDeferredMode && selectedKey !== null) return;
-                  const nowPerformance =
-                    typeof performance !== 'undefined' ? performance.now() : Date.now();
-                  const elapsedMs = Math.max(
-                    0,
-                    Math.round(nowPerformance - questionStartedAtRef.current)
-                  );
-                  if (isDeferredMode) {
-                    if (selectedKey === null) {
-                      setSelectedKey(key);
-                      setFirstSelectionElapsedMs(elapsedMs);
-                      setSelectionElapsedMs(elapsedMs);
-                      setChangedAnswer(false);
+           <div className="grid gap-3 sm:gap-4 lg:grid-cols-2 xl:gap-5">
+            {optionEntries.map(([key, value]) => {
+              const isCorrectOption = revealedCorrectKey === key;
+              const isWrongSelected =
+                selectedKey !== null && selectedKey === key && revealedCorrectKey !== key;
+              const isOtherSelected = selectedKey !== null && selectedKey !== key && !isCorrectOption;
+              const isDeferredSelected = isDeferredMode && selectedKey === key;
+              const feedbackAccentClass = isDeferredSelected
+                ? 'bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)] opacity-95'
+                : isCorrectOption
+                  ? 'bg-[linear-gradient(180deg,#34d399_0%,#10b981_100%)] opacity-95'
+                  : isWrongSelected
+                    ? 'bg-[linear-gradient(180deg,#fb7185_0%,#f43f5e_100%)] opacity-95'
+                    : 'bg-white/0 opacity-0';
+
+              return (
+                <button
+                  key={key}
+                  ref={(node) => {
+                    optionRefs.current[key] = node;
+                  }}
+                  type="button"
+                  onClick={() => {
+                    if (!isDeferredMode && selectedKey !== null) return;
+                    const nowPerformance =
+                      typeof performance !== 'undefined' ? performance.now() : Date.now();
+                    const elapsedMs = Math.max(
+                      0,
+                      Math.round(nowPerformance - questionStartedAtRef.current)
+                    );
+                    if (isDeferredMode) {
+                      if (selectedKey === null) {
+                        setSelectedKey(key);
+                        setFirstSelectionElapsedMs(elapsedMs);
+                        setSelectionElapsedMs(elapsedMs);
+                        setChangedAnswer(false);
+                        return;
+                      }
+
+                      if (selectedKey !== key) {
+                        setSelectedKey(key);
+                        setChangedAnswer(true);
+                      }
                       return;
                     }
 
-                    if (selectedKey !== key) {
-                      setSelectedKey(key);
-                      setChangedAnswer(true);
-                    }
-                    return;
-                  }
-
-                  setSelectedKey(key);
-                  setFirstSelectionElapsedMs(elapsedMs);
-                  setSelectionElapsedMs(elapsedMs);
-                  setChangedAnswer(false);
-                  setRevealedCorrectKey(question.correctOption);
-                }}
-                disabled={!isDeferredMode && selectedKey !== null}
-                className={`relative flex w-full items-start gap-3 overflow-hidden rounded-[1.2rem] border px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 sm:gap-3.5 sm:px-5 sm:py-3.5 ${
-                  isDeferredMode
-                    ? isDeferredSelected
-                      ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(237,245,255,0.96))] shadow-[0_24px_38px_-28px_rgba(141,147,242,0.22)] ring-1 ring-sky-200'
-                      : 'border-slate-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.94))] shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-white hover:shadow-[0_24px_38px_-28px_rgba(141,147,242,0.16)] active:translate-y-0 active:scale-[0.99]'
-                    : isCorrectOption
-                    ? 'border-emerald-300 bg-[linear-gradient(180deg,rgba(236,253,245,1),rgba(220,252,231,0.92))] shadow-[0_16px_35px_-24px_rgba(16,185,129,0.32)] ring-1 ring-emerald-100'
-                    : isWrongSelected
-                      ? 'border-rose-300 bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))] shadow-[0_16px_35px_-24px_rgba(244,63,94,0.26)] ring-1 ring-rose-100'
-                    : isOtherSelected
-                        ? 'border-slate-200/90 bg-white/55 opacity-60 saturate-75'
+                    setSelectedKey(key);
+                    setFirstSelectionElapsedMs(elapsedMs);
+                    setSelectionElapsedMs(elapsedMs);
+                    setChangedAnswer(false);
+                    setRevealedCorrectKey(question.correctOption);
+                  }}
+                  disabled={!isDeferredMode && selectedKey !== null}
+                  className={`relative flex w-full items-start gap-3 overflow-hidden rounded-[1.2rem] border px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 sm:gap-3.5 sm:px-5 sm:py-3.5 xl:rounded-[1.35rem] xl:px-6 xl:py-5 ${
+                    isDeferredMode
+                      ? isDeferredSelected
+                        ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(237,245,255,0.96))] shadow-[0_24px_38px_-28px_rgba(141,147,242,0.22)] ring-1 ring-sky-200'
                         : 'border-slate-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.94))] shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-white hover:shadow-[0_24px_38px_-28px_rgba(141,147,242,0.16)] active:translate-y-0 active:scale-[0.99]'
-                } ${selectedKey === key && isDecisionVisible ? 'decision-commit-in' : ''}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`absolute inset-y-3 left-0 w-1.5 rounded-r-full transition-all duration-200 ${feedbackAccentClass}`}
-                />
-                <span
-                  className={`relative z-10 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.9rem] text-base font-extrabold sm:mt-1 sm:h-10 sm:w-10 sm:rounded-[1rem] sm:text-[1.02rem] ${
-                    isDeferredMode
-                      ? isDeferredSelected
-                        ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.45)]'
-                        : 'bg-[linear-gradient(135deg,rgba(125,182,232,0.18),rgba(141,147,242,0.18))] text-slate-700'
                       : isCorrectOption
-                      ? 'bg-emerald-500 text-white shadow-[0_14px_24px_-18px_rgba(16,185,129,0.38)]'
+                      ? 'border-emerald-300 bg-[linear-gradient(180deg,rgba(236,253,245,1),rgba(220,252,231,0.92))] shadow-[0_16px_35px_-24px_rgba(16,185,129,0.32)] ring-1 ring-emerald-100'
                       : isWrongSelected
-                        ? 'bg-rose-500 text-white shadow-[0_14px_24px_-18px_rgba(244,63,94,0.34)]'
-                        : 'bg-[linear-gradient(135deg,rgba(125,182,232,0.18),rgba(141,147,242,0.18))] text-slate-700'
-                  }`}
+                        ? 'border-rose-300 bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))] shadow-[0_16px_35px_-24px_rgba(244,63,94,0.26)] ring-1 ring-rose-100'
+                      : isOtherSelected
+                          ? 'border-slate-200/90 bg-white/55 opacity-60 saturate-75'
+                          : 'border-slate-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.94))] shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-white hover:shadow-[0_24px_38px_-28px_rgba(141,147,242,0.16)] active:translate-y-0 active:scale-[0.99]'
+                  } ${selectedKey === key && isDecisionVisible ? 'decision-commit-in' : ''}`}
                 >
-                  {key.toUpperCase()}
-                </span>
-                <span
-                  className={`relative z-10 min-w-0 flex-1 pr-1 text-[1.02rem] font-semibold leading-[1.72] sm:text-[1.12rem] sm:leading-[1.78] ${
-                    isDeferredMode
-                      ? isDeferredSelected
-                        ? 'text-slate-950'
-                        : 'text-slate-800'
-                      : isCorrectOption
-                      ? 'text-emerald-900'
-                      : isWrongSelected
-                        ? 'text-rose-900'
-                        : 'text-slate-800'
-                  }`}
-                >
-                  {value}
-                </span>
-                {isDeferredSelected ? (
-                  <span className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-sky-100 bg-sky-50/90 text-sky-600 shadow-[0_12px_24px_-20px_rgba(125,182,232,0.34)]">
-                    <span className="h-2.5 w-2.5 rounded-full bg-current" />
+                  <span
+                    aria-hidden="true"
+                    className={`absolute inset-y-3 left-0 w-1.5 rounded-r-full transition-all duration-200 ${feedbackAccentClass}`}
+                  />
+                  <span
+                    className={`relative z-10 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.9rem] text-base font-extrabold sm:mt-1 sm:h-10 sm:w-10 sm:rounded-[1rem] sm:text-[1.02rem] xl:h-11 xl:w-11 xl:text-[1.08rem] ${
+                      isDeferredMode
+                        ? isDeferredSelected
+                          ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.45)]'
+                          : 'bg-[linear-gradient(135deg,rgba(125,182,232,0.18),rgba(141,147,242,0.18))] text-slate-700'
+                        : isCorrectOption
+                        ? 'bg-emerald-500 text-white shadow-[0_14px_24px_-18px_rgba(16,185,129,0.38)]'
+                        : isWrongSelected
+                          ? 'bg-rose-500 text-white shadow-[0_14px_24px_-18px_rgba(244,63,94,0.34)]'
+                          : 'bg-[linear-gradient(135deg,rgba(125,182,232,0.18),rgba(141,147,242,0.18))] text-slate-700'
+                    }`}
+                  >
+                    {key.toUpperCase()}
                   </span>
-                ) : null}
-                {!isDeferredMode && isCorrectOption ? (
-                  <span className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-[0_12px_24px_-20px_rgba(16,185,129,0.32)]">
-                    <Check size={15} strokeWidth={3} />
+                  <span
+                    className={`relative z-10 min-w-0 flex-1 pr-1 text-[1.02rem] font-semibold leading-[1.72] sm:text-[1.12rem] sm:leading-[1.78] xl:text-[1.18rem] xl:leading-[1.88] ${
+                      isDeferredMode
+                        ? isDeferredSelected
+                          ? 'text-slate-950'
+                          : 'text-slate-800'
+                        : isCorrectOption
+                        ? 'text-emerald-900'
+                        : isWrongSelected
+                          ? 'text-rose-900'
+                          : 'text-slate-800'
+                    }`}
+                  >
+                    {value}
                   </span>
-                ) : null}
-                {!isDeferredMode && isWrongSelected ? (
-                  <span className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-rose-100 bg-rose-50 text-rose-600 shadow-[0_12px_24px_-20px_rgba(244,63,94,0.28)]">
-                    <X size={15} strokeWidth={3} />
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
+                  {isDeferredSelected ? (
+                    <span className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-sky-100 bg-sky-50/90 text-sky-600 shadow-[0_12px_24px_-20px_rgba(125,182,232,0.34)]">
+                      <span className="h-2.5 w-2.5 rounded-full bg-current" />
+                    </span>
+                  ) : null}
+                  {!isDeferredMode && isCorrectOption ? (
+                    <span className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-[0_12px_24px_-20px_rgba(16,185,129,0.32)]">
+                      <Check size={15} strokeWidth={3} />
+                    </span>
+                  ) : null}
+                  {!isDeferredMode && isWrongSelected ? (
+                    <span className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-rose-100 bg-rose-50 text-rose-600 shadow-[0_12px_24px_-20px_rgba(244,63,94,0.28)]">
+                      <X size={15} strokeWidth={3} />
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+
+            {selectedKey !== null ? (
+              <div className="hidden xl:block lg:col-span-2 mt-8">
+                <div className="rounded-[2.5rem] border border-white/75 bg-white/95 p-3 shadow-xl backdrop-blur">
+                  {renderActionButton()}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
 
       {selectedKey !== null ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30">
-          <div className="mx-auto w-full max-w-3xl bg-[linear-gradient(180deg,rgba(248,250,252,0)_0%,rgba(248,250,252,0.94)_26%,rgba(248,250,252,0.98)_100%)] px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-6 sm:px-4 sm:pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:px-4">
-            <div className="pointer-events-auto translate-y-0 opacity-100">
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 xl:hidden">
+          <div className="mx-auto w-full max-w-2xl bg-[linear-gradient(180deg,rgba(248,250,252,0)_0%,rgba(248,250,252,0.95)_38%,rgba(248,250,252,1)_100%)] px-3 pb-4 pt-8 sm:px-6 sm:pb-6">
+            <div className="pointer-events-auto">
               <div
                 ref={actionBarRef}
-                className="rounded-[1.45rem] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(244,248,255,0.94))] p-2 shadow-[0_24px_60px_-34px_rgba(15,23,42,0.24)] backdrop-blur"
+                className="rounded-[2rem] border border-white/80 bg-white/95 p-2 shadow-[0_32px_80px_-24px_rgba(15,23,42,0.35)] backdrop-blur-md sm:p-3"
               >
-                <button
-                  type="button"
-                  onClick={submitCurrentAnswer}
-                  className="flex w-full items-center justify-between gap-3 rounded-[1.15rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3.5 text-white shadow-[0_24px_60px_-34px_rgba(141,147,242,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_60px_-34px_rgba(141,147,242,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 active:translate-y-0 active:scale-[0.99]"
-                >
-                  <span className="min-w-0 text-left">
-                    <span className="block truncate text-sm font-black uppercase tracking-[0.14em] text-white sm:text-[0.96rem]">
-                      {nextButtonLabel}
-                    </span>
-                  </span>
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/18 bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-                    <ArrowRight size={18} />
-                  </span>
-                </button>
+                {renderActionButton()}
               </div>
             </div>
           </div>

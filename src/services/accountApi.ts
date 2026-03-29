@@ -1,5 +1,6 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '../supabaseClient';
+import { trackAsyncOperation } from '../telemetry/telemetryClient';
 
 export type AccountPlayerMode = 'advanced' | 'generic';
 
@@ -66,25 +67,33 @@ const mapAccountIdentity = (value: unknown): AccountIdentity | null => {
 };
 
 export const getMyAccountIdentity = async () => {
-  const { data, error } = await supabase
-    .schema('app')
-    .rpc('get_my_account_identity')
-    .maybeSingle();
+  return trackAsyncOperation('account.getMyAccountIdentity', async () => {
+    const { data, error } = await supabase
+      .schema('app')
+      .rpc('get_my_account_identity')
+      .maybeSingle();
 
-  if (error) throw new Error(mapAccountApiError(error));
-  return mapAccountIdentity(data);
+    if (error) throw new Error(mapAccountApiError(error));
+    return mapAccountIdentity(data);
+  });
 };
 
 export const getMyUsernameHistory = async (limit = 10) => {
-  const { data, error } = await supabase
-    .schema('app')
-    .from('username_change_history')
-    .select('change_id, old_username, new_username, changed_at, changed_by, source, reason, request_id')
-    .order('changed_at', { ascending: false })
-    .limit(limit);
+  return trackAsyncOperation(
+    'account.getMyUsernameHistory',
+    async () => {
+      const { data, error } = await supabase
+        .schema('app')
+        .from('username_change_history')
+        .select('change_id, old_username, new_username, changed_at, changed_by, source, reason, request_id')
+        .order('changed_at', { ascending: false })
+        .limit(limit);
 
-  if (error) throw new Error(mapAccountApiError(error));
-  return (data ?? []) as UsernameHistoryEntry[];
+      if (error) throw new Error(mapAccountApiError(error));
+      return (data ?? []) as UsernameHistoryEntry[];
+    },
+    { limit }
+  );
 };
 
 export const mapAccountApiError = (error: Pick<PostgrestError, 'code' | 'message' | 'details' | 'hint'>) => {
@@ -172,30 +181,36 @@ export const changeMyUsername = async (nextUsernameInput: string) => {
     throw new Error('Formato invalido. Usa entre 3 y 32 caracteres: a-z, 0-9 y _.');
   }
 
-  const { data, error } = await supabase
-    .schema('app')
-    .rpc('change_my_username', {
-      p_new_username: nextUsername,
-      p_reason: 'self_service',
-      p_request_id: generateUUID(),
-      p_metadata: { client: 'web' }
-    })
-    .maybeSingle();
+  return trackAsyncOperation(
+    'account.changeMyUsername',
+    async () => {
+      const { data, error } = await supabase
+        .schema('app')
+        .rpc('change_my_username', {
+          p_new_username: nextUsername,
+          p_reason: 'self_service',
+          p_request_id: generateUUID(),
+          p_metadata: { client: 'web' }
+        })
+        .maybeSingle();
 
-  if (error) {
-    throw new Error(mapAccountApiError(error));
-  }
+      if (error) {
+        throw new Error(mapAccountApiError(error));
+      }
 
-  if (!data) {
-    throw new Error('El servidor ha devuelto una respuesta vacia.');
-  }
+      if (!data) {
+        throw new Error('El servidor ha devuelto una respuesta vacia.');
+      }
 
-  const result = data as any;
+      const result = data as any;
 
-  return {
-    user_id: result.out_user_id,
-    old_username: result.out_old_username ?? null,
-    new_username: result.out_new_username,
-    changed_at: result.out_changed_at,
-  } as UsernameChangeResult;
+      return {
+        user_id: result.out_user_id,
+        old_username: result.out_old_username ?? null,
+        new_username: result.out_new_username,
+        changed_at: result.out_changed_at,
+      } as UsernameChangeResult;
+    },
+    { usernameLength: nextUsername.length }
+  );
 };

@@ -1,8 +1,9 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
+import { queryClient } from './queryClient';
 
 const CHUNK_RELOAD_KEY = 'korrika_chunk_reload_attempted';
 
@@ -28,6 +29,28 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
   </React.StrictMode>
 );
+
+if (typeof window !== 'undefined') {
+  void import('./telemetry/telemetryClient').then(
+    ({ initializeTelemetry, recordNavigation }) => {
+      initializeTelemetry();
+      window.requestAnimationFrame(() => {
+        recordNavigation('app_rendered', {
+          timeSinceLoadMs:
+            typeof performance !== 'undefined' ? performance.now() : Date.now()
+        });
+      });
+    }
+  ).catch(() => undefined);
+
+  void import('./telemetry/webVitals')
+    .then(({ installWebVitalsObservers }) => {
+      installWebVitalsObservers();
+    })
+    .catch(() => undefined);
+}

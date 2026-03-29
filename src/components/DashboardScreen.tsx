@@ -1,136 +1,21 @@
 import React, { Suspense, lazy } from 'react';
-import {
-  ArrowRight,
-  Brain,
-  ChartNoAxesColumn,
-  Flame,
-  Layers3,
-  LogOut,
-  RotateCcw,
-  Shield,
-  Target,
-  UserRound
-} from 'lucide-react';
-import { MainTab } from './BottomDock';
-import QuestionScopePicker from './QuestionScopePicker';
-import { AccountIdentity } from '../services/accountApi';
-import {
-  PracticeCoachPlan,
-  PracticeExamTarget,
-  PracticeLearningDashboard,
-  PracticeQuestionScopeFilter,
-  PracticePressureInsights,
-  PracticeProfile,
-  PracticeSessionSummary,
-  WeakQuestionInsight
-} from '../practiceTypes';
+import { ArrowRight, Flame, Layers3, RotateCcw, Target } from 'lucide-react';
 import { SIMULACRO_BATCH_SIZE } from '../practiceConfig';
-import QuestionExplanation from './QuestionExplanation';
+import QuestionScopePicker from './QuestionScopePicker';
+import type { DashboardScreenProps } from './dashboard/types';
+import {
+  AnalyticsMiniTile,
+  DashboardTabFallback,
+  SectionCard,
+  SegmentedProgressBar,
+  SparklineChart,
+  formatPercent,
+  formatSignedPoints
+} from './dashboard/shared';
 
-const AdminConsoleScreen = lazy(() => import('./AdminConsoleScreen'));
-
-type DashboardScreenProps = {
-  activeTab: MainTab;
-  identity: AccountIdentity;
-  coachPlan: PracticeCoachPlan;
-  examTarget: PracticeExamTarget | null;
-  examTargetError: string | null;
-  learningDashboard: PracticeLearningDashboard | null;
-  pressureInsights: PracticePressureInsights | null;
-  profile: PracticeProfile | null;
-  recentSessions: PracticeSessionSummary[];
-  questionsCount: number;
-  totalBatches: number;
-  batchSize: number;
-  recommendedBatchNumber: number;
-  weakQuestions: WeakQuestionInsight[];
-  weakCategories: Array<{ category: string; incorrectAttempts: number; attempts: number }>;
-  questionScope: PracticeQuestionScopeFilter;
-  onQuestionScopeChange: (questionScope: PracticeQuestionScopeFilter) => void;
-  onStartSimulacro: () => void;
-  onStartAntiTrap: () => void;
-  onStartRecommended: () => void;
-  onStartMixed: () => void;
-  onStartRandom: () => void;
-  onStartFromBeginning: () => void;
-  onStartWeakReview: () => void;
-  onReloadQuestions: () => void;
-  onSaveExamTarget: (payload: {
-    examDate: string | null;
-    dailyReviewCapacity: number;
-    dailyNewCapacity: number;
-  }) => void;
-  onSignOut: () => void;
-  savingExamTarget: boolean;
-};
-
-const formatSessionDate = (value: string) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return new Intl.DateTimeFormat('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date);
-};
-
-const getAccuracy = (correct: number, total: number) =>
-  total === 0 ? 0 : Math.round((correct / total) * 100);
-
-const formatPercent = (value: number | null | undefined) =>
-  `${Math.round(Math.max(0, Math.min(1, value ?? 0)) * 100)}%`;
-
-const formatOptionalPercent = (value: number | null | undefined) =>
-  value === null || value === undefined ? '--' : formatPercent(value);
-
-const toPercentNumber = (value: number | null | undefined) =>
-  Math.round(Math.max(0, Math.min(1, value ?? 0)) * 100);
-
-const formatSignedPoints = (value: number | null | undefined) => {
-  if (value === null || value === undefined) return '--';
-  const points = Math.round(value * 100);
-  return `${points > 0 ? '-' : '+'}${Math.abs(points)} pts`;
-};
-
-const toDateInputValue = (value: string | null | undefined) => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 10);
-};
-
-const SectionCard: React.FC<
-  React.PropsWithChildren<{ title?: string; hint?: string; className?: string }>
-> = ({ title, hint, className = '', children }) => (
-  <section
-    className={`rounded-[1.55rem] border border-white/72 bg-white/88 p-4 shadow-[0_28px_80px_-50px_rgba(15,23,42,0.36)] backdrop-blur sm:p-5 ${className}`}
-  >
-    {title ? (
-      <div className="mb-3">
-        <p className="text-[1.02rem] font-extrabold tracking-[-0.02em] text-slate-950 sm:text-lg">
-          {title}
-        </p>
-        {hint ? <p className="mt-1 text-sm leading-6 text-slate-500">{hint}</p> : null}
-      </div>
-    ) : null}
-    {children}
-  </section>
-);
-
-const HomeMetric: React.FC<{ label: string; value: string; className?: string }> = ({
-  label,
-  value,
-  className = ''
-}) => (
-  <div
-    className={`rounded-[1.15rem] border border-slate-100/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.88))] px-4 py-4 shadow-[0_16px_30px_-24px_rgba(15,23,42,0.18)] ${className}`}
-  >
-    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-    <p className="mt-2 text-[1.8rem] font-black leading-none text-slate-950">{value}</p>
-  </div>
-);
+const DashboardStatsTab = lazy(() => import('./dashboard/DashboardStatsTab'));
+const DashboardStudyTab = lazy(() => import('./dashboard/DashboardStudyTab'));
+const DashboardProfileTab = lazy(() => import('./dashboard/DashboardProfileTab'));
 
 const HeroCompactAction: React.FC<{
   icon: React.ReactNode;
@@ -188,6 +73,38 @@ const HeroMiniStat: React.FC<{ label: string; value: string }> = ({ label, value
   </div>
 );
 
+const DesktopCockpitAction: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  title: string;
+  caption: string;
+  onClick: () => void;
+  disabled?: boolean;
+}> = ({ icon, label, title, caption, onClick, disabled }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className="group flex w-full items-center gap-3 rounded-[1.05rem] border border-slate-200/88 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,250,255,0.94))] px-3.5 py-3 text-left text-slate-950 shadow-[0_14px_24px_-24px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#c5d7f8] hover:shadow-[0_16px_26px_-22px_rgba(141,147,242,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:opacity-45 disabled:hover:translate-y-0"
+  >
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.12),rgba(141,147,242,0.14))] text-slate-700">
+      {icon}
+    </span>
+    <span className="min-w-0 flex-1">
+      <span className="block text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
+        {label}
+      </span>
+      <span className="mt-1 block text-[0.98rem] font-black leading-[1.05] text-slate-950">
+        {title}
+      </span>
+      <span className="mt-1 block text-[11px] font-semibold leading-4 text-slate-500">
+        {caption}
+      </span>
+    </span>
+    <ArrowRight size={14} className="shrink-0 text-slate-400 transition-transform duration-200 group-hover:translate-x-0.5" />
+  </button>
+);
+
 const HomeStatusBandMetric: React.FC<{
   label: string;
   value: string;
@@ -211,521 +128,120 @@ const HomeStatusBandMetric: React.FC<{
   </div>
 );
 
-const AnalyticsMiniTile: React.FC<{
-  label: string;
-  value: string;
-  caption?: string;
-  accent?: boolean;
-}> = ({ label, value, caption, accent = false }) => (
-  <div
-    className={`rounded-[1.08rem] border px-3 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)] ${
-      accent
-        ? 'border-[#c8d8f8] bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(237,245,255,0.94))]'
-        : 'border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))]'
-    }`}
-  >
-    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-    <p className="mt-1.5 text-[1.35rem] font-black leading-none text-slate-950">{value}</p>
-    {caption ? <p className="mt-1.5 text-xs font-semibold leading-5 text-slate-400">{caption}</p> : null}
-  </div>
-);
+const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
+  const {
+    activeTab,
+    batchSize,
+    coachPlan,
+    learningDashboard,
+    learningDashboardV2,
+    onQuestionScopeChange,
+    onReloadQuestions,
+    onStartMixed,
+    onStartRandom,
+    onStartRecommended,
+    onStartWeakReview,
+    pressureInsights,
+    pressureInsightsV2,
+    profile,
+    questionScope,
+    questionsCount,
+    recentSessions,
+    recommendedBatchNumber,
+    weakQuestions
+  } = props;
 
-const AccentStatTile: React.FC<{
-  label: string;
-  value: string;
-  hint: string;
-  icon: React.ReactNode;
-  className?: string;
-}> = ({ label, value, hint, icon, className = '' }) => (
-  <article
-    className={`rounded-[1.3rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.92))] px-4 py-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.16)] ${className}`}
-  >
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-        <p className="mt-2 text-[2rem] font-black leading-none text-slate-950">{value}</p>
-        <p className="mt-2 text-xs font-semibold text-slate-400">{hint}</p>
-      </div>
-      <span className="flex h-10 w-10 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,rgba(125,182,232,0.24),rgba(141,147,242,0.28))] text-slate-700">
-        {icon}
-      </span>
-    </div>
-  </article>
-);
-
-const SegmentedProgressBar: React.FC<{
-  segments: Array<{ label: string; value: number; className: string }>;
-}> = ({ segments }) => {
-  const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0);
-
-  return (
-    <div className="overflow-hidden rounded-full border border-white/82 bg-slate-100/90 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-      <div className="flex h-4 overflow-hidden rounded-full">
-        {segments.map((segment) => {
-          const width = total === 0 ? 0 : (Math.max(0, segment.value) / total) * 100;
-          return (
-            <div
-              key={segment.label}
-              className={segment.className}
-              style={{ width: `${width}%` }}
-              title={`${segment.label}: ${segment.value}`}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-const TrendBars: React.FC<{
-  items: Array<{ label: string; value: number; meta: string }>;
-}> = ({ items }) => (
-  <div className="grid grid-cols-6 gap-2">
-    {items.map((item) => (
-      <div key={item.label} className="flex flex-col items-center gap-2">
-        <div className="flex h-28 w-full items-end rounded-[1rem] bg-[linear-gradient(180deg,rgba(241,245,249,0.92),rgba(226,232,240,0.78))] p-1.5">
-          <div
-            className="w-full rounded-[0.8rem] bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_16px_24px_-20px_rgba(141,147,242,0.4)]"
-            style={{ height: `${Math.max(10, Math.min(100, item.value))}%` }}
-            title={`${item.label}: ${item.meta}`}
-          />
-        </div>
-        <div className="text-center">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
-            {item.label}
-          </p>
-          <p className="mt-1 text-xs font-extrabold text-slate-700">{item.meta}</p>
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-const RankedMeterRow: React.FC<{
-  label: string;
-  detail: string;
-  value: number;
-  valueLabel: string;
-  maxValue?: number;
-  tone?: 'primary' | 'secondary';
-}> = ({ label, detail, value, valueLabel, maxValue = 100, tone = 'primary' }) => {
-  const width = maxValue <= 0 ? 0 : Math.max(8, Math.min(100, (value / maxValue) * 100));
-  const barClassName =
-    tone === 'secondary'
-      ? 'bg-[linear-gradient(90deg,#cbd5e1_0%,#94a3b8_100%)]'
-      : 'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)]';
-
-  return (
-    <div className="rounded-[1.08rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-4 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-extrabold text-slate-900">{label}</p>
-          <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
-            {detail}
-          </p>
-        </div>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-700">
-          {valueLabel}
-        </span>
-      </div>
-      <div className="mt-3 h-2.5 rounded-full bg-slate-100">
-        <div className={`h-2.5 rounded-full ${barClassName}`} style={{ width: `${width}%` }} />
-      </div>
-    </div>
-  );
-};
-
-const SparklineChart: React.FC<{
-  items: Array<{ label: string; value: number; meta: string }>;
-}> = ({ items }) => {
-  const width = 420;
-  const height = 190;
-  const paddingX = 18;
-  const paddingY = 22;
-  const chartWidth = width - paddingX * 2;
-  const chartHeight = height - paddingY * 2;
-  const lastIndex = Math.max(items.length - 1, 1);
-  const gradientId = React.useId();
-  const areaId = React.useId();
-  const points = items.map((item, index) => {
-    const x = paddingX + (chartWidth * index) / lastIndex;
-    const y = paddingY + chartHeight - (Math.max(0, Math.min(100, item.value)) / 100) * chartHeight;
-
-    return { ...item, x, y };
-  });
-
-  const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
-  const areaPath = points.length
-    ? `${path} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`
-    : '';
-
-  return (
-    <div className="rounded-[1.2rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-3 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-44 w-full">
-        <defs>
-          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#7cb6e8" />
-            <stop offset="100%" stopColor="#8d93f2" />
-          </linearGradient>
-          <linearGradient id={areaId} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(124,182,232,0.22)" />
-            <stop offset="100%" stopColor="rgba(141,147,242,0.02)" />
-          </linearGradient>
-        </defs>
-
-        {[25, 50, 75].map((tick) => {
-          const y = paddingY + chartHeight - (tick / 100) * chartHeight;
-          return (
-            <g key={tick}>
-              <line
-                x1={paddingX}
-                x2={width - paddingX}
-                y1={y}
-                y2={y}
-                stroke="rgba(148,163,184,0.18)"
-                strokeDasharray="4 6"
-              />
-              <text x={4} y={y + 4} fontSize="10" fontWeight="800" fill="rgba(100,116,139,0.7)">
-                {tick}
-              </text>
-            </g>
-          );
-        })}
-
-        {points.length > 0 ? <path d={areaPath} fill={`url(#${areaId})`} /> : null}
-        {points.length > 0 ? (
-          <path
-            d={path}
-            fill="none"
-            stroke={`url(#${gradientId})`}
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ) : null}
-        {points.map((point) => (
-          <g key={point.label}>
-            <circle cx={point.x} cy={point.y} r="5.5" fill="white" stroke={`url(#${gradientId})`} strokeWidth="3" />
-            <text
-              x={point.x}
-              y={height - 2}
-              textAnchor="middle"
-              fontSize="10"
-              fontWeight="800"
-              fill="rgba(100,116,139,0.82)"
-            >
-              {point.label}
-            </text>
-          </g>
-        ))}
-      </svg>
-    </div>
-  );
-};
-
-const RangeMeter: React.FC<{
-  current: number;
-  lower: number | null;
-  upper: number | null;
-  projected: number | null;
-}> = ({ current, lower, upper, projected }) => {
-  const currentPercent = toPercentNumber(current);
-  const lowerPercent = lower === null ? currentPercent : toPercentNumber(lower);
-  const upperPercent = upper === null ? currentPercent : toPercentNumber(upper);
-  const projectedPercent = projected === null ? null : toPercentNumber(projected);
-
-  return (
-    <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)] sm:px-4">
-      <div className="mb-2.5 flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-        <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <span className="h-2 w-2 rounded-full bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)]" />
-          actual
-        </span>
-        <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <span className="h-2 w-2 rounded-full bg-[linear-gradient(90deg,rgba(125,211,252,0.5),rgba(165,180,252,0.55))]" />
-          rango
-        </span>
-        {projectedPercent !== null ? (
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-            <span className="h-3 w-[2px] rounded-full bg-slate-900/70" />
-            proyeccion
-          </span>
-        ) : null}
-      </div>
-
-      <div className="relative h-4 overflow-hidden rounded-full border border-white/82 bg-[linear-gradient(180deg,rgba(241,245,249,0.95),rgba(226,232,240,0.85))] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-        <div
-          className="absolute inset-y-1 rounded-full bg-[linear-gradient(90deg,rgba(125,211,252,0.4),rgba(165,180,252,0.44))]"
-          style={{
-            left: `${Math.min(lowerPercent, upperPercent)}%`,
-            width: `${Math.max(3, Math.abs(upperPercent - lowerPercent))}%`
-          }}
-        />
-        <div
-          className="h-full rounded-full bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)] shadow-[0_12px_24px_-18px_rgba(141,147,242,0.4)]"
-          style={{ width: `${currentPercent}%` }}
-        />
-        {projectedPercent !== null ? (
-          <div
-            className="absolute bottom-0 top-0 w-[2px] bg-slate-900/75"
-            style={{ left: `${projectedPercent}%` }}
-          />
-        ) : null}
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <div className="rounded-[0.95rem] bg-white/78 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Actual</p>
-          <p className="mt-1 text-sm font-black text-slate-950">{currentPercent}%</p>
-        </div>
-        <div className="rounded-[0.95rem] bg-white/78 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Rango</p>
-          <p className="mt-1 text-sm font-black text-slate-950">
-            {lowerPercent}% - {upperPercent}%
-          </p>
-        </div>
-        {projectedPercent !== null ? (
-          <div className="rounded-[0.95rem] bg-white/78 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-            <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Proyeccion</p>
-            <p className="mt-1 text-sm font-black text-slate-950">{projectedPercent}%</p>
-          </div>
-        ) : (
-          <div className="rounded-[0.95rem] bg-white/78 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-            <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Proyeccion</p>
-            <p className="mt-1 text-sm font-black text-slate-950">--</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const PressureComparisonMeter: React.FC<{
-  learning: number | null | undefined;
-  simulacro: number | null | undefined;
-  gapLabel: string;
-}> = ({ learning, simulacro, gapLabel }) => {
-  const learningPercent = toPercentNumber(learning);
-  const simulacroPercent = toPercentNumber(simulacro);
-  const ticks = [0, 25, 50, 75, 100];
-
-  return (
-    <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)] sm:px-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-          Comparativa directa
-        </p>
-        <span className="rounded-full bg-white/82 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          Brecha {gapLabel}
-        </span>
-      </div>
-
-      <div className="mt-4 grid gap-3">
-        <div className="grid grid-cols-[4.9rem_minmax(0,1fr)_2.8rem] items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
-          <span />
-          <div className="grid grid-cols-5">
-            {ticks.map((tick) => (
-              <span key={tick} className="text-center">
-                {tick}
-              </span>
-            ))}
-          </div>
-          <span />
-        </div>
-
-        {[
-          {
-            label: 'Aprendizaje',
-            value: learningPercent,
-            gradient:
-              'bg-[linear-gradient(90deg,#7cb6e8_0%,#8d93f2_100%)]',
-            valueClass: 'text-slate-950'
-          },
-          {
-            label: 'Simulacro',
-            value: simulacroPercent,
-            gradient:
-              'bg-[linear-gradient(90deg,#94a3b8_0%,#64748b_100%)]',
-            valueClass: 'text-slate-700'
-          }
-        ].map((row) => (
-          <div
-            key={row.label}
-            className="grid grid-cols-[4.9rem_minmax(0,1fr)_2.8rem] items-center gap-2"
-          >
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-              {row.label}
-            </span>
-            <div className="relative h-3.5 overflow-hidden rounded-full bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
-              <div
-                className={`h-full rounded-full ${row.gradient}`}
-                style={{ width: `${row.value}%` }}
-              />
-            </div>
-            <span className={`text-right text-sm font-black ${row.valueClass}`}>{row.value}%</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const StatsDisclosure: React.FC<
-  React.PropsWithChildren<{ title: string; hint: string; defaultOpen?: boolean }>
-> = ({ title, hint, defaultOpen = false, children }) => (
-  <details
-    open={defaultOpen}
-    className="rounded-[1.3rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] px-4 py-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.16)]"
-  >
-    <summary className="cursor-pointer list-none">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-extrabold tracking-[-0.02em] text-slate-950">{title}</p>
-          <p className="mt-1 text-sm leading-6 text-slate-500">{hint}</p>
-        </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-          ver
-          <ArrowRight size={12} />
-        </span>
-      </div>
-    </summary>
-    <div className="mt-4">{children}</div>
-  </details>
-);
-
-const StudyModeCard: React.FC<{
-  label: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  tone?: 'primary' | 'default';
-}> = ({ label, title, description, icon, onClick, disabled, tone = 'default' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className={`rounded-[1.35rem] border px-4 py-4 text-left shadow-[0_18px_32px_-26px_rgba(141,147,242,0.16)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-45 disabled:hover:translate-y-0 ${
-      tone === 'primary'
-        ? 'border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.2),rgba(138,144,244,0.28))] text-slate-900 hover:-translate-y-0.5 hover:shadow-[0_24px_40px_-26px_rgba(141,147,242,0.2)]'
-        : 'border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(241,247,255,0.92))] text-slate-900 hover:-translate-y-0.5 hover:border-[#c8d8f8] hover:shadow-[0_24px_40px_-26px_rgba(141,147,242,0.16)]'
-    }`}
-  >
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-        <p className="mt-2 text-lg font-extrabold">{title}</p>
-        <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
-      </div>
-      <span
-        className={`flex h-10 w-10 items-center justify-center rounded-[1rem] ${
-          tone === 'primary'
-            ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.3)]'
-            : 'bg-slate-100 text-slate-600'
-        }`}
-      >
-        {icon}
-      </span>
-    </div>
-  </button>
-);
-
-const StudyActionCard: React.FC<{
-  label: string;
-  title: string;
-  description: string;
-  meta: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  tone?: 'primary' | 'default';
-}> = ({ label, title, description, meta, icon, onClick, disabled, tone = 'default' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className={`rounded-[1.22rem] border px-4 py-3.5 text-left shadow-[0_18px_32px_-26px_rgba(141,147,242,0.16)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.99] disabled:opacity-45 disabled:hover:translate-y-0 ${
-      tone === 'primary'
-        ? 'border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(138,144,244,0.22))] text-slate-900 hover:-translate-y-0.5 hover:shadow-[0_24px_40px_-26px_rgba(141,147,242,0.2)]'
-        : 'border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.92))] text-slate-900 hover:-translate-y-0.5 hover:border-[#c8d8f8] hover:shadow-[0_24px_40px_-26px_rgba(141,147,242,0.16)]'
-    }`}
-  >
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-        <p className="mt-2 text-base font-extrabold leading-5 text-slate-950">{title}</p>
-        <p className="mt-1.5 text-sm leading-5 text-slate-500">{description}</p>
-      </div>
-      <span
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] ${
-          tone === 'primary'
-            ? 'bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.3)]'
-            : 'bg-slate-100 text-slate-600'
-        }`}
-      >
-        {icon}
-      </span>
-    </div>
-    <div className="mt-3 flex items-center justify-between gap-3">
-      <span className="rounded-full bg-white/78 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-        {meta}
-      </span>
-      <ArrowRight size={16} className="text-slate-500" />
-    </div>
-  </button>
-);
-
-const DashboardScreen: React.FC<DashboardScreenProps> = ({
-  activeTab,
-  coachPlan,
-  examTarget,
-  examTargetError,
-  identity,
-  learningDashboard,
-  pressureInsights,
-  profile,
-  recentSessions,
-  questionsCount,
-  totalBatches,
-  batchSize,
-  recommendedBatchNumber,
-  weakQuestions,
-  weakCategories,
-  questionScope,
-  onQuestionScopeChange,
-  onStartSimulacro,
-  onStartAntiTrap,
-  onStartRecommended,
-  onStartMixed,
-  onStartRandom,
-  onStartFromBeginning,
-  onStartWeakReview,
-  onReloadQuestions,
-  onSaveExamTarget,
-  onSignOut,
-  savingExamTarget
-}) => {
-  const [examDateInput, setExamDateInput] = React.useState(toDateInputValue(examTarget?.examDate));
-  const [dailyReviewCapacityInput, setDailyReviewCapacityInput] = React.useState(
-    String(examTarget?.dailyReviewCapacity ?? learningDashboard?.dailyReviewCapacity ?? 35)
-  );
-  const [dailyNewCapacityInput, setDailyNewCapacityInput] = React.useState(
-    String(examTarget?.dailyNewCapacity ?? learningDashboard?.dailyNewCapacity ?? 10)
-  );
-  const accuracy = getAccuracy(profile?.totalCorrect ?? 0, profile?.totalAnswered ?? 0);
-  const readinessLabel = formatPercent(learningDashboard?.readiness ?? null);
-  const recommendedToday = learningDashboard?.recommendedTodayCount ?? 0;
-  const recommendedReview = learningDashboard?.recommendedReviewCount ?? 0;
-  const recommendedNew = learningDashboard?.recommendedNewCount ?? 0;
-  const riskBreakdown = learningDashboard?.riskBreakdown ?? [];
-  const topRiskBreakdown = riskBreakdown.slice(0, 3);
-  const pressureGapLabel = formatSignedPoints(pressureInsights?.pressureGap);
-  const learningAccuracyLabel = formatOptionalPercent(pressureInsights?.learningAccuracy);
-  const simulacroAccuracyLabel = formatOptionalPercent(pressureInsights?.simulacroAccuracy);
+  const accuracy =
+    profile && profile.totalAnswered > 0
+      ? Math.round((profile.totalCorrect / profile.totalAnswered) * 100)
+      : 0;
+  const coverageRate =
+    learningDashboardV2?.coverageRate ??
+    (learningDashboard && learningDashboard.totalQuestions > 0
+      ? learningDashboard.seenQuestions / learningDashboard.totalQuestions
+      : 0);
+  const usefulMasteryRate =
+    learningDashboard && learningDashboard.seenQuestions > 0
+      ? (learningDashboard.solidCount + learningDashboard.masteredCount) /
+        learningDashboard.seenQuestions
+      : 0;
+  const recommendedReview =
+    learningDashboardV2?.recommendedReviewCount ?? learningDashboard?.recommendedReviewCount ?? 0;
+  const recommendedNew =
+    learningDashboardV2?.recommendedNewCount ?? learningDashboard?.recommendedNewCount ?? 0;
+  const topRiskBreakdown = (learningDashboard?.riskBreakdown ?? []).slice(0, 3);
+  const resolvedPressureGap =
+    pressureInsightsV2?.pressureGapRaw ?? pressureInsights?.pressureGap ?? null;
+  const pressureGapLabel = formatSignedPoints(resolvedPressureGap);
+  const accuracyLabel = learningDashboardV2
+    ? formatPercent(learningDashboardV2.observedAccuracyRate)
+    : `${accuracy}%`;
+  const accuracyCaption = learningDashboardV2
+    ? `${learningDashboardV2.observedAccuracyN} respuestas`
+    : 'rendimiento actual';
+  const retentionLabel = learningDashboardV2
+    ? formatPercent(learningDashboardV2.retentionSeenRate)
+    : formatPercent(usefulMasteryRate);
+  const retentionCaption = learningDashboardV2
+    ? learningDashboardV2.retentionSeenConfidenceFlag === 'high'
+      ? 'retencion con base solida'
+      : learningDashboardV2.retentionSeenConfidenceFlag === 'medium'
+        ? 'retencion con base util'
+        : 'retencion en consolidacion'
+    : 'memoria estable';
+  const resolvedExamReadinessRate =
+    learningDashboardV2?.examReadinessRate ?? learningDashboard?.readiness ?? null;
+  const readinessLabel =
+    learningDashboardV2 || learningDashboard ? formatPercent(resolvedExamReadinessRate) : '--';
+  const homeLeadMessage =
+    learningDashboardV2?.focusMessage ?? coachPlan.reasons[0] ?? coachPlan.impactLabel;
+  const pressureBadgeLabel = pressureInsightsV2
+    ? pressureInsightsV2.sampleOk
+      ? pressureGapLabel
+      : 'muestra corta'
+    : pressureGapLabel;
   const recommendedSessionSize =
     coachPlan.mode === 'simulacro' ? SIMULACRO_BATCH_SIZE : batchSize;
   const weakReviewSlotCount = Math.min(weakQuestions.length, 5);
+  const totalQuestionsResolved = learningDashboardV2?.totalQuestions ?? learningDashboard?.totalQuestions ?? questionsCount ?? 0;
+  const seenQuestionsResolved = learningDashboardV2?.seenQuestions ?? learningDashboard?.seenQuestions ?? 0;
+  const fragileCountResolved = learningDashboardV2?.fragileCount ?? learningDashboard?.fragileCount ?? 0;
+  const consolidatingCountResolved = learningDashboardV2?.consolidatingCount ?? learningDashboard?.consolidatingCount ?? 0;
+  const solidCountResolved = learningDashboardV2?.solidCount ?? learningDashboard?.solidCount ?? 0;
+  const masteredCountResolved = learningDashboardV2?.masteredCount ?? learningDashboard?.masteredCount ?? 0;
+  const newCountResolved = Math.max(totalQuestionsResolved - seenQuestionsResolved, 0);
+  const backlogCountResolved =
+    learningDashboardV2?.backlogOverdueCount ?? learningDashboard?.backlogCount ?? 0;
+  const overdueCountResolved =
+    learningDashboardV2?.backlogOverdueCount ?? learningDashboard?.overdueCount ?? 0;
+  const masterySegments = learningDashboard || learningDashboardV2
+    ? [
+        { label: 'Nuevas', value: newCountResolved, className: 'bg-slate-300/95' },
+        { label: 'Frágiles', value: fragileCountResolved, className: 'bg-amber-300/95' },
+        { label: 'Consolidan', value: consolidatingCountResolved, className: 'bg-sky-300/95' },
+        { label: 'Sólidas', value: solidCountResolved, className: 'bg-indigo-300/95' },
+        { label: 'Dominadas', value: masteredCountResolved, className: 'bg-emerald-300/95' },
+      ]
+    : [];
+  const recentTrendItems = (() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const byDay: Record<string, { score: number; total: number; count: number }> = {};
+    for (const s of recentSessions) {
+      const dayKey = new Date(s.finishedAt).toISOString().slice(0, 10);
+      const prev = byDay[dayKey] ?? { score: 0, total: 0, count: 0 };
+      byDay[dayKey] = { score: prev.score + s.score, total: prev.total + s.total, count: prev.count + 1 };
+    }
+    return Object.entries(byDay)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([dayKey, { score, total, count }]) => {
+        const date = new Date(dayKey);
+        const label = dayKey === today ? 'Hoy' : dayKey === yesterday ? 'Ayer' : dayNames[date.getDay()];
+        return { id: dayKey, label, value: total > 0 ? Math.round((score / total) * 100) : 0, sessions: count };
+      });
+  })();
   const primaryCtaCommand =
     coachPlan.mode === 'standard'
       ? `Abrir bloque ${recommendedBatchNumber}`
@@ -746,212 +262,66 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           : coachPlan.mode === 'random'
             ? 'Recuperacion'
             : coachPlan.focusLabel;
-  const examTargetUpdatedLabel =
-    examTarget?.updatedAt
-      ? formatSessionDate(examTarget.updatedAt)
-      : null;
-  const coverageRate =
-    learningDashboard && learningDashboard.totalQuestions > 0
-      ? learningDashboard.seenQuestions / learningDashboard.totalQuestions
-      : 0;
-  const usefulMasteryRate =
-    learningDashboard && learningDashboard.seenQuestions > 0
-      ? (learningDashboard.solidCount + learningDashboard.masteredCount) /
-        learningDashboard.seenQuestions
-      : 0;
-  const fragilityRate =
-    learningDashboard && learningDashboard.seenQuestions > 0
-      ? learningDashboard.fragileCount / learningDashboard.seenQuestions
-      : 0;
-  const recentTrendItems = recentSessions
-    .slice(0, 6)
-    .reverse()
-    .map((session, index) => {
-      const accuracyRate = session.total > 0 ? session.score / session.total : 0;
-      return {
-        label: `S${index + 1}`,
-        value: toPercentNumber(accuracyRate),
-        meta: `${session.score}/${session.total}`
-      };
-    });
-  const masterySegments = learningDashboard
-    ? [
-        {
-          label: 'Nuevas',
-          value: learningDashboard.newCount,
-          className: 'bg-slate-300/95'
-        },
-        {
-          label: 'Fragiles',
-          value: learningDashboard.fragileCount,
-          className: 'bg-amber-300/95'
-        },
-        {
-          label: 'Consolidan',
-          value: learningDashboard.consolidatingCount,
-          className: 'bg-sky-300/95'
-        },
-        {
-          label: 'Solidas',
-          value: learningDashboard.solidCount,
-          className: 'bg-indigo-300/95'
-        },
-        {
-          label: 'Dominadas',
-          value: learningDashboard.masteredCount,
-          className: 'bg-emerald-300/95'
-        }
-      ]
-    : [];
-  const topWeakCategories = weakCategories.slice(0, 5);
-  const pressureGapPoints =
-    pressureInsights?.pressureGap === null || pressureInsights?.pressureGap === undefined
-      ? null
-      : Math.round(Math.abs(pressureInsights.pressureGap) * 100);
-  const readinessRangeLabel =
-    learningDashboard?.readinessLower === null ||
-    learningDashboard?.readinessLower === undefined ||
-    learningDashboard?.readinessUpper === null ||
-    learningDashboard?.readinessUpper === undefined
-      ? 'Rango pendiente'
-      : `${formatPercent(learningDashboard.readinessLower)} - ${formatPercent(learningDashboard.readinessUpper)}`;
-  const projectedReadinessLabel =
-    learningDashboard?.projectedReadiness === null || learningDashboard?.projectedReadiness === undefined
-      ? 'Sin fecha objetivo'
-      : formatPercent(learningDashboard.projectedReadiness);
-  const overconfidenceLabel = formatOptionalPercent(pressureInsights?.overconfidenceRate);
-  const fatigueLabel = formatOptionalPercent(pressureInsights?.avgSimulacroFatigue);
-  const lastSimulacroLabel = pressureInsights?.lastSimulacroFinishedAt
-    ? formatSessionDate(pressureInsights.lastSimulacroFinishedAt)
-    : 'Sin simulacro';
-  const masteryBase = Math.max(learningDashboard?.totalQuestions ?? questionsCount ?? 0, 1);
-  const recentAverageLabel =
-    recentTrendItems.length > 0
-      ? `${Math.round(
-          recentTrendItems.reduce((total, item) => total + item.value, 0) / recentTrendItems.length
-        )}% media`
-      : 'Sin muestra';
-  const latestTrendValue =
-    recentTrendItems.length > 0 ? recentTrendItems[recentTrendItems.length - 1].value : null;
-  const earliestTrendValue = recentTrendItems.length > 0 ? recentTrendItems[0].value : null;
-  const trendDeltaPoints =
-    latestTrendValue === null || earliestTrendValue === null
-      ? null
-      : latestTrendValue - earliestTrendValue;
-  const trendDeltaLabel =
-    trendDeltaPoints === null
-      ? '--'
-      : `${trendDeltaPoints >= 0 ? '+' : '-'}${Math.abs(trendDeltaPoints)} pts`;
-  const trendPeakValue =
-    recentTrendItems.length > 0
-      ? Math.max(...recentTrendItems.map((item) => item.value))
-      : null;
-  const trendSpreadValue =
-    recentTrendItems.length > 0
-      ? Math.max(...recentTrendItems.map((item) => item.value)) -
-        Math.min(...recentTrendItems.map((item) => item.value))
-      : null;
-  const riskBreakdownTotal = topRiskBreakdown.reduce((total, risk) => total + risk.count, 0);
-  const maxWeakCategoryRatio = topWeakCategories.reduce((max, item) => {
-    const ratio = Math.round((item.incorrectAttempts / Math.max(item.attempts, 1)) * 100);
-    return Math.max(max, ratio);
-  }, 0);
-  const maxRiskShare = topRiskBreakdown.reduce((max, risk) => {
-    const share = riskBreakdownTotal === 0 ? 0 : Math.round((risk.count / riskBreakdownTotal) * 100);
-    return Math.max(max, share);
-  }, 0);
-  const visibleWeakFailures = topWeakCategories.reduce(
-    (total, item) => total + item.incorrectAttempts,
-    0
-  );
-  const dominantRiskLabel = topRiskBreakdown[0]?.label ?? 'Sin patron';
-  const hottestCategoryLabel = topWeakCategories[0]?.category ?? 'Sin tema';
-  const studyPrimarySummary = learningDashboard
-    ? `${recommendedReview} repasos y ${recommendedNew} nuevas para sostener progreso sin ruido.`
-    : 'Combina repaso, fragiles y nuevas en una sola sesion adaptativa.';
-  const studyFocusLine =
-    topRiskBreakdown[0]?.label
-      ? `Vigila ${topRiskBreakdown[0].label.toLowerCase()} antes de ampliar carga.`
-      : coachPlan.reasons[0] ?? coachPlan.impactLabel;
-  const showRecommendedStudyCard = coachPlan.mode === 'standard';
-  const mixedIsRecommended = coachPlan.mode === 'mixed';
-  const randomIsRecommended = coachPlan.mode === 'random';
-  const antiTrapIsRecommended = coachPlan.mode === 'anti_trap';
-  const simulacroIsRecommended = coachPlan.mode === 'simulacro';
-  const weakQuestionsVisible = weakQuestions.slice(0, 4);
-  const statsLeadLabel = pressureGapPoints && pressureGapPoints >= 12
-    ? 'Presion alta'
-    : (learningDashboard?.overdueCount ?? 0) > 0
-      ? 'Hoy conviene consolidar'
-      : 'Sistema estable';
-  const statsLeadMessage =
-    pressureGapPoints && pressureGapPoints >= 12
-      ? `Tu rendimiento cae ${pressureGapPoints} puntos bajo presion. Conviene afinar lectura y simulacro.`
-      : coachPlan.summary;
-
-  React.useEffect(() => {
-    setExamDateInput(toDateInputValue(examTarget?.examDate));
-    setDailyReviewCapacityInput(
-      String(examTarget?.dailyReviewCapacity ?? learningDashboard?.dailyReviewCapacity ?? 35)
-    );
-    setDailyNewCapacityInput(
-      String(examTarget?.dailyNewCapacity ?? learningDashboard?.dailyNewCapacity ?? 10)
-    );
-  }, [
-    examTarget?.dailyNewCapacity,
-    examTarget?.dailyReviewCapacity,
-    examTarget?.examDate,
-    learningDashboard?.dailyNewCapacity,
-    learningDashboard?.dailyReviewCapacity
-  ]);
-
-  const handleExamTargetSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const nextDailyReviewCapacity = Math.max(
-      5,
-      Math.min(200, Number.parseInt(dailyReviewCapacityInput, 10) || 35)
-    );
-    const nextDailyNewCapacity = Math.max(
-      0,
-      Math.min(100, Number.parseInt(dailyNewCapacityInput, 10) || 10)
-    );
-
-    onSaveExamTarget({
-      examDate: examDateInput || null,
-      dailyReviewCapacity: nextDailyReviewCapacity,
-      dailyNewCapacity: nextDailyNewCapacity
-    });
-  };
+  const hasLearningSnapshot = Boolean(learningDashboard || learningDashboardV2);
+  const readinessSupportCaption = hasLearningSnapshot
+    ? `${seenQuestionsResolved} de ${totalQuestionsResolved} vistas`
+    : 'sin base suficiente';
+  const pressureSupportCaption = pressureInsightsV2
+    ? pressureInsightsV2.sampleOk
+      ? pressureInsightsV2.confidenceFlag === 'high'
+        ? 'muestra solida'
+        : 'muestra util'
+      : 'muestra corta'
+    : pressureInsights
+      ? 'lectura simple'
+      : 'sin simulacro';
+  const recentTrendAverage = recentTrendItems.length
+    ? Math.round(recentTrendItems.reduce((sum, item) => sum + item.value, 0) / recentTrendItems.length)
+    : 0;
+  const recentTrendBest = recentTrendItems.length
+    ? Math.max(...recentTrendItems.map((item) => item.value))
+    : 0;
+  const recentTrendLast = recentTrendItems.length
+    ? recentTrendItems[recentTrendItems.length - 1].value
+    : 0;
 
   if (activeTab === 'home') {
     return (
-      <div className="grid gap-3 sm:gap-4">
-        <SectionCard className="relative overflow-hidden border-[#c8d8fb]/70 bg-[linear-gradient(135deg,#72afe6_0%,#87a6ee_56%,#8d96f4_100%)] p-3.25 text-white shadow-[0_22px_52px_-42px_rgba(141,147,242,0.22)] sm:p-4">
+      <div className="grid gap-4 xl:gap-5 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start 2xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <SectionCard className="relative overflow-hidden border-[#c8d8fb]/70 bg-[linear-gradient(135deg,#72afe6_0%,#87a6ee_56%,#8d96f4_100%)] p-3.5 text-white shadow-[0_22px_52px_-42px_rgba(141,147,242,0.22)] sm:p-4 xl:p-5">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-white/14 blur-3xl" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.14),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_42%)]" />
           </div>
-          <div className="relative grid gap-2.5 sm:gap-3">
-            <div className="flex items-start gap-2.5 sm:gap-3">
-              <div className="min-w-0 flex-1 max-w-[17.2rem] sm:max-w-[20rem]">
+          <div className="relative grid gap-3.5">
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-sky-50/88">
                   <span className="h-2 w-2 rounded-full bg-white/92 shadow-[0_0_0_4px_rgba(255,255,255,0.12)]" />
                   Hoy
                 </p>
-                <p className="mt-1.5 text-[1.56rem] font-black leading-[0.96] tracking-[-0.04em] text-white sm:text-[1.9rem]">
+                <p className="mt-1.5 max-w-[16ch] text-[1.56rem] font-black leading-[0.96] tracking-[-0.04em] text-white sm:text-[1.9rem] xl:text-[2.45rem] 2xl:text-[2.7rem]">
                   {coachPlan.title}
+                </p>
+                <p className="mt-3 max-w-[40rem] text-sm font-semibold leading-6 text-sky-50/82 xl:text-[15px]">
+                  {homeLeadMessage}
                 </p>
               </div>
             </div>
 
-            <div className="grid max-w-[28.5rem] gap-2.25 sm:gap-2.5">
+            <div className="hidden grid-cols-4 gap-2.5 xl:grid">
+              <HeroMiniStat label="Preparacion" value={readinessLabel} />
+              <HeroMiniStat label="Cobertura" value={formatPercent(coverageRate)} />
+              <HeroMiniStat label="Repasos hoy" value={String(recommendedReview)} />
+              <HeroMiniStat label="Nuevas hoy" value={String(recommendedNew)} />
+            </div>
+
+            <div className="grid max-w-[30rem] gap-2.5 sm:gap-2.75 xl:hidden">
               <QuestionScopePicker
                 value={questionScope}
                 onChange={onQuestionScopeChange}
                 label="Temario"
               />
-
               <button
                 type="button"
                 onClick={onStartRecommended}
@@ -978,8 +348,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   <ArrowRight size={18} />
                 </span>
               </button>
-
-              <div className="grid max-w-[18.5rem] grid-cols-2 gap-2">
+              <div className="grid max-w-[20rem] grid-cols-2 gap-2.5">
                 <HeroMiniStat label="Repasos hoy" value={String(recommendedReview)} />
                 <HeroMiniStat label="Nuevas hoy" value={String(recommendedNew)} />
               </div>
@@ -987,7 +356,70 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </div>
         </SectionCard>
 
-        <div className="grid grid-cols-3 gap-2">
+        <SectionCard
+          title="Cabina de hoy"
+          hint="Temario, accion principal y atajos de ejecucion."
+          className="hidden xl:row-span-2 xl:flex xl:flex-col xl:gap-3 xl:p-4"
+        >
+          <QuestionScopePicker
+            value={questionScope}
+            onChange={onQuestionScopeChange}
+            label="Temario"
+          />
+          <button
+            type="button"
+            onClick={onStartRecommended}
+            className="group flex items-center justify-between gap-3 rounded-[1.18rem] bg-[linear-gradient(135deg,#72afe6_0%,#8d96f4_100%)] px-3.5 py-3.5 text-left text-white shadow-[0_16px_28px_-18px_rgba(141,147,242,0.38)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_32px_-18px_rgba(141,147,242,0.44)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200 active:translate-y-0 active:scale-[0.995]"
+          >
+            <span className="min-w-0 flex-1 self-center">
+              <span className="inline-flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/70">
+                <span className="h-1.5 w-1.5 rounded-full bg-white/90" />
+                Empieza ahora
+              </span>
+              <span className="mt-1 block text-[1.12rem] font-black leading-[1.01] tracking-[-0.035em] text-white">
+                {primaryCtaCommand}
+              </span>
+              <span className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-white/20 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-white/90">
+                  {recommendedSessionSize} preguntas
+                </span>
+                <span className="rounded-full bg-white/15 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.14em] text-white/85">
+                  {primaryCtaMetaLabel}
+                </span>
+              </span>
+            </span>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/22 text-white transition-transform duration-200 group-hover:translate-x-0.5">
+              <ArrowRight size={16} />
+            </span>
+          </button>
+
+          <div className="grid gap-2.5">
+            <DesktopCockpitAction
+              label="Hoy"
+              title="Mixto"
+              caption={`${recommendedSessionSize} preguntas`}
+              onClick={onStartMixed}
+              icon={<Target size={18} />}
+            />
+            <DesktopCockpitAction
+              label="Directo"
+              title="Aleatorio"
+              caption={`${batchSize} preguntas`}
+              onClick={onStartRandom}
+              icon={<Layers3 size={18} />}
+            />
+            <DesktopCockpitAction
+              label={weakReviewSlotCount > 0 ? `Top ${weakReviewSlotCount}` : 'Errores'}
+              title="Falladas"
+              caption={weakReviewSlotCount > 0 ? 'Repasar ahora' : 'Sin pendientes'}
+              onClick={onStartWeakReview}
+              disabled={weakQuestions.length === 0}
+              icon={<Flame size={18} />}
+            />
+          </div>
+        </SectionCard>
+
+        <div className="grid grid-cols-3 gap-2.5 xl:hidden">
           <HeroCompactAction
             label="Hoy"
             title="Mixto"
@@ -1006,68 +438,122 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           <HeroCompactAction
             label={weakReviewSlotCount > 0 ? `Top ${weakReviewSlotCount}` : 'Errores'}
             title="Falladas"
-            caption={
-              weakReviewSlotCount > 0 ? 'Repasar ahora' : 'Sin pendientes'
-            }
+            caption={weakReviewSlotCount > 0 ? 'Repasar ahora' : 'Sin pendientes'}
             onClick={onStartWeakReview}
             disabled={weakQuestions.length === 0}
             icon={<Flame size={18} />}
           />
         </div>
 
-        <div className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
-          <SectionCard
-            title="Estado de hoy"
-            hint="Pulso rapido"
-            className="p-3 sm:p-4"
-          >
-            <div className="overflow-hidden rounded-[1.2rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
-              <div className="grid grid-cols-3 divide-x divide-slate-100/85">
-                <HomeStatusBandMetric
-                  label="Precision"
-                  value={`${accuracy}%`}
-                  caption="rendimiento actual"
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)]">
+          <SectionCard title="Estado de hoy" hint="Pulso real y mapa de dominio" className="p-3.5 sm:p-4">
+            <div className="grid gap-3.5">
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+                <AnalyticsMiniTile
+                  label={learningDashboardV2 ? 'Precision obs.' : 'Precision'}
+                  value={accuracyLabel}
+                  caption={accuracyCaption}
                   accent
                 />
-                <HomeStatusBandMetric
+                <AnalyticsMiniTile
                   label="Cobertura"
                   value={formatPercent(coverageRate)}
                   caption="banco visto"
                 />
-                <HomeStatusBandMetric
-                  label="Dominio util"
-                  value={formatPercent(usefulMasteryRate)}
-                  caption="memoria estable"
+                <AnalyticsMiniTile
+                  label={learningDashboardV2 ? 'Retencion vista' : 'Dominio util'}
+                  value={retentionLabel}
+                  caption={retentionCaption}
+                />
+                <AnalyticsMiniTile
+                  label="Pendientes"
+                  value={String(backlogCountResolved)}
+                  caption={overdueCountResolved > 0 ? `${overdueCountResolved} urgentes` : 'sin carga vencida'}
                 />
               </div>
+
+              {hasLearningSnapshot ? (
+                <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-4 py-4 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                        Dominio del banco
+                      </p>
+                      <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                        Reparto real entre nuevas, fragiles y memoria que ya sostiene nota.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
+                      {seenQuestionsResolved}/{totalQuestionsResolved}
+                    </span>
+                  </div>
+                  <div className="mt-3">
+                    <SegmentedProgressBar segments={masterySegments} />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-5">
+                    {masterySegments.map((segment) => (
+                      <div
+                        key={segment.label}
+                        className="rounded-[0.98rem] border border-white/82 bg-white/86 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`h-2 w-2 rounded-full ${segment.className}`} />
+                          <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+                            {segment.label}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-[1.05rem] font-black leading-none text-slate-950">
+                          {segment.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </SectionCard>
 
-          <SectionCard title="Claves de hoy" hint="Dos ordenes claras" className="p-3.5 sm:p-4">
-            <div className="grid gap-2.5">
-              <div className="rounded-[1.18rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(239,246,255,0.94))] px-4 py-3.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(138,144,244,0.18))] text-slate-700">
-                      <Target size={18} />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                        Ahora
-                      </p>
-                      <p className="mt-1 text-[1rem] font-black leading-5 text-slate-950">
-                        {coachPlan.focusLabel}
-                      </p>
-                      <p className="mt-1.5 text-[12px] font-semibold leading-5 text-slate-500">
-                        {coachPlan.reasons[0] ?? coachPlan.impactLabel}
-                      </p>
+          <SectionCard title="Claves de hoy" hint="Direccion y decision rapida" className="p-3.5 sm:p-4">
+            <div className="grid gap-3">
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_11rem]">
+                <div className="rounded-[1.18rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(239,246,255,0.94))] px-4 py-3.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(138,144,244,0.18))] text-slate-700">
+                        <Target size={18} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                          Ahora
+                        </p>
+                        <p className="mt-1 text-[1rem] font-black leading-5 text-slate-950">
+                          {coachPlan.focusLabel}
+                        </p>
+                        <p className="mt-1.5 text-[12px] font-semibold leading-5 text-slate-500">
+                          {coachPlan.reasons[0] ?? coachPlan.impactLabel}
+                        </p>
+                      </div>
                     </div>
+                    {pressureInsights || pressureInsightsV2 ? (
+                      <span className="shrink-0 rounded-full border border-slate-200/90 bg-white/92 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
+                        {pressureBadgeLabel}
+                      </span>
+                    ) : null}
                   </div>
-                  {pressureInsights ? (
-                    <span className="shrink-0 rounded-full border border-slate-200/90 bg-white/92 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
-                      {pressureGapLabel}
-                    </span>
-                  ) : null}
+                </div>
+
+                <div className="grid gap-2.5">
+                  <AnalyticsMiniTile
+                    label="Preparacion"
+                    value={readinessLabel}
+                    caption={readinessSupportCaption}
+                    accent
+                  />
+                  <AnalyticsMiniTile
+                    label="Presion"
+                    value={pressureBadgeLabel}
+                    caption={pressureSupportCaption}
+                  />
                 </div>
               </div>
 
@@ -1105,881 +591,85 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             </div>
           </SectionCard>
         </div>
-      </div>
-    );
-  }
 
-  if (activeTab === 'stats') {
-    return (
-      <div className="grid gap-3 sm:gap-4">
-        <SectionCard className="relative overflow-hidden border-[#c8d8fb]/70 bg-[linear-gradient(135deg,rgba(244,249,255,0.98),rgba(235,243,255,0.96),rgba(242,241,255,0.94))] p-4 shadow-[0_24px_60px_-42px_rgba(141,147,242,0.22)] sm:p-5">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#8d93f2]/12 blur-3xl" />
-            <div className="absolute -left-14 bottom-0 h-28 w-28 rounded-full bg-[#7cb6e8]/10 blur-3xl" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.26),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.24),transparent_46%)]" />
-          </div>
-
-          <div className="relative grid gap-4">
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/88 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]">
-                {statsLeadLabel}
-              </span>
-              <span className="rounded-full bg-white/78 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.76)]">
-                Rango {readinessRangeLabel}
-              </span>
-              <span className="rounded-full bg-white/78 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.76)]">
-                {pressureGapPoints && pressureGapPoints >= 12
-                  ? `Brecha ${pressureGapLabel}`
-                  : `Proyeccion ${projectedReadinessLabel}`}
-              </span>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(16rem,0.92fr)]">
-              <div className="min-w-0">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                  Preparacion real
-                </p>
-                <p className="mt-2 text-[2.75rem] font-black leading-none tracking-[-0.06em] text-slate-950 sm:text-[3.1rem]">
-                  {readinessLabel}
-                </p>
-                <p className="mt-3 max-w-[35rem] text-sm font-semibold leading-6 text-slate-600">
-                  {statsLeadMessage}
-                </p>
-              </div>
-
-              <article className="flex min-h-[11.5rem] flex-col justify-between rounded-[1.28rem] border border-white/88 bg-white/94 px-4 py-4 text-left text-slate-950 shadow-[0_22px_38px_-28px_rgba(141,147,242,0.16)]">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                    Lectura de hoy
-                  </p>
-                  <p className="mt-2 text-[1.2rem] font-black leading-6 tracking-[-0.03em] text-slate-950">
-                    {coachPlan.title}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">{studyFocusLine}</p>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(138,144,244,0.18))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
-                    {primaryCtaMetaLabel}
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                    {recommendedToday > 0
-                      ? `${recommendedToday} preguntas`
-                      : `${recommendedSessionSize} preguntas`}
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                    {recommendedReview} repasos
-                  </span>
-                </div>
-              </article>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-              <AnalyticsMiniTile
-                label="Cobertura"
-                value={formatPercent(coverageRate)}
-                caption={
-                  learningDashboard
-                    ? `${learningDashboard.seenQuestions} de ${learningDashboard.totalQuestions}`
-                    : 'Banco sin muestra'
-                }
-                accent
-              />
-              <AnalyticsMiniTile
-                label="Precision"
-                value={`${accuracy}%`}
-                caption="rendimiento global"
-              />
-              <AnalyticsMiniTile
-                label="Pendientes"
-                value={learningDashboard ? String(learningDashboard.backlogCount) : '--'}
-                caption={
-                  learningDashboard
-                    ? `${learningDashboard.overdueCount} urgentes`
-                    : 'sin carga vencida'
-                }
-              />
-            </div>
-          </div>
-        </SectionCard>
-
-        <StatsDisclosure
-          title="Lectura del indicador"
-          hint="Margen esperado hoy, carga rentable y capacidad para ejecutar sin ruido."
-          defaultOpen
-        >
-          {learningDashboard ? (
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(14rem,0.92fr)]">
-              <RangeMeter
-                current={learningDashboard.readiness}
-                lower={learningDashboard.readinessLower}
-                upper={learningDashboard.readinessUpper}
-                projected={learningDashboard.projectedReadiness}
-              />
-
-              <div className="grid grid-cols-2 gap-2.5">
-                <AnalyticsMiniTile
-                  label="Recomendado hoy"
-                  value={String(recommendedToday)}
-                  caption={coachPlan.focusLabel}
-                  accent
-                />
-                <AnalyticsMiniTile
-                  label="Dominio util"
-                  value={formatPercent(usefulMasteryRate)}
-                  caption={`${learningDashboard.solidCount + learningDashboard.masteredCount} preguntas`}
-                />
-                <AnalyticsMiniTile
-                  label="Repaso hoy"
-                  value={String(recommendedReview)}
-                  caption={`${learningDashboard.dailyReviewCapacity} de capacidad`}
-                />
-                <AnalyticsMiniTile
-                  label="Nuevas hoy"
-                  value={String(recommendedNew)}
-                  caption={`${learningDashboard.dailyNewCapacity} objetivo`}
-                />
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm font-medium text-slate-500">
-              Aun no hay base suficiente para proyectar readiness.
-            </p>
-          )}
-        </StatsDisclosure>
-
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)]">
-          <StatsDisclosure title="Dominio del banco" hint="Distribucion real y carga de mantenimiento">
-            {learningDashboard ? (
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)]">
-                <div className="grid gap-4">
-                  <SegmentedProgressBar segments={masterySegments} />
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {masterySegments.map((segment) => (
-                      <div
-                        key={segment.label}
-                        className="rounded-[1rem] border border-slate-100/85 bg-slate-50/90 px-3 py-3"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <span className={`h-2.5 w-2.5 rounded-full ${segment.className}`} />
-                            <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                              {segment.label}
-                            </span>
-                          </div>
-                          <span className="text-sm font-black text-slate-950">{segment.value}</span>
-                        </div>
-                        <p className="mt-2 text-xs font-semibold text-slate-400">
-                          {Math.round((segment.value / masteryBase) * 100)}% del banco
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <AnalyticsMiniTile
-                    label="Banco visto"
-                    value={String(learningDashboard.seenQuestions)}
-                    caption={`de ${learningDashboard.totalQuestions}`}
-                  />
-                  <AnalyticsMiniTile
-                    label="Fragiles"
-                    value={String(learningDashboard.fragileCount)}
-                    caption={formatPercent(fragilityRate)}
-                  />
-                  <AnalyticsMiniTile
-                    label="Solidas"
-                    value={String(learningDashboard.solidCount)}
-                    caption={`${Math.round((learningDashboard.solidCount / masteryBase) * 100)}% del banco`}
-                  />
-                  <AnalyticsMiniTile
-                    label="Dominadas"
-                    value={String(learningDashboard.masteredCount)}
-                    caption={`${Math.round((learningDashboard.masteredCount / masteryBase) * 100)}% del banco`}
-                  />
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm font-medium text-slate-500">
-                Aun no hay suficiente informacion de dominio.
-              </p>
-            )}
-          </StatsDisclosure>
-
-          <StatsDisclosure title="Presion de examen" hint="Distancia entre entrenar bien y sostener nota bajo tiempo">
-            {pressureInsights ? (
+        {hasLearningSnapshot ? (
+          <div className="hidden xl:col-span-2 xl:grid xl:grid-cols-[minmax(0,1.22fr)_minmax(0,0.78fr)] xl:gap-5">
+            <SectionCard title="Banco de preguntas" hint="Distribucion real por nivel de dominio" className="p-4">
               <div className="grid gap-4">
-                <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
-                  <AnalyticsMiniTile
-                    label="Aprendizaje"
-                    value={learningAccuracyLabel}
-                    caption="entrenamiento guiado"
-                    accent
-                  />
-                  <AnalyticsMiniTile
-                    label="Simulacro"
-                    value={simulacroAccuracyLabel}
-                    caption={lastSimulacroLabel}
-                  />
-                  <AnalyticsMiniTile
-                    label="Brecha"
-                    value={pressureGapLabel}
-                    caption="caida bajo presion"
-                  />
+                <SegmentedProgressBar segments={masterySegments} />
+                <div className="grid grid-cols-5 gap-2">
+                  <AnalyticsMiniTile label="Nuevas" value={String(newCountResolved)} caption={`de ${totalQuestionsResolved}`} accent />
+                  <AnalyticsMiniTile label="Fragiles" value={String(fragileCountResolved)} caption="revisar" />
+                  <AnalyticsMiniTile label="Consolidan" value={String(consolidatingCountResolved)} caption="en proceso" />
+                  <AnalyticsMiniTile label="Solidas" value={String(solidCountResolved)} caption="dominadas" />
+                  <AnalyticsMiniTile label="Dominadas" value={String(masteredCountResolved)} caption="completadas" />
                 </div>
-
-                <PressureComparisonMeter
-                  learning={pressureInsights.learningAccuracy}
-                  simulacro={pressureInsights.simulacroAccuracy}
-                  gapLabel={pressureGapLabel}
-                />
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <AnalyticsMiniTile label="Fatiga" value={fatigueLabel} caption="caida media por simulacro" />
-                  <AnalyticsMiniTile
-                    label="Sobreconfianza"
-                    value={overconfidenceLabel}
-                    caption="fallos rapidos o cambios a peor"
-                  />
-                </div>
-
-                <div className="rounded-[1.05rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-4 py-3">
-                  <p className="text-sm font-semibold leading-6 text-slate-700">
-                    {pressureInsights.pressureMessage}
-                  </p>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  {masterySegments.map((seg) => (
+                    <span key={seg.label} className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-400">
+                      <span className={`h-2 w-2 rounded-full ${seg.className}`} />
+                      {seg.label}
+                    </span>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <p className="text-sm font-medium text-slate-500">
-                Aun no hay senal suficiente de simulacro para comparar aprendizaje y examen.
-              </p>
-            )}
-          </StatsDisclosure>
-        </div>
+            </SectionCard>
 
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <StatsDisclosure title="Tendencia reciente" hint="Serie corta para ver deriva, consistencia y ritmo real">
             {recentTrendItems.length > 0 ? (
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(15rem,0.96fr)]">
-                <div className="space-y-3">
-                  <SparklineChart items={recentTrendItems} />
-                  <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+              <SectionCard title="Tendencia reciente" hint="Acierto por sesion" className="p-4">
+                <div className="grid gap-4">
+                  <SparklineChart
+                    items={recentTrendItems.map((item) => ({
+                      label: item.label,
+                      value: item.value,
+                      meta: `${item.sessions} sesiones`
+                    }))}
+                  />
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <AnalyticsMiniTile label="Media" value={`${recentTrendAverage}%`} caption={`${recentTrendItems.length} cierres`} accent />
+                    <AnalyticsMiniTile label="Mejor" value={`${recentTrendBest}%`} caption="pico reciente" />
                     <AnalyticsMiniTile
-                      label="Ultimo"
-                      value={latestTrendValue === null ? '--' : `${latestTrendValue}%`}
-                      caption="cierre mas reciente"
-                      accent
-                    />
-                    <AnalyticsMiniTile
-                      label="Delta"
-                      value={trendDeltaLabel}
-                      caption="contra el primer cierre"
-                    />
-                    <AnalyticsMiniTile
-                      label="Media"
-                      value={recentAverageLabel.replace(' media', '')}
-                      caption={`${recentTrendItems.length} cierres`}
-                    />
-                    <AnalyticsMiniTile
-                      label="Dispersion"
-                      value={trendSpreadValue === null ? '--' : `${trendSpreadValue} pts`}
-                      caption={trendPeakValue === null ? 'sin muestra' : `pico ${trendPeakValue}%`}
+                      label="Ultima"
+                      value={`${recentTrendLast}%`}
+                      caption={recentTrendLast >= recentTrendAverage ? 'por encima de media' : 'por debajo de media'}
                     />
                   </div>
                 </div>
-
-                <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)]">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                      Ultimos cierres
-                    </p>
-                    <span className="rounded-full bg-white/82 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                      {recentTrendItems.length} muestras
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {recentSessions.slice(0, 5).map((session, index) => (
-                      <article
-                        key={`${session.id}-${session.finishedAt}-${index}`}
-                        className="rounded-[1rem] border border-white/85 bg-white/88 px-3 py-2.5 shadow-[0_14px_24px_-22px_rgba(15,23,42,0.12)]"
-                      >
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-extrabold text-slate-900">{session.title}</p>
-                            <p className="mt-1 text-xs font-semibold text-slate-400">
-                              {formatSessionDate(session.finishedAt)}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <p className="text-lg font-black leading-none text-slate-950">
-                                {Math.round((session.score / Math.max(session.total, 1)) * 100)}%
-                              </p>
-                              <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                                {session.score}/{session.total}
-                              </p>
-                            </div>
-                            <div className="h-9 w-1.5 overflow-hidden rounded-full bg-slate-100">
-                              <div
-                                className="w-full rounded-full bg-[linear-gradient(180deg,#7cb6e8_0%,#8d93f2_100%)]"
-                                style={{
-                                  height: `${Math.max(
-                                    10,
-                                    Math.round((session.score / Math.max(session.total, 1)) * 100)
-                                  )}%`
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              </SectionCard>
             ) : (
-              <p className="text-sm font-medium text-slate-500">
-                Aun no hay sesiones suficientes para dibujar tendencia.
-              </p>
+              <SectionCard title="Tendencia reciente" hint="Sin sesiones registradas aun" className="p-4">
+                <p className="py-8 text-center text-sm font-medium text-slate-400">
+                  Completa tu primera sesion para ver la tendencia.
+                </p>
+              </SectionCard>
             )}
-          </StatsDisclosure>
-
-          <StatsDisclosure title="Riesgo y errores" hint="Mapa de erosion de la nota por tema y patron de fallo">
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-                <AnalyticsMiniTile
-                  label="Tema critico"
-                  value={maxWeakCategoryRatio === 0 ? '--' : `${maxWeakCategoryRatio}%`}
-                  caption={topWeakCategories[0] ? hottestCategoryLabel : 'sin muestra'}
-                  accent
-                />
-                <AnalyticsMiniTile
-                  label="Patron dominante"
-                  value={topRiskBreakdown[0] ? String(topRiskBreakdown[0].count) : '--'}
-                  caption={dominantRiskLabel}
-                />
-                <AnalyticsMiniTile
-                  label="Fallos visibles"
-                  value={String(visibleWeakFailures)}
-                  caption="suma de temas calientes"
-                />
-                <AnalyticsMiniTile
-                  label="Riesgo maximo"
-                  value={maxWeakCategoryRatio === 0 ? '--' : `${maxWeakCategoryRatio}%`}
-                  caption="peor ratio por tema"
-                />
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-                <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)]">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                      Temas mas expuestos
-                    </p>
-                    <span className="rounded-full bg-white/82 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                      {topWeakCategories.length} visibles
-                    </span>
-                  </div>
-                  <div className="space-y-2.5">
-                    {topWeakCategories.length === 0 ? (
-                      <p className="text-sm font-medium text-slate-500">
-                        Aun no hay datos suficientes por tema.
-                      </p>
-                    ) : (
-                      topWeakCategories.map((item) => {
-                        const ratio = Math.round(
-                          (item.incorrectAttempts / Math.max(item.attempts, 1)) * 100
-                        );
-                        return (
-                          <RankedMeterRow
-                            key={item.category}
-                            label={item.category}
-                            detail={`${item.incorrectAttempts} fallos de ${item.attempts}`}
-                            value={ratio}
-                            valueLabel={`${ratio}%`}
-                            maxValue={Math.max(maxWeakCategoryRatio, 1)}
-                          />
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)]">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                      Familias de error
-                    </p>
-                    <span className="rounded-full bg-white/82 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                      {riskBreakdownTotal} incidencias
-                    </span>
-                  </div>
-                  <div className="space-y-2.5">
-                    {topRiskBreakdown.length === 0 ? (
-                      <p className="text-sm font-medium text-slate-500">
-                        Aun no hay patron suficiente para clasificar errores.
-                      </p>
-                    ) : (
-                      topRiskBreakdown.map((risk) => {
-                        const share =
-                          riskBreakdownTotal === 0
-                            ? 0
-                            : Math.round((risk.count / riskBreakdownTotal) * 100);
-                        return (
-                          <RankedMeterRow
-                            key={risk.errorType}
-                            label={risk.label}
-                            detail={`${risk.count} incidencias visibles`}
-                            value={share}
-                            valueLabel={`${share}%`}
-                            maxValue={Math.max(maxRiskShare, 1)}
-                            tone="secondary"
-                          />
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </StatsDisclosure>
-        </div>
-      </div>
-    );
-  }
-
-  if (activeTab === 'study') {
-    return (
-      <div className="grid gap-3 sm:gap-4">
-        <QuestionScopePicker
-          value={questionScope}
-          onChange={onQuestionScopeChange}
-          label="Temario"
-        />
-
-        <SectionCard
-          title="Modos disponibles"
-          hint="Aqui eliges herramienta. La ruta sugerida te orienta y el resto te deja desviarte con criterio."
-        >
-          <div className="grid gap-4">
-            <div className="rounded-[1.3rem] border border-[#c8d8f8] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(138,144,244,0.16))] p-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]">
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                  Ruta sugerida
-                </span>
-                <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                  {coachPlan.focusLabel}
-                </span>
-                <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                  Readiness {readinessLabel}
-                </span>
-              </div>
-              <p className="mt-3 text-[1.35rem] font-black leading-[1.02] tracking-[-0.04em] text-slate-950 sm:text-[1.55rem]">
-                {coachPlan.primaryActionLabel}
-              </p>
-              <p className="mt-2 max-w-[38rem] text-sm leading-6 text-slate-600">
-                {studyPrimarySummary}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                  {recommendedReview} repasos
-                </span>
-                <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                  {recommendedNew} nuevas
-                </span>
-                <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                  {pressureGapPoints === null ? 'sin brecha visible' : `${pressureGapPoints} pts de presion`}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {showRecommendedStudyCard ? (
-                <StudyActionCard
-                  label="Ruta sugerida"
-                  title={coachPlan.primaryActionLabel}
-                  description={studyPrimarySummary}
-                  meta={primaryCtaMetaLabel}
-                  icon={<Target size={18} />}
-                  onClick={onStartRecommended}
-                  tone="primary"
-                />
-              ) : null}
-              <StudyActionCard
-                label={mixedIsRecommended ? 'Ruta sugerida' : 'Mixto'}
-                title={mixedIsRecommended ? coachPlan.primaryActionLabel : 'Mixto adaptativo'}
-                description={
-                  mixedIsRecommended
-                    ? studyPrimarySummary
-                    : 'Combina repaso, nuevas y fragiles en una sola sesion rentable.'
-                }
-                meta={mixedIsRecommended ? coachPlan.focusLabel : `${recommendedReview} + ${recommendedNew}`}
-                icon={<Target size={18} />}
-                onClick={mixedIsRecommended ? onStartRecommended : onStartMixed}
-                tone={mixedIsRecommended ? 'primary' : 'default'}
-              />
-              <StudyActionCard
-                label="Repaso"
-                title="Top falladas"
-                description="Ataca las preguntas que mas castigan tu precision actual."
-                meta={`${weakQuestions.length} visibles`}
-                icon={<Flame size={18} />}
-                onClick={onStartWeakReview}
-                disabled={weakQuestions.length === 0}
-              />
-              <StudyActionCard
-                label={randomIsRecommended ? 'Ruta sugerida' : 'Aleatorio'}
-                title={randomIsRecommended ? coachPlan.primaryActionLabel : '20 mezcladas'}
-                description={
-                  randomIsRecommended
-                    ? studyPrimarySummary
-                    : 'Mide recuperacion real con mezcla completa de banco.'
-                }
-                meta={randomIsRecommended ? coachPlan.focusLabel : 'sin patron fijo'}
-                icon={<Brain size={18} />}
-                onClick={randomIsRecommended ? onStartRecommended : onStartRandom}
-                tone={randomIsRecommended ? 'primary' : 'default'}
-              />
-              <StudyActionCard
-                label="Secuencial"
-                title="Bloque 1"
-                description="Reinicia el recorrido desde el inicio del banco."
-                meta={`${totalBatches} bloques`}
-                icon={<Layers3 size={18} />}
-                onClick={onStartFromBeginning}
-              />
-              <StudyActionCard
-                label={antiTrapIsRecommended ? 'Ruta sugerida' : 'Anti-trampas'}
-                title={antiTrapIsRecommended ? coachPlan.primaryActionLabel : 'Plazos y excepciones'}
-                description={
-                  antiTrapIsRecommended
-                    ? studyPrimarySummary
-                    : 'Entrena negaciones, plazos, literalidad y distractores cercanos.'
-                }
-                meta={antiTrapIsRecommended ? coachPlan.focusLabel : dominantRiskLabel}
-                icon={<Shield size={18} />}
-                onClick={antiTrapIsRecommended ? onStartRecommended : onStartAntiTrap}
-                tone={antiTrapIsRecommended ? 'primary' : 'default'}
-              />
-              <StudyActionCard
-                label={simulacroIsRecommended ? 'Ruta sugerida' : 'Simulacro'}
-                title={simulacroIsRecommended ? coachPlan.primaryActionLabel : 'Examen real'}
-                description={
-                  simulacroIsRecommended
-                    ? studyPrimarySummary
-                    : 'Sin feedback inmediato y con temporizador global.'
-                }
-                meta={
-                  simulacroIsRecommended
-                    ? coachPlan.focusLabel
-                    : pressureInsights?.lastSimulacroFinishedAt
-                      ? 'con muestra real'
-                      : 'sin ultima muestra'
-                }
-                icon={<ChartNoAxesColumn size={18} />}
-                onClick={simulacroIsRecommended ? onStartRecommended : onStartSimulacro}
-                tone={simulacroIsRecommended ? 'primary' : 'default'}
-              />
-            </div>
           </div>
-        </SectionCard>
-
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)]">
-          <StatsDisclosure title="Senales de hoy" hint="Abre esto si quieres ajustar la sesion antes de empezar.">
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-2.5">
-                <AnalyticsMiniTile
-                  label="Capacidad"
-                  value={learningDashboard ? String(learningDashboard.dailyReviewCapacity) : '--'}
-                  caption="repasos por dia"
-                  accent
-                />
-                <AnalyticsMiniTile
-                  label="Backlog"
-                  value={learningDashboard ? String(learningDashboard.backlogCount) : '--'}
-                  caption={learningDashboard ? `${learningDashboard.overdueCount} urgentes` : 'sin base'}
-                />
-                <AnalyticsMiniTile
-                  label="Tema critico"
-                  value={maxWeakCategoryRatio === 0 ? '--' : `${maxWeakCategoryRatio}%`}
-                  caption={hottestCategoryLabel}
-                />
-                <AnalyticsMiniTile
-                  label="Patron"
-                  value={topRiskBreakdown[0] ? String(topRiskBreakdown[0].count) : '--'}
-                  caption={dominantRiskLabel}
-                />
-              </div>
-
-              <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)]">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                  Foco del dia
-                </p>
-                <p className="mt-2 text-base font-extrabold leading-6 text-slate-950">
-                  {coachPlan.focusLabel}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-500">{studyFocusLine}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                    Banco {questionsCount}
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                    Bloques {totalBatches}
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                    Tamano {batchSize}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </StatsDisclosure>
-
-          <StatsDisclosure
-            title="Material de repaso"
-            hint="Preguntas debiles para revisar solo si quieres entrar fino antes de ejecutar."
-          >
-            {weakQuestionsVisible.length === 0 ? (
-              <p className="text-sm font-medium text-slate-500">
-                Todavia no hay preguntas marcadas como debiles.
-              </p>
-            ) : (
-              <div className="grid gap-3">
-                {weakQuestionsVisible.map(({ question, stat }, index) => (
-                  <details
-                    key={`${question.id}-${question.number ?? 'na'}-${index}`}
-                    className="rounded-[1.22rem] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] px-4 py-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]"
-                  >
-                    <summary className="cursor-pointer list-none">
-                      <div className="grid gap-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(138,144,244,0.2))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
-                                Top {index + 1}
-                              </span>
-                              {question.category ? (
-                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                                  {question.category}
-                                </span>
-                              ) : null}
-                            </div>
-                            <p className="mt-3 text-base font-extrabold text-slate-900">
-                              Pregunta {question.number ?? question.id}
-                            </p>
-                          </div>
-                          <div className="rounded-[1.05rem] border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(138,144,244,0.18))] px-3 py-2 text-right">
-                            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                              Fallos
-                            </p>
-                            <p className="mt-1 text-lg font-black text-slate-900">
-                              {stat.incorrectAttempts}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2.5">
-                          <AnalyticsMiniTile
-                            label="Intentos"
-                            value={String(stat.attempts)}
-                            caption="muestra actual"
-                          />
-                          <AnalyticsMiniTile
-                            label="Precision"
-                            value={`${getAccuracy(stat.correctAttempts, stat.attempts)}%`}
-                            caption="sobre esta pregunta"
-                          />
-                        </div>
-                      </div>
-                    </summary>
-                    <div className="mt-4 grid gap-3">
-                      <div className="rounded-[1.15rem] bg-[linear-gradient(180deg,rgba(236,246,255,0.9),rgba(241,247,255,0.92))] px-4 py-3">
-                        <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
-                          Respuesta correcta
-                        </p>
-                        <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
-                          {question.correctOption.toUpperCase()}) {question.options[question.correctOption]}
-                        </p>
-                      </div>
-                      <div className="rounded-[1.15rem] bg-[linear-gradient(180deg,rgba(232,240,255,0.92),rgba(241,247,255,0.92))] px-4 py-3">
-                        <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-indigo-700">
-                          Explicacion
-                        </p>
-                        <div className="mt-2">
-                          <QuestionExplanation
-                            explanation={question.explanation}
-                            editorialExplanation={question.editorialExplanation}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </details>
-                ))}
-              </div>
-            )}
-          </StatsDisclosure>
-        </div>
+        ) : null}
       </div>
     );
   }
+  const { activeTab: _activeTab, ...tabProps } = props;
 
   return (
-    <div
-      className={`grid gap-3 sm:gap-4 ${
-        identity.is_admin ? 'xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:items-start' : ''
-      }`}
-    >
-      <div className="grid gap-3 sm:gap-4">
-        <SectionCard title="Cuenta" hint="Acceso activo y configuracion personal">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-[1.2rem] border border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.12),rgba(141,147,242,0.16))] text-slate-700 shadow-[0_14px_24px_-22px_rgba(141,147,242,0.18)]">
-                <UserRound size={22} />
-              </div>
-              <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                  Cuenta activa
-                </p>
-                <p className="mt-1.5 text-[1.35rem] font-black leading-none tracking-[-0.03em] text-slate-950">
-                  {identity.current_username}
-                </p>
-                <p className="mt-1.5 text-sm font-medium text-slate-500">
-                  Perfil {identity.is_admin ? 'administrador' : 'alumno'}
-                </p>
-              </div>
-            </div>
-            <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.12),rgba(141,147,242,0.16))] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-700">
-              {identity.is_admin ? 'Admin' : 'Alumno'}
-            </span>
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Configuracion de examen"
-          hint={
-            examTargetUpdatedLabel
-              ? `Ultima actualizacion ${examTargetUpdatedLabel}`
-              : 'Ajusta fecha y carga diaria solo cuando lo necesites.'
+    <Suspense
+      fallback={
+        <DashboardTabFallback
+          label={
+            activeTab === 'stats'
+              ? 'Estadisticas'
+              : activeTab === 'study'
+                ? 'Estudio'
+                : 'Perfil'
           }
-        >
-          <form onSubmit={handleExamTargetSubmit} className="grid gap-4">
-            <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
-              <label className="col-span-2 grid gap-2 xl:col-span-1">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                  Fecha de examen
-                </span>
-                <input
-                  type="date"
-                  value={examDateInput}
-                  onChange={(event) => setExamDateInput(event.target.value)}
-                  className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                />
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                  Repasos diarios
-                </span>
-                <input
-                  type="number"
-                  min={5}
-                  max={200}
-                  step={1}
-                  value={dailyReviewCapacityInput}
-                  onChange={(event) => setDailyReviewCapacityInput(event.target.value)}
-                  className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                />
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                  Nuevas al dia
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={dailyNewCapacityInput}
-                  onChange={(event) => setDailyNewCapacityInput(event.target.value)}
-                  className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-[0_12px_24px_-24px_rgba(15,23,42,0.18)] outline-none transition focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100"
-                />
-              </label>
-            </div>
-
-            {examTargetError ? (
-              <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-                {examTargetError}
-              </div>
-            ) : null}
-
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs font-semibold leading-5 text-slate-400">
-                Sin fecha, el sistema sigue guiando el estudio pero sin compresion por examen.
-              </p>
-              <button
-                type="submit"
-                disabled={savingExamTarget}
-                className="inline-flex items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-4 py-3 text-sm font-extrabold text-white shadow-[0_18px_30px_-24px_rgba(141,147,242,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_34px_-24px_rgba(141,147,242,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
-              >
-                {savingExamTarget ? 'Guardando...' : 'Guardar configuracion'}
-              </button>
-            </div>
-          </form>
-        </SectionCard>
-
-        <SectionCard title="Cuenta y acceso" hint="Acciones de esta sesion y contexto basico del entorno">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <div className="grid gap-3">
-              <p className="text-sm leading-6 text-slate-600">
-                Banco visible: {questionsCount} preguntas en {totalBatches} bloques de {batchSize}.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                  Rol {identity.is_admin ? 'admin' : 'alumno'}
-                </span>
-                {learningDashboard ? (
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
-                    Readiness {readinessLabel}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={onSignOut}
-              className="inline-flex items-center gap-2 rounded-[1rem] border border-rose-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,245,247,0.94))] px-4 py-3 text-sm font-extrabold text-rose-700 shadow-[0_18px_34px_-28px_rgba(244,114,182,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(255,242,246,0.96))] hover:shadow-[0_24px_38px_-30px_rgba(244,114,182,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-100 active:translate-y-0 active:scale-[0.995]"
-            >
-              <LogOut size={16} />
-              Cerrar sesion
-            </button>
-          </div>
-        </SectionCard>
-      </div>
-
-      {identity.is_admin ? (
-        <SectionCard title="Herramientas admin" hint="Gestion y mantenimiento solo cuando lo necesites">
-          <StatsDisclosure
-            title="Gestion de alumnos"
-            hint="La administracion queda contenida aqui, sin invadir la cuenta."
-          >
-            <div className="rounded-[1.25rem] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] p-4 shadow-[0_18px_34px_-28px_rgba(141,147,242,0.14)]">
-              <Suspense
-                fallback={
-                  <p className="text-sm font-medium text-slate-500">
-                    Cargando panel de administracion...
-                  </p>
-                }
-              >
-                <AdminConsoleScreen />
-              </Suspense>
-            </div>
-          </StatsDisclosure>
-        </SectionCard>
-      ) : null}
-    </div>
+        />
+      }
+    >
+      {activeTab === 'stats' ? <DashboardStatsTab {...tabProps} /> : null}
+      {activeTab === 'study' ? <DashboardStudyTab {...tabProps} /> : null}
+      {activeTab === 'profile' ? <DashboardProfileTab {...tabProps} /> : null}
+    </Suspense>
   );
 };
 
 export default DashboardScreen;
+

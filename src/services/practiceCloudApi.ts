@@ -1,13 +1,21 @@
-import { PracticeAnswer, CloudPracticeState, ActivePracticeSession } from '../practiceTypes';
+import {
+  PracticeAnswer,
+  CloudPracticeState,
+  ActivePracticeSession,
+  PracticeLearningDashboardV2,
+  PracticePressureInsightsV2
+} from '../practiceTypes';
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { supabase } from '../supabaseClient';
+import { trackAsyncOperation } from '../telemetry/telemetryClient';
 import {
   mapExamTarget,
   mapPracticeCloudError,
   mapLearningDashboard,
+  mapLearningDashboardV2,
   mapPressureInsights,
+  mapPressureInsightsV2,
   mapProfile,
-  mapQuestionStat,
   mapSession
 } from './practiceCloudMappers';
 
@@ -60,73 +68,145 @@ const buildAttemptPayloads = (answers: PracticeAnswer[]) => {
 export const getMyPracticeState = async (
   curriculum = DEFAULT_CURRICULUM
 ): Promise<CloudPracticeState> => {
-  const [
-    { data: profileData, error: profileError },
-    { data: sessionsData, error: sessionsError },
-    { data: statsData, error: statsError },
-    { data: learningDashboardData, error: learningDashboardError },
-    { data: examTargetData, error: examTargetError },
-    { data: pressureInsightsData, error: pressureInsightsError }
-  ] = await Promise.all([
-    supabase
-      .schema('app')
-      .rpc('get_my_practice_profile_for_curriculum', {
-        p_curriculum: curriculum
-      })
-      .maybeSingle(),
-    supabase
-      .schema('app')
-      .from('practice_sessions')
-      .select('session_id, mode, title, started_at, finished_at, score, total')
-      .eq('curriculum', curriculum)
-      .order('finished_at', { ascending: false })
-      .limit(12),
-    supabase
-      .schema('app')
-      .from('practice_question_stats')
-      .select('question_id, question_number, statement, category, explanation, attempts, correct_attempts, incorrect_attempts, last_answered_at, last_incorrect_at')
-      .eq('curriculum', curriculum)
-      .order('incorrect_attempts', { ascending: false })
-      .limit(500),
-    supabase
-      .schema('app')
-      .rpc('get_readiness_dashboard', {
-        p_curriculum: curriculum
-      })
-      .maybeSingle(),
-    supabase
-      .schema('app')
-      .rpc('get_my_exam_target', {
-        p_curriculum: curriculum
-      })
-      .maybeSingle(),
-    supabase
-      .schema('app')
-      .rpc('get_pressure_dashboard', {
-        p_curriculum: curriculum
-      })
-      .maybeSingle()
-  ]);
+  return trackAsyncOperation(
+    'practiceCloud.getMyPracticeState',
+    async () => {
+      const [
+        { data: profileData, error: profileError },
+        { data: sessionsData, error: sessionsError },
+        { data: learningDashboardData, error: learningDashboardError },
+        { data: examTargetData, error: examTargetError },
+        { data: pressureInsightsData, error: pressureInsightsError }
+      ] = await Promise.all([
+        supabase
+          .schema('app')
+          .rpc('get_my_practice_profile_for_curriculum', {
+            p_curriculum: curriculum
+          })
+          .maybeSingle(),
+        supabase
+          .schema('app')
+          .from('practice_sessions')
+          .select('session_id, mode, title, started_at, finished_at, score, total')
+          .eq('curriculum', curriculum)
+          .order('finished_at', { ascending: false })
+          .limit(12),
+        supabase
+          .schema('app')
+          .rpc('get_readiness_dashboard', {
+            p_curriculum: curriculum
+          })
+          .maybeSingle(),
+        supabase
+          .schema('app')
+          .rpc('get_my_exam_target', {
+            p_curriculum: curriculum
+          })
+          .maybeSingle(),
+        supabase
+          .schema('app')
+          .rpc('get_pressure_dashboard', {
+            p_curriculum: curriculum
+          })
+          .maybeSingle()
+      ]);
 
-  const firstError = profileError || sessionsError || statsError;
-  if (firstError) {
-    throw new Error(mapPracticeCloudError(firstError));
+      const firstError = profileError || sessionsError;
+      if (firstError) {
+        throw new Error(mapPracticeCloudError(firstError));
+      }
+
+      return {
+        profile: mapProfile((profileData ?? null) as Record<string, unknown> | null),
+        recentSessions: ((sessionsData ?? []) as Array<Record<string, unknown>>).map(mapSession),
+        learningDashboard: learningDashboardError
+          ? null
+          : mapLearningDashboard((learningDashboardData ?? null) as Record<string, unknown> | null),
+        examTarget: examTargetError
+          ? null
+          : mapExamTarget((examTargetData ?? null) as Record<string, unknown> | null),
+        pressureInsights: pressureInsightsError
+          ? null
+          : mapPressureInsights((pressureInsightsData ?? null) as Record<string, unknown> | null)
+      };
+    },
+    { curriculum }
+  );
+};
+
+export const getMyLearningDashboardV2 = async (
+  curriculum = DEFAULT_CURRICULUM
+): Promise<PracticeLearningDashboardV2 | null> => {
+  return trackAsyncOperation(
+    'practiceCloud.getReadinessDashboardV2',
+    async () => {
+      const { data, error } = await supabase
+        .schema('app')
+        .rpc('get_readiness_dashboard_v2', {
+          p_curriculum: curriculum
+        })
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(mapPracticeCloudError(error));
+      }
+
+      return mapLearningDashboardV2((data ?? null) as Record<string, unknown> | null);
+    },
+    { curriculum }
+  );
+};
+
+export const recordQuestionExplanationOpened = async ({
+  questionId,
+  curriculum = DEFAULT_CURRICULUM,
+  sessionId = null,
+  surface = 'review',
+  explanationKind = 'base'
+}: {
+  questionId: string;
+  curriculum?: string;
+  sessionId?: string | null;
+  surface?: 'quiz' | 'review' | 'study' | 'admin';
+  explanationKind?: 'base' | 'editorial' | 'both';
+}) => {
+  const normalizedQuestionId = String(questionId ?? '').trim();
+  if (!normalizedQuestionId) return;
+
+  const { error } = await supabase.schema('app').rpc('record_question_explanation_opened', {
+    p_question_id: normalizedQuestionId,
+    p_curriculum: curriculum,
+    p_session_id: sessionId,
+    p_surface: surface,
+    p_explanation_kind: explanationKind
+  });
+
+  if (error) {
+    throw new Error(mapPracticeCloudError(error));
   }
+};
 
-  return {
-    profile: mapProfile((profileData ?? null) as Record<string, unknown> | null),
-    recentSessions: ((sessionsData ?? []) as Array<Record<string, unknown>>).map(mapSession),
-    questionStats: ((statsData ?? []) as Array<Record<string, unknown>>).map(mapQuestionStat),
-    learningDashboard: learningDashboardError
-      ? null
-      : mapLearningDashboard((learningDashboardData ?? null) as Record<string, unknown> | null),
-    examTarget: examTargetError
-      ? null
-      : mapExamTarget((examTargetData ?? null) as Record<string, unknown> | null),
-    pressureInsights: pressureInsightsError
-      ? null
-      : mapPressureInsights((pressureInsightsData ?? null) as Record<string, unknown> | null)
-  };
+export const getMyPressureDashboardV2 = async (
+  curriculum = DEFAULT_CURRICULUM
+): Promise<PracticePressureInsightsV2 | null> => {
+  return trackAsyncOperation(
+    'practiceCloud.getPressureDashboardV2',
+    async () => {
+      const { data, error } = await supabase
+        .schema('app')
+        .rpc('get_pressure_dashboard_v2', {
+          p_curriculum: curriculum
+        })
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(mapPracticeCloudError(error));
+      }
+
+      return mapPressureInsightsV2((data ?? null) as Record<string, unknown> | null);
+    },
+    { curriculum }
+  );
 };
 
 export const upsertMyExamTarget = async ({
@@ -140,21 +220,32 @@ export const upsertMyExamTarget = async ({
   dailyReviewCapacity: number;
   dailyNewCapacity: number;
 }) => {
-  const { data, error } = await supabase
-    .schema('app')
-    .rpc('upsert_my_exam_target', {
-      p_curriculum: curriculum,
-      p_exam_date: examDate,
-      p_daily_review_capacity: dailyReviewCapacity,
-      p_daily_new_capacity: dailyNewCapacity
-    })
-    .maybeSingle();
+  return trackAsyncOperation(
+    'practiceCloud.upsertMyExamTarget',
+    async () => {
+      const { data, error } = await supabase
+        .schema('app')
+        .rpc('upsert_my_exam_target', {
+          p_curriculum: curriculum,
+          p_exam_date: examDate,
+          p_daily_review_capacity: dailyReviewCapacity,
+          p_daily_new_capacity: dailyNewCapacity
+        })
+        .maybeSingle();
 
-  if (error) {
-    throw new Error(mapPracticeCloudError(error));
-  }
+      if (error) {
+        throw new Error(mapPracticeCloudError(error));
+      }
 
-  return mapExamTarget((data ?? null) as Record<string, unknown> | null);
+      return mapExamTarget((data ?? null) as Record<string, unknown> | null);
+    },
+    {
+      curriculum,
+      hasExamDate: Boolean(examDate),
+      dailyReviewCapacity,
+      dailyNewCapacity
+    }
+  );
 };
 
 export const recordPracticeSessionInCloud = async (
@@ -163,34 +254,29 @@ export const recordPracticeSessionInCloud = async (
   curriculum = DEFAULT_CURRICULUM
 ) => {
   const attemptPayloads = buildAttemptPayloads(answers);
-  const uniqueSessionQuestionCount = new Set(
-    session.questions
-      .map((question) => String(question.id ?? '').trim())
-      .filter(Boolean)
-  ).size;
-  const finishedAt = new Date().toISOString();
-  const totalQuestions =
-    session.mode === 'simulacro'
-      ? uniqueSessionQuestionCount
-      : attemptPayloads.length;
+  
+  await trackAsyncOperation(
+    'practiceCloud.recordPracticeSessionSync',
+    async () => {
+      const { data, error } = await supabase.functions.invoke('sync-practice-session', {
+        body: {
+          session,
+          attempts: attemptPayloads,
+          curriculum
+        }
+      });
 
-  const { error } = await supabase.schema('app').rpc('record_practice_session', {
-    p_session_id: session.id,
-    p_curriculum: curriculum,
-    p_mode: session.mode,
-    p_title: session.title,
-    p_started_at: session.startedAt,
-    p_finished_at: finishedAt,
-    p_score: attemptPayloads.filter((attempt) => attempt.is_correct).length,
-    p_total: totalQuestions,
-    p_batch_number: session.batchNumber || null,
-    p_batch_size: uniqueSessionQuestionCount,
-    p_batch_start_index: session.batchStartIndex,
-    p_next_standard_batch_start_index: session.nextStandardBatchStartIndex ?? 0,
-    p_attempts: attemptPayloads
-  });
+      if (error) {
+        throw new Error(mapPracticeCloudError(error));
+      }
 
-  if (error) {
-    throw new Error(mapPracticeCloudError(error));
-  }
+      return data;
+    },
+    {
+      curriculum,
+      mode: session.mode,
+      answers: attemptPayloads.length
+    }
+  );
 };
+

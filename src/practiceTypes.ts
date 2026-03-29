@@ -83,11 +83,31 @@ export interface PracticeCatalogSummary {
   totalQuestions: number;
 }
 
+export interface PracticeWeakCategorySummary {
+  category: string;
+  incorrectAttempts: number;
+  attempts: number;
+}
+
+export interface PracticeCategoryRiskSummary {
+  category: string;
+  attempts: number;
+  incorrectAttempts: number;
+  rawFailRate: number | null;
+  smoothedFailRate: number | null;
+  baselineFailRate: number | null;
+  excessRisk: number | null;
+  sampleOk: boolean;
+  confidenceFlag: PracticeConfidenceFlag;
+}
+
 export interface PracticeRiskInsight {
   errorType: string;
   label: string;
   count: number;
 }
+
+export type PracticeConfidenceFlag = 'low' | 'medium' | 'high';
 
 export interface PracticeLearningDashboard {
   totalQuestions: number;
@@ -114,6 +134,35 @@ export interface PracticeLearningDashboard {
   riskBreakdown: PracticeRiskInsight[];
 }
 
+export interface PracticeLearningDashboardV2 {
+  totalQuestions: number;
+  seenQuestions: number;
+  coverageRate: number;
+  observedAccuracyRate: number;
+  observedAccuracyN: number;
+  observedAccuracyCiLow: number | null;
+  observedAccuracyCiHigh: number | null;
+  observedAccuracySampleOk: boolean;
+  retentionSeenRate: number | null;
+  retentionSeenN: number;
+  retentionSeenConfidenceFlag: PracticeConfidenceFlag;
+  unseenPriorRate: number;
+  examReadinessRate: number;
+  examReadinessCiLow: number | null;
+  examReadinessCiHigh: number | null;
+  examReadinessConfidenceFlag: PracticeConfidenceFlag;
+  backlogOverdueCount: number;
+  fragileCount: number;
+  consolidatingCount: number;
+  solidCount: number;
+  masteredCount: number;
+  recommendedReviewCount: number;
+  recommendedNewCount: number;
+  recommendedTodayCount: number;
+  recommendedMode: PracticeMode;
+  focusMessage: string;
+}
+
 export interface PracticeExamTarget {
   userId: string;
   curriculum: string;
@@ -131,6 +180,22 @@ export interface PracticePressureInsights {
   lastSimulacroFinishedAt: string | null;
   avgSimulacroFatigue: number | null;
   overconfidenceRate: number | null;
+  recommendedMode: PracticeMode | null;
+  pressureMessage: string;
+}
+
+export interface PracticePressureInsightsV2 {
+  learningAccuracy: number | null;
+  simulacroAccuracy: number | null;
+  pressureGapRaw: number | null;
+  learningSessionN: number;
+  simulacroSessionN: number;
+  learningQuestionN: number;
+  simulacroQuestionN: number;
+  avgSimulacroFatigue: number | null;
+  overconfidenceRate: number | null;
+  sampleOk: boolean;
+  confidenceFlag: PracticeConfidenceFlag;
   recommendedMode: PracticeMode | null;
   pressureMessage: string;
 }
@@ -178,8 +243,9 @@ export interface WeakQuestionInsight {
 export interface CloudPracticeState {
   profile: PracticeProfile | null;
   recentSessions: PracticeSessionSummary[];
-  questionStats: PracticeQuestionStat[];
   learningDashboard: PracticeLearningDashboard | null;
+  learningDashboardV2?: PracticeLearningDashboardV2 | null;
   examTarget: PracticeExamTarget | null;
   pressureInsights: PracticePressureInsights | null;
+  pressureInsightsV2?: PracticePressureInsightsV2 | null;
 }

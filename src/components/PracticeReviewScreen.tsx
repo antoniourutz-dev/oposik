@@ -1,10 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, BookOpenText, CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import {
   computeOverconfidenceScore,
   computeSessionFatigueScore,
   getErrorTypeLabel
 } from '../domain/learningEngine';
+import { DEFAULT_CURRICULUM } from '../practiceConfig';
+import { recordQuestionExplanationOpened } from '../services/practiceCloudApi';
 import QuestionExplanation from './QuestionExplanation';
 import { PracticeAnswer } from '../practiceTypes';
 import { getSessionPresentation } from '../sessionPresentation';
@@ -19,6 +21,8 @@ type PracticeReviewScreenProps = {
   sessionMode?: 'standard' | 'weakest' | 'random' | 'review' | 'mixed' | 'simulacro' | 'anti_trap';
   sessionStartedAt?: string;
   sessionQuestionCount?: number;
+  sessionId?: string | null;
+  curriculum?: string;
   timeLimitSeconds?: number | null;
   title?: string;
   subtitle?: string;
@@ -29,6 +33,14 @@ type PracticeReviewScreenProps = {
   onContinue: () => void;
   onBackToStart: () => void;
 };
+
+type ReviewEntry = {
+  answer: PracticeAnswer;
+  reviewIndex: number;
+};
+
+const INITIAL_REVIEW_RENDER_COUNT = 8;
+const REVIEW_RENDER_STEP = 6;
 
 const getReviewClosure = ({
   percentage,
@@ -98,11 +110,161 @@ const getReviewClosure = ({
   };
 };
 
+const formatDuration = (value: number | null) => {
+  if (value === null) return null;
+  const minutes = Math.floor(value / 60);
+  const seconds = value % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
+const getExplanationKind = ({
+  explanation,
+  editorialExplanation
+}: {
+  explanation: string | null;
+  editorialExplanation?: string | null;
+}) => {
+  const hasExplanation = Boolean(explanation?.trim());
+  const hasEditorialExplanation = Boolean(editorialExplanation?.trim());
+
+  if (hasExplanation && hasEditorialExplanation) return 'both';
+  if (hasEditorialExplanation) return 'editorial';
+  return 'base';
+};
+
+const ReviewEntryCard = React.memo(
+  ({
+    curriculum = DEFAULT_CURRICULUM,
+    entry,
+    sessionId = null
+  }: {
+    entry: ReviewEntry;
+    sessionId?: string | null;
+    curriculum?: string;
+  }) => {
+    const { answer, reviewIndex } = entry;
+    const [isExplanationOpen, setIsExplanationOpen] = useState(false);
+    const selectedKey = answer.selectedOption;
+    const correctKey = answer.question.correctOption;
+    const selectedText = selectedKey ? answer.question.options[selectedKey] : null;
+    const correctText = answer.question.options[correctKey];
+
+    return (
+      <article className="overflow-hidden rounded-[1.25rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.92))] p-3.5 shadow-[0_20px_46px_-36px_rgba(141,147,242,0.16)] backdrop-blur">
+        <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2">
+            <div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.18))] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
+                  Pregunta {reviewIndex + 1}
+                </span>
+                {answer.question.category ? (
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
+                    {answer.question.category}
+                  </span>
+                ) : null}
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] ${
+                    answer.isCorrect
+                      ? 'bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(74,222,128,0.14))] text-emerald-700'
+                      : 'bg-[linear-gradient(135deg,rgba(244,63,94,0.12),rgba(251,113,133,0.14))] text-rose-700'
+                  }`}
+                >
+                  {answer.isCorrect ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                  {answer.isCorrect ? 'Correcta' : 'Incorrecta'}
+                </span>
+              </div>
+              <h3 className="mt-2 text-[0.98rem] font-extrabold leading-6 tracking-[-0.01em] text-slate-900 sm:text-[1.06rem] sm:leading-7">
+                {answer.question.statement}
+              </h3>
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div
+              className={`rounded-[1rem] border px-3.5 py-2.5 ${
+                answer.isCorrect
+                  ? 'border-emerald-200 bg-[linear-gradient(180deg,rgba(236,253,245,1),rgba(220,252,231,0.92))]'
+                  : 'border-rose-200 bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))]'
+              }`}
+            >
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                Tu respuesta
+              </p>
+              <p className="mt-1.5 text-[13px] font-semibold leading-5 text-slate-800 sm:text-sm sm:leading-6">
+                {selectedKey ? `${selectedKey.toUpperCase()}) ${selectedText}` : 'Sin responder'}
+              </p>
+            </div>
+
+            <div className="rounded-[1rem] border border-white/80 bg-[linear-gradient(180deg,rgba(236,246,255,0.9),rgba(241,247,255,0.92))] px-3.5 py-2.5">
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                Respuesta correcta
+              </p>
+              <p className="mt-1.5 text-[13px] font-semibold leading-5 text-slate-800 sm:text-sm sm:leading-6">
+                {`${correctKey.toUpperCase()}) ${correctText}`}
+              </p>
+            </div>
+          </div>
+
+          {!answer.isCorrect && answer.errorTypeInferred ? (
+            <div className="rounded-[1rem] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(254,243,199,0.72))] px-3.5 py-2.5">
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-700">
+                Clave del fallo
+              </p>
+              <p className="mt-1.5 text-[13px] font-semibold leading-5 text-amber-950 sm:text-sm sm:leading-6">
+                {getErrorTypeLabel(answer.errorTypeInferred) ?? 'Memoria fragil'}
+              </p>
+            </div>
+          ) : null}
+
+          <details
+            className="rounded-[1rem] border border-white/80 bg-[linear-gradient(180deg,rgba(232,240,255,0.9),rgba(241,247,255,0.92))] px-3.5 py-2.5"
+            onToggle={(event) => {
+              const nextOpen = event.currentTarget.open;
+              setIsExplanationOpen(nextOpen);
+              if (!nextOpen) return;
+
+              void recordQuestionExplanationOpened({
+                questionId: answer.question.id,
+                curriculum,
+                sessionId,
+                surface: 'review',
+                explanationKind: getExplanationKind({
+                  explanation: answer.question.explanation,
+                  editorialExplanation: answer.question.editorialExplanation
+                })
+              }).catch(() => {});
+            }}
+          >
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-[13px] font-extrabold text-indigo-900 transition-colors hover:text-indigo-950 sm:text-sm">
+              <BookOpenText size={16} />
+              Ver explicacion
+            </summary>
+            {isExplanationOpen ? (
+              <div className="mt-2.5">
+                <QuestionExplanation
+                  explanation={answer.question.explanation}
+                  editorialExplanation={answer.question.editorialExplanation}
+                  emptyLabel="Esta pregunta todavia no tiene explicacion cargada."
+                />
+              </div>
+            ) : null}
+          </details>
+        </div>
+      </article>
+    );
+  }
+);
+
+ReviewEntryCard.displayName = 'ReviewEntryCard';
+
 const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   answers,
   batchNumber,
   totalBatches,
   hasNextBatch,
+  sessionId = null,
+  curriculum = DEFAULT_CURRICULUM,
   sessionMode = 'standard',
   sessionStartedAt,
   sessionQuestionCount,
@@ -118,25 +280,51 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
 }) => {
   const totalQuestions = Math.max(sessionQuestionCount ?? answers.length, answers.length);
   const answeredCount = answers.length;
-  const score = answers.filter((answer) => answer.isCorrect).length;
+  const {
+    fatigueScore,
+    incorrectCount,
+    incorrectEntries,
+    lastAnsweredAt,
+    overconfidenceScore,
+    reviewEntries,
+    score
+  } = useMemo(() => {
+    const nextReviewEntries: ReviewEntry[] = [];
+    const nextIncorrectEntries: ReviewEntry[] = [];
+    const sessionAttempts = [];
+    let nextScore = 0;
+    let nextLastAnsweredAt: string | null = null;
+
+    for (let index = 0; index < answers.length; index += 1) {
+      const answer = answers[index];
+      const entry = { answer, reviewIndex: index };
+      nextReviewEntries.push(entry);
+      if (!answer.isCorrect) {
+        nextIncorrectEntries.push(entry);
+      } else {
+        nextScore += 1;
+      }
+      sessionAttempts.push({
+        isCorrect: answer.isCorrect,
+        responseTimeMs: answer.responseTimeMs,
+        errorTypeInferred: answer.errorTypeInferred,
+        changedAnswer: answer.changedAnswer
+      });
+      nextLastAnsweredAt = answer.answeredAt ?? nextLastAnsweredAt;
+    }
+
+    return {
+      fatigueScore: computeSessionFatigueScore(sessionAttempts),
+      incorrectCount: nextIncorrectEntries.length,
+      incorrectEntries: nextIncorrectEntries,
+      lastAnsweredAt: nextLastAnsweredAt,
+      overconfidenceScore: computeOverconfidenceScore(sessionAttempts),
+      reviewEntries: nextReviewEntries,
+      score: nextScore
+    };
+  }, [answers]);
   const unansweredCount = Math.max(totalQuestions - answeredCount, 0);
   const percentage = totalQuestions === 0 ? 0 : Math.round((score / totalQuestions) * 100);
-  const fatigueScore = computeSessionFatigueScore(
-    answers.map((answer) => ({
-      isCorrect: answer.isCorrect,
-      responseTimeMs: answer.responseTimeMs,
-      errorTypeInferred: answer.errorTypeInferred,
-      changedAnswer: answer.changedAnswer
-    }))
-  );
-  const overconfidenceScore = computeOverconfidenceScore(
-    answers.map((answer) => ({
-      isCorrect: answer.isCorrect,
-      responseTimeMs: answer.responseTimeMs,
-      errorTypeInferred: answer.errorTypeInferred,
-      changedAnswer: answer.changedAnswer
-    }))
-  );
   const fatigueLabel =
     fatigueScore >= 0.66 ? 'Fatiga alta' : fatigueScore >= 0.33 ? 'Fatiga media' : 'Fatiga baja';
   const overconfidenceLabel =
@@ -145,7 +333,6 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
       : overconfidenceScore >= 0.2
         ? 'Sobreconfianza media'
         : 'Sobreconfianza baja';
-  const lastAnsweredAt = answers[answers.length - 1]?.answeredAt ?? null;
   const elapsedSeconds =
     sessionStartedAt
       ? Math.max(
@@ -157,12 +344,6 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           )
         )
       : null;
-  const formatDuration = (value: number | null) => {
-    if (value === null) return null;
-    const minutes = Math.floor(value / 60);
-    const seconds = value % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  };
   const elapsedLabel = formatDuration(elapsedSeconds);
   const timeLimitLabel = formatDuration(timeLimitSeconds);
   const resolvedContinueLabel =
@@ -185,14 +366,25 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
       : elapsedLabel
         ? elapsedLabel
         : timeLimitLabel;
-  const reviewClosure = getReviewClosure({
-    percentage,
-    unansweredCount,
-    sessionMode,
-    fatigueScore,
-    overconfidenceScore,
-    hasNextBatch
-  });
+  const reviewClosure = useMemo(
+    () =>
+      getReviewClosure({
+        percentage,
+        unansweredCount,
+        sessionMode,
+        fatigueScore,
+        overconfidenceScore,
+        hasNextBatch
+      }),
+    [
+      fatigueScore,
+      hasNextBatch,
+      overconfidenceScore,
+      percentage,
+      sessionMode,
+      unansweredCount
+    ]
+  );
   const scoreSurfaceClass =
     percentage >= 85
       ? 'border-emerald-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(236,253,245,0.94))] shadow-[0_24px_48px_-34px_rgba(16,185,129,0.24)]'
@@ -222,33 +414,61 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   const simplifiedReviewHint = hasNextBatch
     ? 'Revisa este bloque y, si quieres, abre el siguiente.'
     : 'Revisa tus respuestas y cierra la prueba cuando termines.';
-  const reviewEntries = answers.map((answer, index) => ({ answer, reviewIndex: index }));
-  const incorrectEntries = reviewEntries.filter(({ answer }) => !answer.isCorrect);
-  const incorrectCount = incorrectEntries.length;
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>(
     incorrectCount > 0 ? 'incorrect' : 'all'
   );
   const [isDockVisible, setIsDockVisible] = useState(true);
+  const [renderedEntryCount, setRenderedEntryCount] = useState(INITIAL_REVIEW_RENDER_COUNT);
   const hideDockTimeoutRef = useRef<number | null>(null);
-  const visibleEntries = reviewFilter === 'incorrect' ? incorrectEntries : reviewEntries;
+  const dockFrameRef = useRef<number | null>(null);
+  const isDockVisibleRef = useRef(true);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const visibleEntries = useMemo(
+    () => (reviewFilter === 'incorrect' ? incorrectEntries : reviewEntries),
+    [incorrectEntries, reviewEntries, reviewFilter]
+  );
+  const renderedEntries = useMemo(
+    () => visibleEntries.slice(0, renderedEntryCount),
+    [renderedEntryCount, visibleEntries]
+  );
+  const hasMoreEntries = renderedEntryCount < visibleEntries.length;
+  const remainingEntries = Math.max(visibleEntries.length - renderedEntryCount, 0);
+  const loadMoreEntries = useCallback(() => {
+    setRenderedEntryCount((currentCount) =>
+      Math.min(visibleEntries.length, currentCount + REVIEW_RENDER_STEP)
+    );
+  }, [visibleEntries.length]);
+
+  useEffect(() => {
+    isDockVisibleRef.current = isDockVisible;
+  }, [isDockVisible]);
 
   useEffect(() => {
     const clearHideTimeout = () => {
       if (hideDockTimeoutRef.current !== null) {
         window.clearTimeout(hideDockTimeoutRef.current);
+        hideDockTimeoutRef.current = null;
       }
     };
 
     const scheduleHide = () => {
       clearHideTimeout();
       hideDockTimeoutRef.current = window.setTimeout(() => {
+        isDockVisibleRef.current = false;
         setIsDockVisible(false);
       }, 1400);
     };
 
     const handleScroll = () => {
-      setIsDockVisible(true);
-      scheduleHide();
+      if (dockFrameRef.current !== null) return;
+      dockFrameRef.current = window.requestAnimationFrame(() => {
+        dockFrameRef.current = null;
+        if (!isDockVisibleRef.current) {
+          isDockVisibleRef.current = true;
+          setIsDockVisible(true);
+        }
+        scheduleHide();
+      });
     };
 
     scheduleHide();
@@ -256,6 +476,9 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
 
     return () => {
       clearHideTimeout();
+      if (dockFrameRef.current !== null) {
+        window.cancelAnimationFrame(dockFrameRef.current);
+      }
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
@@ -263,6 +486,35 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   useEffect(() => {
     setReviewFilter(incorrectCount > 0 ? 'incorrect' : 'all');
   }, [incorrectCount, batchNumber, totalBatches, sessionStartedAt]);
+
+  useEffect(() => {
+    setRenderedEntryCount(Math.min(visibleEntries.length, INITIAL_REVIEW_RENDER_COUNT));
+  }, [visibleEntries.length, reviewFilter, batchNumber, totalBatches, sessionStartedAt]);
+
+  useEffect(() => {
+    if (!hasMoreEntries || !loadMoreSentinelRef.current || typeof IntersectionObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        loadMoreEntries();
+        observer.disconnect();
+      },
+      {
+        root: null,
+        rootMargin: '0px 0px 420px 0px',
+        threshold: 0.01
+      }
+    );
+
+    observer.observe(loadMoreSentinelRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMoreEntries, loadMoreEntries, renderedEntryCount]);
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-0 py-3 pb-32 sm:px-2 sm:pb-32 lg:px-4">
@@ -405,115 +657,61 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
               ? `${incorrectCount} fallo${incorrectCount === 1 ? '' : 's'} para revisar`
               : `${answers.length} respuesta${answers.length === 1 ? '' : 's'} resuelta${answers.length === 1 ? '' : 's'}`}
           </p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+            Mostrando {renderedEntries.length} de {visibleEntries.length}
+          </p>
         </div>
 
-        {visibleEntries.map(({ answer, reviewIndex }) => {
-          const selectedKey = answer.selectedOption;
-          const correctKey = answer.question.correctOption;
-          const selectedText = selectedKey ? answer.question.options[selectedKey] : null;
-          const correctText = answer.question.options[correctKey];
+        {renderedEntries.length === 0 ? (
+          <div className="rounded-[1.25rem] border border-dashed border-[#d7e4fb] bg-white/80 px-4 py-5 text-center shadow-[0_18px_34px_-30px_rgba(141,147,242,0.14)]">
+            <p className="text-[0.98rem] font-black text-slate-900">No hay respuestas para revisar</p>
+            <p className="mt-1.5 text-[13px] font-semibold text-slate-500">
+              Completa un bloque para abrir esta lectura con detalle.
+            </p>
+          </div>
+        ) : null}
 
-          return (
-            <article
-              key={`${answer.question.id}-${reviewIndex}`}
-              className="overflow-hidden rounded-[1.25rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.92))] p-3.5 shadow-[0_20px_46px_-36px_rgba(141,147,242,0.16)] backdrop-blur"
+        <div className="grid gap-2.5 xl:grid-cols-2">
+          {renderedEntries.map((entry) => (
+            <ReviewEntryCard
+              key={`${entry.answer.question.id}-${entry.reviewIndex}`}
+              entry={entry}
+              sessionId={sessionId}
+              curriculum={curriculum}
+            />
+          ))}
+        </div>
+
+        {hasMoreEntries ? (
+          <div
+            ref={loadMoreSentinelRef}
+            className="flex flex-col items-center gap-2 rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] px-4 py-3.5 shadow-[0_20px_40px_-34px_rgba(141,147,242,0.16)]"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+              Quedan {remainingEntries} por cargar
+            </p>
+            <button
+              type="button"
+              onClick={loadMoreEntries}
+              className="rounded-full border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(141,147,242,0.18))] px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-800 shadow-[0_12px_24px_-20px_rgba(141,147,242,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98]"
             >
-              <div className="flex flex-col gap-2.5">
-                <div className="flex flex-col gap-2">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.18))] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
-                        Pregunta {reviewIndex + 1}
-                      </span>
-                      {answer.question.category && (
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
-                          {answer.question.category}
-                        </span>
-                      )}
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] ${
-                          answer.isCorrect
-                            ? 'bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(74,222,128,0.14))] text-emerald-700'
-                            : 'bg-[linear-gradient(135deg,rgba(244,63,94,0.12),rgba(251,113,133,0.14))] text-rose-700'
-                        }`}
-                      >
-                        {answer.isCorrect ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                        {answer.isCorrect ? 'Correcta' : 'Incorrecta'}
-                      </span>
-                    </div>
-                    <h3 className="mt-2 text-[0.98rem] font-extrabold leading-6 tracking-[-0.01em] text-slate-900 sm:text-[1.06rem] sm:leading-7">
-                      {answer.question.statement}
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div
-                    className={`rounded-[1rem] border px-3.5 py-2.5 ${
-                      answer.isCorrect
-                        ? 'border-emerald-200 bg-[linear-gradient(180deg,rgba(236,253,245,1),rgba(220,252,231,0.92))]'
-                        : 'border-rose-200 bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))]'
-                    }`}
-                  >
-                    <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                      Tu respuesta
-                    </p>
-                    <p className="mt-1.5 text-[13px] font-semibold leading-5 text-slate-800 sm:text-sm sm:leading-6">
-                      {selectedKey ? `${selectedKey.toUpperCase()}) ${selectedText}` : 'Sin responder'}
-                    </p>
-                  </div>
-
-                  <div className="rounded-[1rem] border border-white/80 bg-[linear-gradient(180deg,rgba(236,246,255,0.9),rgba(241,247,255,0.92))] px-3.5 py-2.5">
-                    <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                      Respuesta correcta
-                    </p>
-                    <p className="mt-1.5 text-[13px] font-semibold leading-5 text-slate-800 sm:text-sm sm:leading-6">
-                      {`${correctKey.toUpperCase()}) ${correctText}`}
-                    </p>
-                  </div>
-                </div>
-
-                {!answer.isCorrect && answer.errorTypeInferred ? (
-                  <div className="rounded-[1rem] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(254,243,199,0.72))] px-3.5 py-2.5">
-                    <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-700">
-                      Clave del fallo
-                    </p>
-                    <p className="mt-1.5 text-[13px] font-semibold leading-5 text-amber-950 sm:text-sm sm:leading-6">
-                      {getErrorTypeLabel(answer.errorTypeInferred) ?? 'Memoria fragil'}
-                    </p>
-                  </div>
-                ) : null}
-
-                <details className="rounded-[1rem] border border-white/80 bg-[linear-gradient(180deg,rgba(232,240,255,0.9),rgba(241,247,255,0.92))] px-3.5 py-2.5">
-                  <summary className="flex cursor-pointer list-none items-center gap-2 text-[13px] font-extrabold text-indigo-900 transition-colors hover:text-indigo-950 sm:text-sm">
-                    <BookOpenText size={16} />
-                    Ver explicacion
-                  </summary>
-                  <div className="mt-2.5">
-                    <QuestionExplanation
-                      explanation={answer.question.explanation}
-                      editorialExplanation={answer.question.editorialExplanation}
-                      emptyLabel="Esta pregunta todavia no tiene explicacion cargada."
-                    />
-                  </div>
-                </details>
-              </div>
-            </article>
-          );
-        })}
+              Cargar {Math.min(REVIEW_RENDER_STEP, remainingEntries)} mas
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <nav
-        className={`fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] transition-all duration-300 sm:px-6 lg:px-8 ${
+        className={`fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] transition-all duration-300 sm:px-6 lg:px-8 xl:inset-y-0 xl:inset-x-auto xl:right-[max(1.25rem,calc((100vw-1480px)/2+1rem))] xl:bottom-auto xl:flex xl:items-center xl:px-0 xl:pb-0 ${
           isDockVisible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-6 opacity-0'
         }`}
       >
-        <div className="mx-auto w-full max-w-[420px] rounded-[1.35rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(245,249,255,0.9))] p-1 shadow-[0_22px_60px_-34px_rgba(141,147,242,0.2)] backdrop-blur-xl">
-          <div className={`grid gap-1.5 ${showRetry ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        <div className="mx-auto w-full max-w-[420px] rounded-[1.35rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(245,249,255,0.9))] p-1 shadow-[0_22px_60px_-34px_rgba(141,147,242,0.2)] backdrop-blur-xl xl:mx-0 xl:w-[118px] xl:max-w-none xl:rounded-[2rem] xl:p-2">
+          <div className={`grid gap-1.5 ${showRetry ? 'grid-cols-3 xl:grid-cols-1' : 'grid-cols-2 xl:grid-cols-1'}`}>
             <button
               type="button"
               onClick={onBackToStart}
-              className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] px-2.5 py-2 text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-sky-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98]"
+              className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] px-2.5 py-2 text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-sky-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98] xl:min-h-[72px] xl:flex-col xl:gap-2"
             >
               <ArrowLeft size={15} />
               <span className="text-[10px] font-extrabold uppercase tracking-[0.1em]">Inicio</span>
@@ -522,7 +720,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
               <button
                 type="button"
                 onClick={onRetryBatch}
-                className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(141,147,242,0.18))] px-2.5 py-2 text-slate-800 shadow-[0_14px_28px_-24px_rgba(141,147,242,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98]"
+                className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(141,147,242,0.18))] px-2.5 py-2 text-slate-800 shadow-[0_14px_28px_-24px_rgba(141,147,242,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98] xl:min-h-[72px] xl:flex-col xl:gap-2"
               >
                 <RotateCcw size={15} />
                 <span className="text-[10px] font-extrabold uppercase tracking-[0.1em]">
@@ -533,7 +731,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
             <button
               type="button"
               onClick={onContinue}
-              className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-2.5 py-2 text-white shadow-[0_16px_28px_-18px_rgba(141,147,242,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98]"
+              className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/70 bg-[linear-gradient(135deg,#7cb6e8_0%,#8d93f2_100%)] px-2.5 py-2 text-white shadow-[0_16px_28px_-18px_rgba(141,147,242,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98] xl:min-h-[88px] xl:flex-col xl:gap-2"
             >
               <ArrowRight size={15} />
               <span className="text-[10px] font-extrabold uppercase tracking-[0.1em]">

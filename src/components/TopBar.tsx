@@ -14,8 +14,8 @@ const TopBar: React.FC<TopBarProps> = ({ title = 'Oposik', section }) => {
       <div
         className={`${
           isIntegrated
-            ? 'mr-auto flex h-[38px] w-fit items-center justify-start gap-2.5 px-1.5'
-            : 'chrome-float chrome-sheen mx-auto flex h-[56px] w-full max-w-7xl items-center justify-between rounded-[1.3rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(245,249,255,0.9))] px-4 shadow-[0_22px_54px_-42px_rgba(141,147,242,0.15)] backdrop-blur-xl'
+            ? 'mx-auto flex h-[38px] w-full max-w-full items-center justify-start gap-2.5 px-1.5'
+            : 'chrome-float chrome-sheen mx-auto flex h-[56px] w-full max-w-full items-center justify-between rounded-[1.3rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(245,249,255,0.9))] px-4 shadow-[0_22px_54px_-42px_rgba(141,147,242,0.15)] backdrop-blur-xl'
         }`}
       >
         <div className={`flex min-w-0 items-center ${isIntegrated ? 'gap-2.5' : 'gap-3'}`}>

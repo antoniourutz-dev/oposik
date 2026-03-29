@@ -2,83 +2,221 @@ import type { AccountIdentity } from './accountApi';
 import { getMyAccountIdentity } from './accountApi';
 import { DEFAULT_CURRICULUM, WEAK_QUESTIONS_LIMIT } from '../practiceConfig';
 import type {
+  PracticeCategoryRiskSummary,
   CloudPracticeState,
   PracticeQuestionScopeFilter,
   WeakQuestionInsight
 } from '../practiceTypes';
-import { getPracticeCatalogSummary, getWeakPracticeInsights } from './preguntasApi';
-import { getMyPracticeState } from './practiceCloudApi';
+import {
+  getPracticeCatalogSummary,
+  getWeakCategorySummary,
+  getWeakPracticeInsights
+} from './preguntasApi';
+import {
+  getMyLearningDashboardV2,
+  getMyPracticeState,
+  getMyPressureDashboardV2
+} from './practiceCloudApi';
+import { trackAsyncOperation } from '../telemetry/telemetryClient';
 
-export type PracticeBootstrap = {
+export type PracticeAccountSnapshot = {
   identity: AccountIdentity;
   practiceState: CloudPracticeState;
+  syncError: string | null;
+};
+
+export type PracticeBootstrap = PracticeAccountSnapshot & {
   questionsCount: number;
   weakQuestions: WeakQuestionInsight[];
-  syncError: string | null;
+  weakCategories: PracticeCategoryRiskSummary[];
+  questionsError: string | null;
+};
+
+export type PracticeScopeSnapshot = {
+  questionsCount: number;
+  weakQuestions: WeakQuestionInsight[];
+  weakCategories: PracticeCategoryRiskSummary[];
   questionsError: string | null;
 };
 
 export const createEmptyPracticeState = (): CloudPracticeState => ({
   profile: null,
   recentSessions: [],
-  questionStats: [],
   learningDashboard: null,
+  learningDashboardV2: null,
   examTarget: null,
-  pressureInsights: null
+  pressureInsights: null,
+  pressureInsightsV2: null
 });
+
+const loadPracticeScopeInsights = async (
+  curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
+) => {
+  return trackAsyncOperation(
+    'practice.loadPracticeScopeInsights',
+    async () => {
+      const [weakQuestionsResult, weakCategoriesResult] = await Promise.allSettled([
+        getWeakPracticeInsights(curriculum, WEAK_QUESTIONS_LIMIT, questionScope),
+        getWeakCategorySummary(curriculum, 5, questionScope)
+      ]);
+
+      return {
+        weakQuestions:
+          weakQuestionsResult.status === 'fulfilled' ? weakQuestionsResult.value : [],
+        weakCategories:
+          weakCategoriesResult.status === 'fulfilled' ? weakCategoriesResult.value : []
+      };
+    },
+    { curriculum, questionScope }
+  );
+};
+
+export const loadPracticeAccountSnapshot = async (
+  curriculum = DEFAULT_CURRICULUM
+): Promise<PracticeAccountSnapshot> => {
+  return trackAsyncOperation(
+    'practice.loadPracticeAccountSnapshot',
+    async () => {
+      const [
+        identityResult,
+        practiceResult,
+        learningDashboardV2Result,
+        pressureInsightsV2Result
+      ] = await Promise.allSettled([
+        getMyAccountIdentity(),
+        getMyPracticeState(curriculum),
+        getMyLearningDashboardV2(curriculum),
+        getMyPressureDashboardV2(curriculum)
+      ]);
+
+      if (identityResult.status === 'rejected') {
+        throw identityResult.reason;
+      }
+
+      return {
+        identity: identityResult.value,
+        practiceState: {
+          ...(practiceResult.status === 'fulfilled'
+            ? practiceResult.value
+            : createEmptyPracticeState()),
+          learningDashboardV2:
+            learningDashboardV2Result.status === 'fulfilled'
+              ? learningDashboardV2Result.value
+              : null,
+          pressureInsightsV2:
+            pressureInsightsV2Result.status === 'fulfilled'
+              ? pressureInsightsV2Result.value
+              : null
+        },
+        syncError:
+          practiceResult.status === 'rejected'
+            ? practiceResult.reason instanceof Error
+              ? practiceResult.reason.message
+              : 'No se ha podido sincronizar el progreso.'
+            : null
+      };
+    },
+    { curriculum }
+  );
+};
+
+export const loadPracticeScopeSnapshot = async (
+  curriculum = DEFAULT_CURRICULUM,
+  questionScope: PracticeQuestionScopeFilter = 'all'
+): Promise<PracticeScopeSnapshot> => {
+  return trackAsyncOperation(
+    'practice.loadPracticeScopeSnapshot',
+    async () => {
+      const [catalogResult, scopeInsightsResult] = await Promise.allSettled([
+        getPracticeCatalogSummary(curriculum, questionScope),
+        loadPracticeScopeInsights(curriculum, questionScope)
+      ]);
+
+      const scopeInsights =
+        scopeInsightsResult.status === 'fulfilled'
+          ? scopeInsightsResult.value
+          : {
+              weakQuestions: [],
+              weakCategories: []
+            };
+
+      return {
+        questionsCount:
+          catalogResult.status === 'fulfilled' ? catalogResult.value.totalQuestions : 0,
+        weakQuestions: scopeInsights.weakQuestions,
+        weakCategories: scopeInsights.weakCategories,
+        questionsError:
+          catalogResult.status === 'rejected'
+            ? catalogResult.reason instanceof Error
+              ? catalogResult.reason.message
+              : 'No se ha podido cargar el catalogo de preguntas.'
+            : null
+      };
+    },
+    { curriculum, questionScope }
+  );
+};
 
 export const loadPracticeBootstrap = async (
   curriculum = DEFAULT_CURRICULUM,
   questionScope: PracticeQuestionScopeFilter = 'all'
 ): Promise<PracticeBootstrap> => {
-  const [identityResult, practiceResult, catalogResult, weakQuestionsResult] =
-    await Promise.allSettled([
-      getMyAccountIdentity(),
-      getMyPracticeState(curriculum),
-      getPracticeCatalogSummary(curriculum, questionScope),
-      getWeakPracticeInsights(curriculum, WEAK_QUESTIONS_LIMIT, questionScope)
-    ]);
+  return trackAsyncOperation(
+    'practice.loadPracticeBootstrap',
+    async () => {
+      const [accountSnapshotResult, scopeSnapshotResult] = await Promise.allSettled([
+        loadPracticeAccountSnapshot(curriculum),
+        loadPracticeScopeSnapshot(curriculum, questionScope)
+      ]);
 
-  if (identityResult.status === 'rejected') {
-    throw identityResult.reason;
-  }
+      if (accountSnapshotResult.status === 'rejected') {
+        throw accountSnapshotResult.reason;
+      }
 
-  return {
-    identity: identityResult.value,
-    practiceState:
-      practiceResult.status === 'fulfilled'
-        ? practiceResult.value
-        : createEmptyPracticeState(),
-    questionsCount:
-      catalogResult.status === 'fulfilled' ? catalogResult.value.totalQuestions : 0,
-    weakQuestions:
-      weakQuestionsResult.status === 'fulfilled' ? weakQuestionsResult.value : [],
-    syncError:
-      practiceResult.status === 'rejected'
-        ? practiceResult.reason instanceof Error
-          ? practiceResult.reason.message
-          : 'No se ha podido sincronizar el progreso.'
-        : null,
-    questionsError:
-      catalogResult.status === 'rejected'
-        ? catalogResult.reason instanceof Error
-          ? catalogResult.reason.message
-          : 'No se ha podido cargar el catalogo de preguntas.'
-        : null
-  };
+      const scopeSnapshot =
+        scopeSnapshotResult.status === 'fulfilled'
+          ? scopeSnapshotResult.value
+          : {
+              questionsCount: 0,
+              weakQuestions: [],
+              weakCategories: [],
+              questionsError:
+                scopeSnapshotResult.reason instanceof Error
+                  ? scopeSnapshotResult.reason.message
+                  : 'No se ha podido cargar el catalogo de preguntas.'
+            };
+
+      return {
+        ...accountSnapshotResult.value,
+        questionsCount: scopeSnapshot.questionsCount,
+        weakQuestions: scopeSnapshot.weakQuestions,
+        weakCategories: scopeSnapshot.weakCategories,
+        questionsError: scopeSnapshot.questionsError
+      };
+    },
+    { curriculum, questionScope }
+  );
 };
 
 export const refreshPracticeAfterSession = async (
   curriculum = DEFAULT_CURRICULUM,
   questionScope: PracticeQuestionScopeFilter = 'all'
 ) => {
-  const [practiceState, weakQuestions] = await Promise.all([
-    getMyPracticeState(curriculum),
-    getWeakPracticeInsights(curriculum, WEAK_QUESTIONS_LIMIT, questionScope)
-  ]);
+  return trackAsyncOperation(
+    'practice.refreshPracticeAfterSession',
+    async () => {
+      const [practiceState, scopeInsights] = await Promise.all([
+        getMyPracticeState(curriculum),
+        loadPracticeScopeInsights(curriculum, questionScope)
+      ]);
 
-  return {
-    practiceState,
-    weakQuestions
-  };
+      return {
+        practiceState,
+        weakQuestions: scopeInsights.weakQuestions,
+        weakCategories: scopeInsights.weakCategories
+      };
+    },
+    { curriculum, questionScope }
+  );
 };

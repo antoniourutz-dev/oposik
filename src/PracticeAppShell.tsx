@@ -1,9 +1,14 @@
-import React, { Suspense, lazy, useLayoutEffect } from 'react';
+import React, { Suspense, lazy, useLayoutEffect, useMemo } from 'react';
 import { Database, LoaderCircle } from 'lucide-react';
 import BottomDock from './components/BottomDock';
 import TopBar from './components/TopBar';
 import { usePracticeApp } from './hooks/usePracticeApp';
+import {
+  getScreenTelemetryKey,
+  useNavigationTelemetry
+} from './hooks/useNavigationTelemetry';
 import { PRACTICE_BATCH_SIZE } from './practiceConfig';
+import ScreenTelemetryBoundary from './telemetry/ScreenTelemetryBoundary';
 
 const AuthScreen = lazy(() => import('./components/AuthScreen'));
 const DashboardScreen = lazy(() => import('./components/DashboardScreen'));
@@ -60,8 +65,10 @@ const PracticeAppShell: React.FC = () => {
     isGuest,
     isGenericPlayer,
     learningDashboard,
+    learningDashboardV2,
     loadingQuestions,
     pressureInsights,
+    pressureInsightsV2,
     profile,
     questionsCount,
     questionsError,
@@ -102,6 +109,44 @@ const PracticeAppShell: React.FC = () => {
         : 'pt-[5.2rem]';
   const shellBackgroundClass =
     view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer) ? 'app-shell-home' : 'app-shell-default';
+  const showDesktopRail = view === 'home' && !isGuest;
+  const screenTelemetryKey = useMemo(
+    () =>
+      getScreenTelemetryKey({
+        activeTab,
+        isGenericPlayer,
+        isGuest,
+        view
+      }),
+    [activeTab, isGenericPlayer, isGuest, view]
+  );
+  const screenTelemetryMeta = useMemo(
+    () => ({
+      activeTab,
+      isGenericPlayer,
+      isGuest,
+      questionCount: view === 'quiz' || view === 'review' ? activeSession?.questions.length ?? 0 : undefined,
+      selectedScope: selectedQuestionScope,
+      sessionMode: activeSession?.mode,
+      view
+    }),
+    [
+      activeSession?.mode,
+      activeSession?.questions.length,
+      activeTab,
+      isGenericPlayer,
+      isGuest,
+      selectedQuestionScope,
+      view
+    ]
+  );
+
+  useNavigationTelemetry({
+    activeTab,
+    isGenericPlayer,
+    isGuest,
+    view
+  });
 
   useLayoutEffect(() => {
     const scrollRoot = document.scrollingElement;
@@ -133,8 +178,17 @@ const PracticeAppShell: React.FC = () => {
   return (
     <div className={`min-h-[100dvh] text-slate-900 ${shellBackgroundClass}`}>
       {view !== 'quiz' && <TopBar section={topBarSection} />}
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col">
-        <main className={`flex flex-1 flex-col px-4 pb-8 ${mainTopPadding} sm:px-6 lg:px-8 ${view === 'home' ? 'pb-28' : ''}`}>
+      <div className="flex min-h-[100dvh] w-full flex-col px-3 sm:px-5 lg:px-5 xl:px-6 2xl:px-8">
+        <div className={`flex flex-1 flex-col ${showDesktopRail ? 'xl:grid xl:grid-cols-[92px_minmax(0,1fr)] xl:gap-5 2xl:grid-cols-[98px_minmax(0,1fr)] 2xl:gap-6' : ''}`}>
+          {showDesktopRail ? (
+            <BottomDock
+              activeTab={activeTab}
+              onChangeTab={setActiveTab}
+              variant={isGenericPlayer ? 'generic' : 'default'}
+            />
+          ) : null}
+
+          <main className={`flex flex-1 flex-col px-1 pb-8 ${mainTopPadding} sm:px-2 lg:px-2 xl:px-0 ${view === 'home' ? 'pb-28 xl:pb-12' : ''}`}>
           {syncError && view === 'home' ? (
             <div className="mx-auto mb-4 w-full max-w-4xl rounded-[1.2rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
               {syncError}
@@ -193,129 +247,132 @@ const PracticeAppShell: React.FC = () => {
           <Suspense fallback={<FullscreenLoader label="Cargando modulo" />}>
             {!loadingQuestions && !questionsError && (isGuest || questionsCount > 0) ? (
               <div key={navigationScrollKey} className={contentEnterClass}>
-                {view === 'home' ? (
-                  isGuest ? (
-                    <GuestDashboardScreen
-                      remainingBlocks={guestBlocksRemaining}
-                      maxBlocks={guestMaxBlocks}
-                      loading={loadingQuestions}
-                      onStart={startGuest}
-                      onExit={() => void handleSignOut()}
-                    />
-                  ) : isGenericPlayer ? (
-                    <GenericDashboardScreen
-                      activeTab={activeTab}
-                      identity={identity}
-                      profile={profile}
-                      recentSessions={recentSessions}
-                      weakQuestionCount={weakQuestions.length}
-                      questionScope={selectedQuestionScope}
-                      onQuestionScopeChange={handleQuestionScopeChange}
-                      onStartSimple={startGenericRecommended}
-                      onStartRandom={startRandom}
-                      onStartWeakReview={startWeakReview}
-                      onStartFromBeginning={startFromBeginning}
-                      onSignOut={() => void handleSignOut()}
-                    />
-                  ) : (
-                    <DashboardScreen
-                      activeTab={activeTab}
-                      identity={identity}
-                      examTarget={examTarget}
-                      examTargetError={examTargetError}
-                      savingExamTarget={savingExamTarget}
-                      learningDashboard={learningDashboard}
-                      coachPlan={coachPlan}
-                      pressureInsights={pressureInsights}
-                      profile={profile}
-                      recentSessions={recentSessions}
-                      questionsCount={questionsCount}
-                      totalBatches={totalBatches}
-                      batchSize={PRACTICE_BATCH_SIZE}
-                      recommendedBatchNumber={recommendedBatchNumber}
-                      weakQuestions={weakQuestions}
-                      weakCategories={weakCategories}
-                      questionScope={selectedQuestionScope}
-                      onQuestionScopeChange={handleQuestionScopeChange}
-                      onStartRecommended={startRecommended}
-                      onStartSimulacro={startSimulacro}
-                      onStartAntiTrap={startAntiTrap}
-                      onStartMixed={startMixed}
-                      onStartRandom={startRandom}
-                      onStartFromBeginning={startFromBeginning}
-                      onStartWeakReview={startWeakReview}
-                      onReloadQuestions={() => void reloadPracticeData()}
-                      onSaveExamTarget={(payload) => void handleSaveExamTarget(payload)}
-                      onSignOut={() => void handleSignOut()}
-                    />
-                  )
-                ) : null}
+                <ScreenTelemetryBoundary
+                  key={screenTelemetryKey}
+                  screen={screenTelemetryKey}
+                  meta={screenTelemetryMeta}
+                >
+                  {view === 'home' ? (
+                    isGuest ? (
+                      <GuestDashboardScreen
+                        remainingBlocks={guestBlocksRemaining}
+                        maxBlocks={guestMaxBlocks}
+                        loading={loadingQuestions}
+                        onStart={startGuest}
+                        onExit={() => void handleSignOut()}
+                      />
+                    ) : isGenericPlayer ? (
+                      <GenericDashboardScreen
+                        activeTab={activeTab}
+                        identity={identity}
+                        profile={profile}
+                        recentSessions={recentSessions}
+                        weakQuestionCount={weakQuestions.length}
+                        questionScope={selectedQuestionScope}
+                        onQuestionScopeChange={handleQuestionScopeChange}
+                        onStartSimple={startGenericRecommended}
+                        onStartRandom={startRandom}
+                        onStartWeakReview={startWeakReview}
+                        onStartFromBeginning={startFromBeginning}
+                        onSignOut={() => void handleSignOut()}
+                      />
+                    ) : (
+                      <DashboardScreen
+                        activeTab={activeTab}
+                        identity={identity}
+                        examTarget={examTarget}
+                        examTargetError={examTargetError}
+                        savingExamTarget={savingExamTarget}
+                        learningDashboard={learningDashboard}
+                        learningDashboardV2={learningDashboardV2}
+                        coachPlan={coachPlan}
+                        pressureInsights={pressureInsights}
+                        pressureInsightsV2={pressureInsightsV2}
+                        profile={profile}
+                        recentSessions={recentSessions}
+                        questionsCount={questionsCount}
+                        totalBatches={totalBatches}
+                        batchSize={PRACTICE_BATCH_SIZE}
+                        recommendedBatchNumber={recommendedBatchNumber}
+                        weakQuestions={weakQuestions}
+                        weakCategories={weakCategories}
+                        questionScope={selectedQuestionScope}
+                        onQuestionScopeChange={handleQuestionScopeChange}
+                        onStartRecommended={startRecommended}
+                        onStartSimulacro={startSimulacro}
+                        onStartAntiTrap={startAntiTrap}
+                        onStartMixed={startMixed}
+                        onStartRandom={startRandom}
+                        onStartFromBeginning={startFromBeginning}
+                        onStartWeakReview={startWeakReview}
+                        onReloadQuestions={() => void reloadPracticeData()}
+                        onSaveExamTarget={(payload) => void handleSaveExamTarget(payload)}
+                        onSignOut={() => void handleSignOut()}
+                      />
+                    )
+                  ) : null}
 
-                {view === 'quiz' && currentQuestion && activeSession ? (
-                  <div>
-                    <QuizScreen
-                      mode={activeSession.mode}
-                      title={activeSession.title}
-                      subtitle={activeSession.subtitle}
-                      feedbackMode={activeSession.feedbackMode}
-                      startedAt={activeSession.startedAt}
-                      timeLimitSeconds={activeSession.timeLimitSeconds}
-                      question={currentQuestion}
-                      questionIndex={currentQuestionIndex}
-                      totalQuestions={activeSession.questions.length}
-                      batchNumber={activeSession.batchNumber}
-                      totalBatches={activeSession.totalBatches}
-                      questionScope={activeSession.questionScope ?? selectedQuestionScope}
-                      simplified={isGuest || isGenericPlayer}
-                      showCompactProgress={isGenericPlayer}
-                      answers={answers}
-                      onAnswer={handleAnswer}
-                      onEndSession={handleEndSessionEarly}
-                      onTimeExpired={handleSimulacroTimeExpired}
-                    />
-                  </div>
-                ) : null}
+                  {view === 'quiz' && currentQuestion && activeSession ? (
+                    <div>
+                      <QuizScreen
+                        mode={activeSession.mode}
+                        title={activeSession.title}
+                        subtitle={activeSession.subtitle}
+                        feedbackMode={activeSession.feedbackMode}
+                        startedAt={activeSession.startedAt}
+                        timeLimitSeconds={activeSession.timeLimitSeconds}
+                        question={currentQuestion}
+                        questionIndex={currentQuestionIndex}
+                        totalQuestions={activeSession.questions.length}
+                        batchNumber={activeSession.batchNumber}
+                        totalBatches={activeSession.totalBatches}
+                        questionScope={activeSession.questionScope ?? selectedQuestionScope}
+                        simplified={isGuest || isGenericPlayer}
+                        showCompactProgress={isGenericPlayer}
+                        answers={answers}
+                        onAnswer={handleAnswer}
+                        onEndSession={handleEndSessionEarly}
+                        onTimeExpired={handleSimulacroTimeExpired}
+                      />
+                    </div>
+                  ) : null}
 
-                {view === 'review' && activeSession ? (
-                  <div>
-                    <PracticeReviewScreen
-                      answers={answers}
-                      batchNumber={activeSession.batchNumber}
-                      totalBatches={activeSession.totalBatches}
-                      sessionMode={activeSession.mode}
-                      sessionStartedAt={activeSession.startedAt}
-                      sessionQuestionCount={activeSession.questions.length}
-                      timeLimitSeconds={activeSession.timeLimitSeconds}
-                      hasNextBatch={
-                        isGuest
-                          ? guestBlocksRemaining > 0
-                          : activeSession.mode === 'standard' &&
-                            activeSession.nextStandardBatchStartIndex !== null &&
-                            activeSession.nextStandardBatchStartIndex > 0
-                      }
-                      title={activeSession.title}
-                      subtitle={activeSession.subtitle}
-                      continueLabel={activeSession.continueLabel}
-                      showRetry={!isGuest && !isGenericPlayer}
-                      simplified={isGuest || isGenericPlayer}
-                      onRetryBatch={handleRetrySession}
-                      onContinue={handleContinueAfterReview}
-                      onBackToStart={goHome}
-                    />
-                  </div>
-                ) : null}
+                  {view === 'review' && activeSession ? (
+                    <div>
+                      <PracticeReviewScreen
+                        answers={answers}
+                        batchNumber={activeSession.batchNumber}
+                        totalBatches={activeSession.totalBatches}
+                        sessionId={activeSession.id}
+                        curriculum={profile?.curriculum}
+                        sessionMode={activeSession.mode}
+                        sessionStartedAt={activeSession.startedAt}
+                        sessionQuestionCount={activeSession.questions.length}
+                        timeLimitSeconds={activeSession.timeLimitSeconds}
+                        hasNextBatch={
+                          isGuest
+                            ? guestBlocksRemaining > 0
+                            : activeSession.mode === 'standard' &&
+                              activeSession.nextStandardBatchStartIndex !== null &&
+                              activeSession.nextStandardBatchStartIndex > 0
+                        }
+                        title={activeSession.title}
+                        subtitle={activeSession.subtitle}
+                        continueLabel={activeSession.continueLabel}
+                        showRetry={!isGuest && !isGenericPlayer}
+                        simplified={isGuest || isGenericPlayer}
+                        onRetryBatch={handleRetrySession}
+                        onContinue={handleContinueAfterReview}
+                        onBackToStart={goHome}
+                      />
+                    </div>
+                  ) : null}
+                </ScreenTelemetryBoundary>
               </div>
             ) : null}
           </Suspense>
-        </main>
-
-        {view === 'home' && !isGuest ? (
-          <BottomDock
-            activeTab={activeTab}
-            onChangeTab={setActiveTab}
-            variant={isGenericPlayer ? 'generic' : 'default'}
-          />
-        ) : null}
+          </main>
+        </div>
       </div>
     </div>
   );
