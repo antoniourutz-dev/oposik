@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SIMULACRO_BATCH_SIZE } from '../../practiceConfig';
 import type { DashboardContentProps } from './types';
@@ -23,13 +23,21 @@ import {
   NormativeRadar
 } from './shared';
 import { StudyCalendar as Calendar } from './StudyCalendar';
-import { 
-  EvolutionAreaChart, 
-  DistributionDonutChart, 
-  PerformanceBarChart,
-  KPIPulseCard,
-  BehavioralRadarChart
-} from './VisualSuite';
+type VisualSuiteModule = typeof import('./VisualSuite');
+
+const ChartsFallback = () => (
+  <div className="flex h-40 items-center justify-center rounded-2xl bg-slate-50">
+    <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-400" />
+  </div>
+);
+
+function useVisualSuite(): VisualSuiteModule | null {
+  const [mod, setMod] = useState<VisualSuiteModule | null>(null);
+  useEffect(() => {
+    void import('./VisualSuite').then(setMod);
+  }, []);
+  return mod;
+}
 import { 
   Activity, 
   Target, 
@@ -104,6 +112,8 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
   onReloadQuestions,
   weakCategories
 }) => {
+  const charts = useVisualSuite();
+
   const accuracy =
     profile && profile.totalAnswered > 0
       ? Math.round((profile.totalCorrect / profile.totalAnswered) * 100)
@@ -483,7 +493,7 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
                     </div>
                  </div>
                  <div className="h-[280px] lg:h-[340px] w-full">
-                    <EvolutionAreaChart data={trendData} />
+                    {charts ? <charts.EvolutionAreaChart data={trendData} /> : <ChartsFallback />}
                  </div>
               </section>
            </div>
@@ -492,50 +502,25 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
            <div className="space-y-8 lg:col-span-4">
               
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                 <KPIPulseCard 
-                   label="Aptitud Media" 
-                   value={observedAccuracyLabel} 
-                   trend={2} 
-                   icon={<Target size={22} />} 
-                 />
-                 <KPIPulseCard 
-                   label="Cobertura" 
-                   value={formatPercent(coverageRate)} 
-                   trend={-1} 
-                   icon={<ShieldCheck size={22} />} 
-                 />
-                 <KPIPulseCard 
-                   label="Backlog Review" 
-                   value={String(backlogCountResolved)} 
-                   trend={-5} 
-                   icon={<Clock size={22} />} 
-                 />
+                 {charts ? <charts.KPIPulseCard label="Aptitud Media" value={observedAccuracyLabel} trend={2} icon={<Target size={22} />} /> : <ChartsFallback />}
+                 {charts ? <charts.KPIPulseCard label="Cobertura" value={formatPercent(coverageRate)} trend={-1} icon={<ShieldCheck size={22} />} /> : <ChartsFallback />}
+                 {charts ? <charts.KPIPulseCard label="Backlog Review" value={String(backlogCountResolved)} trend={-5} icon={<Clock size={22} />} /> : <ChartsFallback />}
                  <div className="hidden lg:block">
                      <div className="grid gap-4 xl:grid-cols-2">
-                        <KPIPulseCard 
-                           label="Probabilidad Élite" 
-                           value={`${Math.round((resolvedExamReadinessRate ?? 0) * 100)}%`} 
-                           trend={+4.2} 
-                           icon={<Zap size={22} />} 
-                        />
-                        <KPIPulseCard 
-                           label="Carga Cognitiva" 
-                           value="Media" 
-                           trend={-1.5} 
-                           icon={<Activity size={22} />} 
-                        />
+                        {charts ? <charts.KPIPulseCard label="Probabilidad Élite" value={`${Math.round((resolvedExamReadinessRate ?? 0) * 100)}%`} trend={+4.2} icon={<Zap size={22} />} /> : <ChartsFallback />}
+                        {charts ? <charts.KPIPulseCard label="Carga Cognitiva" value="Media" trend={-1.5} icon={<Activity size={22} />} /> : <ChartsFallback />}
                      </div>
 
                      <SectionCard title="Huella Cognitiva" hint="Análisis 360º de tu comportamiento" className="mt-8">
                         <div className="mt-6 flex flex-col items-center gap-6 lg:flex-row">
                            <div className="flex-1 w-full min-h-[300px]">
-                              <BehavioralRadarChart data={[
+                              {charts ? <charts.BehavioralRadarChart data={[
                                  { subject: 'Acierto', value: toPercentNumber(resolvedExamReadinessRate) },
                                  { subject: 'Resistencia', value: 82 },
                                  { subject: 'Velocidad', value: 68 },
                                  { subject: 'Estabilidad', value: 89 },
                                  { subject: 'Precisión', value: 74 },
-                              ]} />
+                              ]} /> : <ChartsFallback />}
                            </div>
                            <div className="lg:w-48 space-y-4">
                               <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
@@ -564,7 +549,7 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
               <h3 className="text-xl font-black text-slate-950 mb-8">Distribución de Madurez</h3>
               <div className="flex flex-col items-center gap-8">
                  <div className="w-full max-w-[240px]">
-                    <DistributionDonutChart data={masteryDonutData} />
+                    {charts ? <charts.DistributionDonutChart data={masteryDonutData} /> : <ChartsFallback />}
                  </div>
                  <div className="grid w-full gap-3">
                     {masteryDonutData.map((d, i) => (
@@ -590,7 +575,7 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
                  <button className="hidden lg:block text-xs font-black uppercase text-quantia-pink">Ver desglose completo</button>
               </div>
               <div className="h-[280px] w-full">
-                 <PerformanceBarChart data={performanceBarData} />
+                 {charts ? <charts.PerformanceBarChart data={performanceBarData} /> : <ChartsFallback />}
               </div>
            </section>
         </div>

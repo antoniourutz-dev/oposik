@@ -8,6 +8,7 @@ import { PRACTICE_BATCH_SIZE } from '../practiceConfig';
 import {
   clearSupabaseAuthStorage,
   getSafeSupabaseSession,
+  hasLocalAuthToken,
   supabase
 } from '../supabaseClient';
 import {
@@ -29,7 +30,7 @@ const GUEST_IDENTITY: AccountIdentity = {
 };
 
 export const usePracticeApp = () => {
-  const [authReady, setAuthReady] = useState(false);
+  const [authReady, setAuthReady] = useState(() => !hasLocalAuthToken());
   const [session, setSession] = useState<Session | null>(null);
   const [activeTab, setActiveTab] = useState<MainTab>('home');
   const [isGuest, setIsGuest] = useState(false);

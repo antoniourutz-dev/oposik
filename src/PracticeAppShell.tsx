@@ -1,5 +1,17 @@
 import React, { Suspense, lazy, useLayoutEffect, useMemo } from 'react';
-import { Database, LoaderCircle } from 'lucide-react';
+const SpinnerSVG: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+  </svg>
+);
+
+const DatabaseSVG: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+    <path d="M3 5V19A9 3 0 0 0 21 19V5"/>
+    <path d="M3 12A9 3 0 0 0 21 12"/>
+  </svg>
+);
 import BottomDock from './components/BottomDock';
 import TopBar from './components/TopBar';
 import { usePracticeApp } from './hooks/usePracticeApp';
@@ -27,7 +39,7 @@ const FullscreenLoader: React.FC<{ label: string }> = ({ label }) => (
           Quantia
         </span>
         <div className="mx-auto mt-5 flex h-14 w-14 items-center justify-center rounded-[1.2rem] border border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.22))] text-[#7cb6e8] shadow-[0_18px_30px_-22px_rgba(141,147,242,0.22)]">
-          <LoaderCircle className="h-8 w-8 animate-spin" />
+          <SpinnerSVG className="h-8 w-8 animate-spin" />
         </div>
       </div>
       <p className="relative mt-4 text-sm font-black uppercase tracking-[0.16em] text-slate-600">
@@ -207,7 +219,7 @@ const PracticeAppShell: React.FC = () => {
                   </span>
                 </div>
                 <div className="relative mx-auto mt-5 flex h-16 w-16 items-center justify-center rounded-[1.35rem] border border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.22))] text-[#7cb6e8] shadow-[0_20px_34px_-24px_rgba(141,147,242,0.22)]">
-                  <LoaderCircle className="h-9 w-9 animate-spin" />
+                  <SpinnerSVG className="h-9 w-9 animate-spin" />
                 </div>
                 <p className="relative mt-5 text-sm font-black uppercase tracking-[0.22em] text-slate-600">
                   Cargando preguntas
@@ -233,7 +245,7 @@ const PracticeAppShell: React.FC = () => {
           {!loadingQuestions && !questionsError && !isGuest && questionsCount === 0 ? (
             <div className="mx-auto flex w-full max-w-3xl flex-1 items-center py-10">
               <div className="w-full rounded-[2rem] border border-slate-200 bg-white/85 p-8 shadow-[0_30px_70px_-35px_rgba(15,23,42,0.32)] backdrop-blur">
-                <Database className="h-12 w-12 text-slate-400" />
+                <DatabaseSVG className="h-12 w-12 text-slate-400" />
                 <h2 className="mt-5 text-2xl font-black text-slate-900">
                   No hay preguntas visibles todavia
                 </h2>

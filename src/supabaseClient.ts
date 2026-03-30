@@ -6,6 +6,25 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
 const supabaseAuthStorageKey = `sb-${projectRef}-auth-token`;
 
+/**
+ * Returns true if there is a locally-stored auth token that *looks* valid,
+ * without making any network request. Used as a fast hint to decide the
+ * initial UI state before getSession() resolves.
+ */
+export const hasLocalAuthToken = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = window.localStorage.getItem(supabaseAuthStorageKey);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    const expiresAt: number | undefined = parsed?.expires_at ?? parsed?.expiresAt;
+    if (expiresAt !== undefined && expiresAt * 1000 < Date.now()) return false;
+    return Boolean(parsed?.access_token ?? parsed?.accessToken);
+  } catch {
+    return false;
+  }
+};
+
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
