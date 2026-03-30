@@ -2,8 +2,8 @@ import type { PracticeQuestionScopeFilter } from '../practiceTypes';
 
 export const GUEST_MAX_BLOCKS = 2;
 
-const GUEST_ACCESS_STORAGE_KEY = 'oposik_guest_preview_v1';
-const QUESTION_SCOPE_STORAGE_KEY = 'oposik_question_scope_v1';
+const GUEST_ACCESS_STORAGE_KEY = 'quantia_guest_preview_v1';
+const QUESTION_SCOPE_STORAGE_KEY = 'quantia_question_scope_v1';
 
 const clampGuestBlocksUsed = (value: unknown) => {
   const numeric = typeof value === 'number' ? value : Number(value);

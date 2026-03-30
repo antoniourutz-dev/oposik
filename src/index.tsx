@@ -5,7 +5,7 @@ import App from './App';
 import './index.css';
 import { queryClient } from './queryClient';
 
-const CHUNK_RELOAD_KEY = 'korrika_chunk_reload_attempted';
+const CHUNK_RELOAD_KEY = 'quantia_chunk_reload_attempted';
 
 window.addEventListener('vite:preloadError', (event) => {
   if (sessionStorage.getItem(CHUNK_RELOAD_KEY) === '1') {

@@ -14,7 +14,7 @@ const cardVariants = cva(
         premium:
           "border-[#bdd3f1]/60 bg-[linear-gradient(135deg,rgba(255,255,255,0.95)_0%,rgba(240,247,255,0.9)_100%)] shadow-[0_24px_60px_-40px_rgba(141,147,242,0.15)]",
         colored:
-          "border-[#c8d8fb]/70 korrika-bg-gradient text-white shadow-[0_22px_52px_-42px_rgba(141,147,242,0.22)]",
+          "border-[#c8d8fb]/70 quantia-bg-gradient text-white shadow-[0_22px_52px_-42px_rgba(141,147,242,0.22)]",
       },
       p: {
         none: "p-0",

@@ -68,7 +68,7 @@ const jsonResponse = (status: number, body: Record<string, unknown>) =>
 
 const normalizeUsername = (value: string) => value.trim().toLowerCase();
 const isValidUsername = (value: string) => USERNAME_RE.test(normalizeUsername(value));
-const buildInternalEmail = (username: string) => `${username}@oposik.app`;
+const buildInternalEmail = (username: string) => `${username}@quantia.app`;
 const parsePlayerMode = (value: unknown): PlayerMode | null => {
   const normalized = String(value ?? '').trim().toLowerCase();
   return VALID_PLAYER_MODES.includes(normalized as PlayerMode)

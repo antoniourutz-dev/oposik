@@ -107,7 +107,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
               transition={{ delay: 0.3 }}
             >
               <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
-                Oposik<span className="text-indigo-400">App</span>
+                Quantia<span className="text-indigo-400">App</span>
               </h1>
               <p className="mt-3 text-sm font-bold uppercase tracking-[0.3em] text-indigo-300/60">
                 Data-Driven Excellence

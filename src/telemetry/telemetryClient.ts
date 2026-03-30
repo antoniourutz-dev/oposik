@@ -19,7 +19,7 @@ export type TelemetryEvent = {
 
 declare global {
   interface Window {
-    __oposikTelemetryBuffer?: TelemetryEvent[];
+    __quantiaTelemetryBuffer?: TelemetryEvent[];
   }
 }
 
@@ -42,7 +42,7 @@ const sessionId = (() => {
     return crypto.randomUUID();
   }
 
-  return `oposik-${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
+  return `quantia-${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
 })();
 
 const telemetryEnabled = !isBrowser || sampleRate >= 1 ? true : Math.random() <= sampleRate;
@@ -84,10 +84,10 @@ const sanitizeMeta = (meta?: TelemetryMeta) => {
 
 const getBuffer = () => {
   if (!isBrowser) return [] as TelemetryEvent[];
-  if (!window.__oposikTelemetryBuffer) {
-    window.__oposikTelemetryBuffer = [];
+  if (!window.__quantiaTelemetryBuffer) {
+    window.__quantiaTelemetryBuffer = [];
   }
-  return window.__oposikTelemetryBuffer;
+  return window.__quantiaTelemetryBuffer;
 };
 
 const scheduleFlush = () => {

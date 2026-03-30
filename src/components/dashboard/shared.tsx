@@ -468,7 +468,7 @@ export const RangeMeter: React.FC<{
     <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)] sm:px-4">
       <div className="mb-2.5 flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
         <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <span className="h-2 w-2 rounded-full korrika-bg-gradient" />
+          <span className="h-2 w-2 rounded-full quantia-bg-gradient" />
           actual
         </span>
         <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
@@ -645,7 +645,7 @@ export const StudyActionCard: React.FC<{
       <span
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] ${
           tone === 'primary'
-            ? 'korrika-bg-gradient text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.3)]'
+            ? 'quantia-bg-gradient text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.3)]'
             : 'bg-slate-100 text-slate-600'
         }`}
       >
@@ -738,9 +738,9 @@ export const DashboardMetricTile: React.FC<{
   trendLabel?: string;
   accent?: boolean;
 }> = ({ label, value, caption, icon, trend, trendLabel, accent }) => (
-  <div className={`group flex flex-col rounded-2xl border ${accent ? 'border-korrika-pink/10 bg-white/60 shadow-[0_16px_40px_-24px_rgba(242,107,173,0.12)]' : 'border-slate-100/80 bg-white/40 shadow-[0_8px_20px_-12px_rgba(15,23,42,0.08)]'} p-5 transition-all duration-300 hover:border-slate-200 hover:bg-white`}>
+  <div className={`group flex flex-col rounded-2xl border ${accent ? 'border-quantia-pink/10 bg-white/60 shadow-[0_16px_40px_-24px_rgba(242,107,173,0.12)]' : 'border-slate-100/80 bg-white/40 shadow-[0_8px_20px_-12px_rgba(15,23,42,0.08)]'} p-5 transition-all duration-300 hover:border-slate-200 hover:bg-white`}>
     <div className="flex items-center justify-between gap-3">
-       <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all group-hover:scale-110 ${accent ? 'bg-korrika-pink/10 text-korrika-pink' : 'bg-slate-50 text-slate-400'}`}>
+       <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all group-hover:scale-110 ${accent ? 'bg-quantia-pink/10 text-quantia-pink' : 'bg-slate-50 text-slate-400'}`}>
          {icon || <Activity size={20} />}
        </div>
        {trend !== undefined && (

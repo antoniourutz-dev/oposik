@@ -4,13 +4,13 @@
 @theme {
     --font-outfit: 'Outfit', 'Inter', sans-serif;
 
-    /* Brand ink (near-black, used where "korrika-pink" is referenced in legacy code) */
-    --color-korrika-pink: #0f172a;
+    /* Brand ink (near-black, used where "quantia-pink" is referenced in legacy code) */
+    --color-quantia-pink: #0f172a;
 
     /* Brand gradient palette */
-    --color-korrika-gradient-start: #7cb6e8;
-    --color-korrika-gradient-end: #8d93f2;
-    --color-korrika-glow: rgba(141, 147, 242, 0.2);
+    --color-quantia-gradient-start: #7cb6e8;
+    --color-quantia-gradient-end: #8d93f2;
+    --color-quantia-glow: rgba(141, 147, 242, 0.2);
 
     /* Brand border & surface tokens */
     --color-brand-border: #c8d8fb;
@@ -242,25 +242,25 @@ body {
     box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.18);
 }
 
-@utility korrika-pink {
-    color: var(--color-korrika-pink);
+@utility quantia-pink {
+    color: var(--color-quantia-pink);
 }
 
-@utility korrika-bg-pink {
-    background-color: var(--color-korrika-pink);
+@utility quantia-bg-pink {
+    background-color: var(--color-quantia-pink);
 }
 
 /* Brand gradient utilities — compose with your own shadow classes */
-@utility korrika-bg-gradient {
-    background: linear-gradient(135deg, var(--color-korrika-gradient-start) 0%, var(--color-korrika-gradient-end) 100%);
+@utility quantia-bg-gradient {
+    background: linear-gradient(135deg, var(--color-quantia-gradient-start) 0%, var(--color-quantia-gradient-end) 100%);
 }
 
 @utility brand-gradient-h {
-    background: linear-gradient(90deg, var(--color-korrika-gradient-start) 0%, var(--color-korrika-gradient-end) 100%);
+    background: linear-gradient(90deg, var(--color-quantia-gradient-start) 0%, var(--color-quantia-gradient-end) 100%);
 }
 
 @utility brand-gradient-clip {
-    background: linear-gradient(90deg, var(--color-korrika-gradient-start) 0%, var(--color-korrika-gradient-end) 100%);
+    background: linear-gradient(90deg, var(--color-quantia-gradient-start) 0%, var(--color-quantia-gradient-end) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

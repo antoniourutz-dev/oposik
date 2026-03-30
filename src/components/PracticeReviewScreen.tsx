@@ -768,7 +768,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                 disabled={incorrectCount === 0}
                 className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] transition-all duration-200 ${
                   reviewFilter === 'incorrect'
-                    ? 'korrika-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
+                    ? 'quantia-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
                     : 'text-slate-500 hover:bg-sky-50/80'
                 } ${incorrectCount === 0 ? 'cursor-not-allowed opacity-45 hover:bg-transparent' : ''}`}
               >
@@ -779,7 +779,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                 onClick={() => setReviewFilter('all')}
                 className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] transition-all duration-200 ${
                   reviewFilter === 'all'
-                    ? 'korrika-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
+                    ? 'quantia-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
                     : 'text-slate-500 hover:bg-sky-50/80'
                 }`}
               >
@@ -866,7 +866,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
             <button
               type="button"
               onClick={onContinue}
-              className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/70 korrika-bg-gradient px-2.5 py-2 text-white shadow-[0_16px_28px_-18px_rgba(141,147,242,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98] xl:min-h-[88px] xl:flex-col xl:gap-2"
+              className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/70 quantia-bg-gradient px-2.5 py-2 text-white shadow-[0_16px_28px_-18px_rgba(141,147,242,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98] xl:min-h-[88px] xl:flex-col xl:gap-2"
             >
               <ArrowRight size={15} />
               <span className="text-[10px] font-extrabold uppercase tracking-[0.1em]">

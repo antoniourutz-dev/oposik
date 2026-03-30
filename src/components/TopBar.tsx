@@ -7,7 +7,7 @@ type TopBarProps = {
   section?: string;
 };
 
-const TopBar: React.FC<TopBarProps> = ({ title = 'Oposik', section }) => {
+const TopBar: React.FC<TopBarProps> = ({ title = 'Quantia', section }) => {
   const isIntegrated = !section;
 
   return (

@@ -52,7 +52,7 @@ Deno.serve(async (request) => {
       .maybeSingle<{ user_id: string; internal_email: string }>();
 
     const internalEmail =
-      principal?.internal_email || `missing_${crypto.randomUUID()}@auth.oposik.invalid`;
+      principal?.internal_email || `missing_${crypto.randomUUID()}@auth.quantia.invalid`;
 
     const { data, error } = await authClient.auth.signInWithPassword({
       email: internalEmail,

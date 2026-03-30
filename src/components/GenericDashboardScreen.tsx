@@ -219,7 +219,7 @@ const GenericDashboardScreen: React.FC<GenericDashboardScreenProps> = ({
                 Guiado
               </span>
             </span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#c4d7fb] korrika-bg-gradient text-white">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#c4d7fb] quantia-bg-gradient text-white">
               <ArrowRight size={17} />
             </span>
           </button>

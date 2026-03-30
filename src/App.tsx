@@ -10,8 +10,8 @@ const BootLoader: React.FC = () => (
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_24%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_38%)]" />
       <div className="relative">
         <span className="inline-flex items-center gap-2 rounded-full border border-[#d7e4fb] bg-white/86 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[0_12px_24px_-22px_rgba(141,147,242,0.18)]">
-          <span className="h-1.5 w-1.5 rounded-full korrika-bg-gradient" />
-          Oposik
+          <span className="h-1.5 w-1.5 rounded-full quantia-bg-gradient" />
+          Quantia
         </span>
         <span className="mx-auto mt-5 block h-12 w-12 animate-spin rounded-full border-[3px] border-[#d7e4fb] border-t-[#7cb6e8] border-r-[#8d93f2] shadow-[0_18px_30px_-22px_rgba(141,147,242,0.24)]" />
       </div>

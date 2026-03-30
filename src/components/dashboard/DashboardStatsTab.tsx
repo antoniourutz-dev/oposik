@@ -415,7 +415,7 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
                     Performance <span className="text-slate-400">Hub</span>
                  </h1>
                  <p className="text-[13px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                    Insights en tiempo real por Oposik AI
+                    Insights en tiempo real por Quantia AI
                  </p>
               </div>
            </div>
@@ -425,7 +425,7 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
                  <CalendarIcon size={14} className="text-slate-400" />
                  <span className="text-xs font-black text-slate-900">12 Abr 2026</span>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-korrika-pink text-white shadow-lg shadow-korrika-pink/30">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-quantia-pink text-white shadow-lg shadow-quantia-pink/30">
                  <Zap size={18} />
               </div>
            </div>
@@ -468,7 +468,7 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
                        </div>
                     </div>
                  </div>
-                 <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-korrika-pink/10 blur-[80px]" />
+                 <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-quantia-pink/10 blur-[80px]" />
               </section>
 
               {/* Evolution Chart (Hidden/Simplified on mobile) */}
@@ -587,7 +587,7 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
                     <h3 className="text-xl font-black text-slate-950">Acierto por Familia</h3>
                     <p className="mt-1 text-xs font-bold text-slate-400 uppercase tracking-widest">Temas con mayor desviación</p>
                  </div>
-                 <button className="hidden lg:block text-xs font-black uppercase text-korrika-pink">Ver desglose completo</button>
+                 <button className="hidden lg:block text-xs font-black uppercase text-quantia-pink">Ver desglose completo</button>
               </div>
               <div className="h-[280px] w-full">
                  <PerformanceBarChart data={performanceBarData} />

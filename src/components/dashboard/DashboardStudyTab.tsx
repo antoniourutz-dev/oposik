@@ -149,7 +149,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
         <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-10">
           <div className="flex-1">
              <div className="flex items-center gap-2.5 mb-5">
-               <span className="flex h-9 w-9 items-center justify-center rounded-2xl korrika-bg-gradient text-white shadow-lg ring-4 ring-white">
+               <span className="flex h-9 w-9 items-center justify-center rounded-2xl quantia-bg-gradient text-white shadow-lg ring-4 ring-white">
                  <Wand2 size={18} />
                </span>
                <span className="text-[12px] font-black uppercase tracking-[0.2em] text-sky-600">Sesión recomendada</span>

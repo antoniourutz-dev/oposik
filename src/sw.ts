@@ -50,18 +50,18 @@ precacheAndRoute(
 
 registerRoute(
   ({ url, request }) => url.origin === self.location.origin && request.destination === 'script',
-  new StaleWhileRevalidate({ cacheName: 'oposik-scripts' })
+  new StaleWhileRevalidate({ cacheName: 'quantia-scripts' })
 );
 
 registerRoute(
   ({ url, request }) => url.origin === self.location.origin && request.destination === 'style',
-  new StaleWhileRevalidate({ cacheName: 'oposik-styles' })
+  new StaleWhileRevalidate({ cacheName: 'quantia-styles' })
 );
 
 registerRoute(
   ({ url, request }) =>
     url.origin === self.location.origin && request.destination === 'image',
-  new CacheFirst({ cacheName: 'oposik-images' })
+  new CacheFirst({ cacheName: 'quantia-images' })
 );
 
 const parseReminderPayload = (raw: string | null): ReminderNotificationPayload => {
@@ -82,7 +82,7 @@ self.addEventListener('push', (event) => {
   const title = payload.title?.trim() || 'Tienes preguntas pendientes';
   const body =
     payload.body?.trim() ||
-    'Entra en Oposik y continua con tu siguiente bloque de practica.';
+    'Entra en Quantia y continua con tu siguiente bloque de practica.';
   const url =
     typeof payload.data?.url === 'string' && payload.data.url
       ? payload.data.url
@@ -91,7 +91,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
-      tag: payload.tag || 'oposikapp-practice-reminder',
+      tag: payload.tag || 'quantia-practice-reminder',
       renotify: false,
       icon: payload.icon || DEFAULT_NOTIFICATION_ICON,
       badge: payload.badge || DEFAULT_NOTIFICATION_BADGE,

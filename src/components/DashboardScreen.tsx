@@ -203,7 +203,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
            <button
               type="button"
               onClick={onStartRecommended}
-              className="order-1 xl:order-2 group relative flex flex-col justify-center overflow-hidden rounded-[2.5rem] korrika-bg-gradient p-7 text-left text-white shadow-[0_32px_64px_-24px_rgba(141,147,242,0.45)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_45px_100px_-35px_rgba(141,147,242,0.55)] active:translate-y-0 active:scale-[0.98]"
+              className="order-1 xl:order-2 group relative flex flex-col justify-center overflow-hidden rounded-[2.5rem] quantia-bg-gradient p-7 text-left text-white shadow-[0_32px_64px_-24px_rgba(141,147,242,0.45)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_45px_100px_-35px_rgba(141,147,242,0.55)] active:translate-y-0 active:scale-[0.98]"
            >
               <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
               <div className="relative z-10 flex items-center justify-between w-full">
@@ -259,7 +259,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
         </div>
 
         {/* --- TIER 2: HERO VIEW (SUMMARY STATS) --- */}
-        <SectionCard className="relative overflow-hidden border-[#c8d8fb]/70 korrika-bg-gradient p-5 text-white shadow-[0_22px_52px_-42px_rgba(141,147,242,0.22)] sm:p-7 xl:p-10">
+        <SectionCard className="relative overflow-hidden border-[#c8d8fb]/70 quantia-bg-gradient p-5 text-white shadow-[0_22px_52px_-42px_rgba(141,147,242,0.22)] sm:p-7 xl:p-10">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/14 blur-3xl" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.14),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_42%)]" />
@@ -268,7 +268,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
             <div className="min-w-0 flex-1">
               <p className="inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-sky-50/88">
                 <span className="h-2 w-2 rounded-full bg-white/92 shadow-[0_0_0_4px_rgba(255,255,255,0.12)]" />
-                Coach Oposik Activo
+                Coach Quantia Activo
               </p>
               <h1 className="mt-2 text-[1.8rem] font-black leading-[1.1] tracking-[-0.04em] text-white sm:text-[2.2rem] xl:text-[3rem]">
                 {coachPlan.title}

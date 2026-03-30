@@ -438,7 +438,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                isDecisionVisible ? 'decision-soft-pulse' : ''
              }`}
            >
-             <div className="absolute inset-y-4 left-0 w-1.5 rounded-r-full korrika-bg-gradient opacity-85" />
+             <div className="absolute inset-y-4 left-0 w-1.5 rounded-r-full quantia-bg-gradient opacity-85" />
              <div className="relative z-10 mb-4 flex items-start justify-between gap-3 sm:mb-6">
                <div className="flex items-center gap-3">
                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600 shadow-sm sm:px-3 sm:py-1.5 sm:text-[10px]">
@@ -501,7 +501,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
               const isOtherSelected = selectedKey !== null && selectedKey !== key && !isCorrectOption;
               const isDeferredSelected = isDeferredMode && selectedKey === key;
               const feedbackAccentClass = isDeferredSelected
-                ? 'korrika-bg-gradient opacity-95'
+                ? 'quantia-bg-gradient opacity-95'
                 : isCorrectOption
                   ? 'bg-[linear-gradient(180deg,#34d399_0%,#10b981_100%)] opacity-95'
                   : isWrongSelected
@@ -578,7 +578,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                     className={`relative z-10 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.9rem] text-base font-extrabold sm:mt-1 sm:h-10 sm:w-10 sm:rounded-[1rem] sm:text-[1.02rem] xl:h-11 xl:w-11 xl:text-[1.08rem] ${
                       isDeferredMode
                         ? isDeferredSelected
-                          ? 'korrika-bg-gradient text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.45)]'
+                          ? 'quantia-bg-gradient text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.45)]'
                           : 'bg-[linear-gradient(135deg,rgba(125,182,232,0.18),rgba(141,147,242,0.18))] text-slate-700'
                         : isCorrectOption
                         ? 'bg-emerald-500 text-white shadow-[0_14px_24px_-18px_rgba(16,185,129,0.38)]'

@@ -192,7 +192,7 @@ const DashboardProfileTab: React.FC<DashboardContentProps> = ({
               <button
                 type="submit"
                 disabled={savingExamTarget}
-                className="inline-flex items-center justify-center rounded-[1rem] korrika-bg-gradient px-4 py-3 text-sm font-extrabold text-white shadow-[0_18px_30px_-24px_rgba(141,147,242,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_34px_-24px_rgba(141,147,242,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+                className="inline-flex items-center justify-center rounded-[1rem] quantia-bg-gradient px-4 py-3 text-sm font-extrabold text-white shadow-[0_18px_30px_-24px_rgba(141,147,242,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_34px_-24px_rgba(141,147,242,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 active:translate-y-0 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
               >
                 {savingExamTarget ? 'Guardando...' : 'Guardar configuracion'}
               </button>

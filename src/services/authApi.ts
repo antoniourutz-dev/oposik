@@ -14,7 +14,7 @@ const getLoginFunctionUrl = () =>
 
 const buildLegacyInternalEmail = (usernameInput: string) => {
   const normalized = usernameInput.trim().toLowerCase();
-  return normalized.includes('@') ? normalized : `${normalized}@oposik.app`;
+  return normalized.includes('@') ? normalized : `${normalized}@quantia.app`;
 };
 
 const canUseLegacyFallback =

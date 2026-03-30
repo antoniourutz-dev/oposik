@@ -10,7 +10,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-korrika-pink text-white shadow hover:bg-korrika-pink/90",
+          "bg-quantia-pink text-white shadow hover:bg-quantia-pink/90",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
@@ -20,7 +20,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         premium: 
-          "korrika-bg-gradient text-white shadow-[0_24px_60px_-34px_rgba(141,147,242,0.32)] hover:-translate-y-0.5 hover:shadow-[0_28px_60px_-34px_rgba(141,147,242,0.36)] active:translate-y-0 active:scale-[0.99] transition-all border border-white/20",
+          "quantia-bg-gradient text-white shadow-[0_24px_60px_-34px_rgba(141,147,242,0.32)] hover:-translate-y-0.5 hover:shadow-[0_28px_60px_-34px_rgba(141,147,242,0.36)] active:translate-y-0 active:scale-[0.99] transition-all border border-white/20",
       },
       size: {
         default: "h-9 px-4 py-2",

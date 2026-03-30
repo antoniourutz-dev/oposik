@@ -37,7 +37,7 @@ const QuestionScopePicker: React.FC<QuestionScopePickerProps> = ({
             onClick={() => onChange(option)}
             className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-100 ${
               isActive
-                ? 'korrika-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.3)]'
+                ? 'quantia-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.3)]'
                 : 'text-slate-500 hover:bg-sky-50/80'
             } ${compact ? 'min-w-[5.6rem]' : 'min-w-[6.1rem]'}`}
           >

@@ -5,8 +5,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const pwaManifest = {
-  name: 'Oposik',
-  short_name: 'Oposik',
+  name: 'Quantia',
+  short_name: 'Quantia',
   description: 'Practica oposiciones por bloques de 20 preguntas con estadisticas y repaso de errores.',
   start_url: '/',
   display: 'standalone' as const,

@@ -60,7 +60,7 @@ const signalSurfaceClassName: Record<TelemetrySignalLevel, string> = {
 
 const readTelemetryBuffer = () => {
   if (typeof window === 'undefined') return [] as TelemetryEvent[];
-  return [...(window.__oposikTelemetryBuffer ?? [])].reverse();
+  return [...(window.__quantiaTelemetryBuffer ?? [])].reverse();
 };
 
 const formatTimestamp = (value: string) => {
@@ -203,7 +203,7 @@ const AdminTelemetryPanel: React.FC = () => {
 
   const clearEvents = useCallback(() => {
     if (typeof window !== 'undefined') {
-      window.__oposikTelemetryBuffer = [];
+      window.__quantiaTelemetryBuffer = [];
     }
     setEvents([]);
   }, []);
