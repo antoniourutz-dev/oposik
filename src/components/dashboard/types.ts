@@ -20,11 +20,21 @@ export type DashboardExamTargetPayload = {
   dailyNewCapacity: number;
 };
 
+/** Sesión de práctica pausada en Inicio (vista home con `activeSession` en memoria). */
+export type HomePausedSessionSnapshot = {
+  totalQuestions: number;
+  currentQuestionIndex: number;
+};
+
 export type DashboardScreenProps = {
   activeTab: MainTab;
   identity: AccountIdentity;
   /** Catálogo de preguntas aún en carga: bloquea inicio de sesiones que dependen del banco. */
   catalogLoading?: boolean;
+  /** Progreso de sesión en el hero cuando el usuario volvió a Inicio sin cerrar el quiz. */
+  homePausedSession?: HomePausedSessionSnapshot | null;
+  /** Reanudar quiz/repaso cuando el hero muestra “sesión en curso”. */
+  onResumePracticeSession?: () => void;
   coachPlan: PracticeCoachPlan;
   examTarget: PracticeExamTarget | null;
   examTargetError: string | null;

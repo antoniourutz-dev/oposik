@@ -45,6 +45,8 @@ export const usePracticeSessionFlow = ({
     handleEndSessionEarly,
     handleRetrySession,
     handleSimulacroTimeExpired,
+    pauseActiveSession,
+    resumeActiveSession,
     resetActiveSession,
     startSession,
     view,
@@ -64,6 +66,7 @@ export const usePracticeSessionFlow = ({
     startMixed,
     startRandom,
     startSimulacro,
+    startWeakReview,
     startStandardSession,
     startLawSession,
   } = usePracticeSessionStarters({
@@ -108,13 +111,6 @@ export const usePracticeSessionFlow = ({
     startStandardSession,
   ]);
 
-  const startWeakReview = useCallback(() => {
-    void (async () => {
-      const { buildWeakestPracticeSession } = await import('../services/practiceSessionFactory');
-      startSession(buildWeakestPracticeSession(weakQuestions, selectedQuestionScope));
-    })();
-  }, [selectedQuestionScope, startSession, weakQuestions]);
-
   return {
     activeSession,
     answers,
@@ -126,6 +122,8 @@ export const usePracticeSessionFlow = ({
     handleEndSessionEarly,
     handleRetrySession,
     handleSimulacroTimeExpired,
+    pauseActiveSession,
+    resumeActiveSession,
     resetActiveSession,
     startAntiTrap,
     startFromBeginning,

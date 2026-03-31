@@ -6,6 +6,7 @@ import {
   loadRandomSessionCommand,
   loadSimulacroSessionCommand,
   loadStandardSessionCommand,
+  loadWeakReviewSessionCommand,
 } from './practiceSessionStarterCommands';
 import {
   getAntiTrapPracticeBatch,
@@ -14,6 +15,7 @@ import {
   getRandomPracticeBatch,
   getSimulacroPracticeBatch,
   getStandardPracticeBatch,
+  getWeakPracticeInsights,
 } from '../services/preguntasApi';
 
 vi.mock('../services/preguntasApi', () => ({
@@ -23,6 +25,7 @@ vi.mock('../services/preguntasApi', () => ({
   getRandomPracticeBatch: vi.fn(),
   getSimulacroPracticeBatch: vi.fn(),
   getStandardPracticeBatch: vi.fn(),
+  getWeakPracticeInsights: vi.fn(),
 }));
 
 const mockedGetAntiTrapPracticeBatch = vi.mocked(getAntiTrapPracticeBatch);
@@ -31,6 +34,7 @@ const mockedGetMixedPracticeBatch = vi.mocked(getMixedPracticeBatch);
 const mockedGetRandomPracticeBatch = vi.mocked(getRandomPracticeBatch);
 const mockedGetSimulacroPracticeBatch = vi.mocked(getSimulacroPracticeBatch);
 const mockedGetStandardPracticeBatch = vi.mocked(getStandardPracticeBatch);
+const mockedGetWeakPracticeInsights = vi.mocked(getWeakPracticeInsights);
 
 const buildQuestion = (id: string) => ({
   id,
@@ -141,6 +145,36 @@ describe('practiceSessionStarterCommands', () => {
     expect(result.session).toMatchObject({
       mode: 'random',
       questionScope: 'specific',
+    });
+  });
+
+  it('repaso falladas usa snapshot local sin llamar al servidor', async () => {
+    const result = await loadWeakReviewSessionCommand({
+      questionScope: 'all',
+      weakQuestions: [{ question: buildQuestion('w1'), stat: {} as never }],
+    });
+
+    expect(mockedGetWeakPracticeInsights).not.toHaveBeenCalled();
+    expect(result.session).toMatchObject({
+      mode: 'weakest',
+      questionScope: 'all',
+    });
+  });
+
+  it('repaso falladas pide batch al servidor si el snapshot local esta vacio', async () => {
+    mockedGetWeakPracticeInsights.mockResolvedValue([
+      { question: buildQuestion('w1'), stat: {} as never },
+    ]);
+
+    const result = await loadWeakReviewSessionCommand({
+      questionScope: 'all',
+      weakQuestions: [],
+    });
+
+    expect(mockedGetWeakPracticeInsights).toHaveBeenCalledWith('general', 20, 'all');
+    expect(result.session).toMatchObject({
+      mode: 'weakest',
+      questionScope: 'all',
     });
   });
 });

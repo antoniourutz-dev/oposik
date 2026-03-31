@@ -159,6 +159,21 @@ export const usePracticeSessionStarters = ({
     });
   }, [executeStarter, selectedQuestionScope]);
 
+  const startWeakReviewSession = useCallback(async () => {
+    await executeStarter({
+      command: async () => {
+        const { loadWeakReviewSessionCommand } = await import('./practiceSessionStarterCommands');
+        return loadWeakReviewSessionCommand({
+          questionScope: selectedQuestionScope,
+          weakQuestions,
+        });
+      },
+      emptyMessage:
+        'No hay preguntas de repaso prioritarias en este ambito. Prueba otro ambito o sesion aleatoria.',
+      fallbackErrorMessage: 'No se ha podido cargar el repaso de falladas.',
+    });
+  }, [executeStarter, selectedQuestionScope, weakQuestions]);
+
   return {
     startAntiTrap: () => void startAntiTrapSession(),
     startFromBeginning: () => void startStandardSession(0),
@@ -168,6 +183,7 @@ export const usePracticeSessionStarters = ({
     startMixed: () => void startMixedSession(),
     startRandom: () => void startRandomSession(),
     startSimulacro: () => void startSimulacroSession(),
+    startWeakReview: () => void startWeakReviewSession(),
     startStandardSession,
     startLawSession: (law: string) =>
       void executeStarter({

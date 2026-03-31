@@ -12,6 +12,7 @@ import {
   getRandomPracticeBatch,
   getSimulacroPracticeBatch,
   getStandardPracticeBatch,
+  getWeakPracticeInsights,
 } from '../services/preguntasApi';
 import {
   buildAntiTrapPracticeSession,
@@ -73,6 +74,31 @@ export const loadRandomSessionCommand = async ({
   return {
     session: buildRandomPracticeSession(randomQuestions, questionScope),
   };
+};
+
+/**
+ * Repaso de falladas: usa el snapshot local si hay; si no, vuelve a pedir el batch débil al servidor.
+ * (El dashboard puede mostrar backlog sin que el snapshot de 5 insights esté relleno.)
+ */
+export const loadWeakReviewSessionCommand = async ({
+  questionScope,
+  weakQuestions,
+}: {
+  questionScope: PracticeQuestionScopeFilter;
+  weakQuestions: WeakQuestionInsight[];
+}): Promise<SessionStarterCommandResult> => {
+  let session = buildWeakestPracticeSession(weakQuestions, questionScope);
+  if (session) {
+    return { session };
+  }
+
+  const fresh = await getWeakPracticeInsights(
+    DEFAULT_CURRICULUM,
+    PRACTICE_BATCH_SIZE,
+    questionScope,
+  );
+  session = buildWeakestPracticeSession(fresh, questionScope);
+  return { session };
 };
 
 export const loadGuestSessionCommand = async ({

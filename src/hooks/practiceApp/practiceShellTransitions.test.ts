@@ -100,10 +100,10 @@ describe('practiceShellTransitions', () => {
     expect(deps._spies.setAuthReady).toHaveBeenCalledWith(true);
   });
 
-  it('applyAuthSignedInTransition coordina reset + authReady true', () => {
+  it('applyAuthSignedInTransition no debe cerrar sesión activa; solo limpia errores + authReady true', () => {
     const deps = buildDeps();
     applyAuthSignedInTransition(deps);
-    expect(deps._spies.resetActiveSession).toHaveBeenCalled();
+    expect(deps._spies.resetActiveSession).not.toHaveBeenCalled();
     expect(deps._spies.setIsGuest).toHaveBeenCalledWith(false);
     expect(deps._spies.setQuestionsError).toHaveBeenCalledWith(null);
     expect(deps._spies.setSyncError).toHaveBeenCalledWith(null);

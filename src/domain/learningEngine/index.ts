@@ -7,4 +7,6 @@ export * from './scheduler';
 export * from './readiness';
 export * from './fatigue';
 export * from './coach';
+export * from './coachV2';
+export * from './coachCopy';
 export * from './updateQuestionState';

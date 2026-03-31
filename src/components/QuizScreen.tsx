@@ -81,7 +81,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   }, [answers]);
 
   const focusStatus =
-    fatigueScore < 0.3 ? 'Optimo' : fatigueScore < 0.6 ? 'Degradación' : 'Agotado';
+    fatigueScore < 0.3 ? 'Bien' : fatigueScore < 0.6 ? 'Bajando' : 'Cansancio';
   const focusColor =
     fatigueScore < 0.3
       ? 'text-emerald-400'
@@ -477,7 +477,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
 
                 <div className="flex flex-col items-center">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Foco
+                    Ritmo
                   </span>
                   <div className="flex items-center gap-1.5">
                     <motion.div

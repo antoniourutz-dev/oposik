@@ -26,12 +26,14 @@ export const usePracticeAuthSubscription = ({
 }: UsePracticeAuthSubscriptionParams) => {
   useEffect(() => {
     let active = true;
+    const lastUserIdRef = { current: null as string | null };
 
     const initAuth = async () => {
       try {
         const currentSession = await getSafeSupabaseSession();
         if (!active) return;
         setSession(currentSession);
+        lastUserIdRef.current = currentSession?.user.id ?? null;
 
         if (!currentSession) {
           clearAccountContext();
@@ -56,11 +58,21 @@ export const usePracticeAuthSubscription = ({
       setSession(nextSession);
 
       if (event === 'SIGNED_OUT') {
+        lastUserIdRef.current = null;
         onAuthSignedOut();
         return;
       }
 
       if (event === 'SIGNED_IN' && nextSession) {
+        const nextUserId = nextSession.user.id;
+        const prevUserId = lastUserIdRef.current;
+        lastUserIdRef.current = nextUserId;
+        // Si es el mismo usuario (p. ej. rehidratación/refresh token al volver a la pestaña),
+        // NO resetees la sesión activa de práctica.
+        if (prevUserId && prevUserId === nextUserId) {
+          setAuthReady(true);
+          return;
+        }
         onAuthSignedIn();
         return;
       }

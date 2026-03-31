@@ -113,7 +113,9 @@ export const applyAuthSignedInTransition = (deps: Pick<
   PracticeShellTransitionDeps,
   'resetActiveSession' | 'setIsGuest' | 'setQuestionsError' | 'setSyncError' | 'setAuthReady'
 >) => {
-  deps.resetActiveSession();
+  // IMPORTANTE: `SIGNED_IN` puede dispararse en refresh/rehidratación de token al volver
+  // a la pestaña. No debe cerrar un test en curso; el reset se decide en el subscription
+  // solo si cambia realmente el usuario.
   deps.setIsGuest(false);
   deps.setQuestionsError(null);
   deps.setSyncError(null);

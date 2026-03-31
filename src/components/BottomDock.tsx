@@ -9,6 +9,8 @@ type BottomDockProps = {
   activeTab: MainTab;
   onChangeTab: (tab: MainTab) => void;
   variant?: BottomDockVariant;
+  /** Cuando hay sesión activa (quiz/review), evita que el dock móvil distraiga. */
+  hideOnMobile?: boolean;
 };
 
 type DockItem = {
@@ -30,13 +32,20 @@ const genericItems: DockItem[] = [
   { id: 'profile', label: 'Cuenta', icon: UserRound },
 ];
 
-const BottomDock: React.FC<BottomDockProps> = ({ activeTab, onChangeTab, variant = 'default' }) => {
+const BottomDock: React.FC<BottomDockProps> = ({
+  activeTab,
+  onChangeTab,
+  variant = 'default',
+  hideOnMobile = false,
+}) => {
   const items = variant === 'generic' ? genericItems : defaultItems;
 
   return (
     <nav
       aria-label="Navegación principal"
-      className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-6 sm:px-12 xl:inset-x-auto xl:bottom-auto xl:sticky xl:top-[5.8rem] xl:z-20 xl:self-start xl:px-0"
+      className={`fixed inset-x-0 bottom-6 z-40 justify-center px-6 sm:px-12 xl:inset-x-auto xl:bottom-auto xl:sticky xl:top-[5.8rem] xl:z-20 xl:self-start xl:px-0 ${
+        hideOnMobile ? 'hidden xl:flex' : 'flex'
+      }`}
     >
       <div className="relative flex h-[82px] items-center justify-around gap-2 p-2 xl:h-auto xl:min-h-0 xl:w-[84px] xl:max-w-none xl:flex-col xl:justify-start xl:gap-3 xl:p-3 ui-surface">
         {items.map((item) => {
@@ -57,7 +66,7 @@ const BottomDock: React.FC<BottomDockProps> = ({ activeTab, onChangeTab, variant
               {isActive && (
                 <motion.div
                   layoutId="activeDockIndicator"
-                  className="absolute inset-0 rounded-[1.8rem] bg-slate-950 shadow-[0_12px_24px_-10px_rgba(15,23,42,0.4)]"
+                  className="absolute inset-0 rounded-[1.8rem] bg-slate-950 shadow-[0_10px_22px_-12px_rgba(15,23,42,0.32)]"
                   transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                 />
               )}

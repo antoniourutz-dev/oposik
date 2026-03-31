@@ -91,6 +91,8 @@ const PracticeAppShell: React.FC = () => {
     weakQuestions,
     onStartLawTraining,
     setActiveTab,
+    pauseActiveSession,
+    resumeActiveSession,
   } = usePracticeApp();
   const navigationScrollKey = view === 'home' ? `home:${activeTab}` : view;
   const contentEnterClass =
@@ -109,7 +111,8 @@ const PracticeAppShell: React.FC = () => {
     view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer)
       ? 'app-shell-home'
       : 'app-shell-default';
-  const showDesktopRail = view === 'home' && !isGuest;
+  const showDesktopRail = !isGuest;
+  const shouldHideDockOnMobile = view !== 'home';
   const screenTelemetryKey = useMemo(
     () =>
       getScreenTelemetryKey({
@@ -182,8 +185,12 @@ const PracticeAppShell: React.FC = () => {
           {showDesktopRail ? (
             <BottomDock
               activeTab={activeTab}
-              onChangeTab={setActiveTab}
+              onChangeTab={(tab) => {
+                if (view === 'quiz' || view === 'review') pauseActiveSession();
+                setActiveTab(tab);
+              }}
               variant={isGenericPlayer ? 'generic' : 'default'}
+              hideOnMobile={shouldHideDockOnMobile}
             />
           ) : null}
 
@@ -200,6 +207,35 @@ const PracticeAppShell: React.FC = () => {
 
             {view === 'home' && !isGuest ? (
               <CatalogSyncBanner syncingAccount={syncingState} loadingCatalog={loadingQuestions} />
+            ) : null}
+
+            {view === 'home' && activeSession && !isGuest ? (
+              <div className="mx-auto mb-4 w-full max-w-4xl">
+                <Alert variant="info" title="Sesión en curso">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="min-w-0">
+                      Continúa donde lo dejaste ({Math.min(activeSession.questions.length, answers.length + 1)}/
+                      {activeSession.questions.length})
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={resumeActiveSession}
+                        className="inline-flex h-9 items-center justify-center rounded-full bg-slate-950 px-4 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white shadow-[0_14px_28px_-18px_rgba(15,23,42,0.35)] transition-transform active:scale-[0.98]"
+                      >
+                        Continuar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goHome}
+                        className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300/80 bg-white/80 px-4 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-700 transition-transform active:scale-[0.98]"
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
+                </Alert>
+              </div>
             ) : null}
 
             {questionsError ? (
@@ -268,6 +304,15 @@ const PracticeAppShell: React.FC = () => {
                           activeTab={activeTab}
                           identity={identity!}
                           catalogLoading={loadingQuestions}
+                          homePausedSession={
+                            view === 'home' && activeSession
+                              ? {
+                                  totalQuestions: activeSession.questions.length,
+                                  currentQuestionIndex,
+                                }
+                              : null
+                          }
+                          onResumePracticeSession={resumeActiveSession}
                           examTarget={examTarget}
                           examTargetError={examTargetError}
                           savingExamTarget={savingExamTarget}

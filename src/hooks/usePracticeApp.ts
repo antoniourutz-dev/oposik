@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AccountIdentity } from '../services/accountApi';
 import { buildProvisionalAccountIdentity } from '../services/accountApi';
-import { buildPracticeCoachPlan } from '../domain/learningEngine';
+import { buildPracticeCoachPlanV2Bundle, toCoachDecisionLog } from '../domain/learningEngine';
 import { PRACTICE_BATCH_SIZE } from '../practiceConfig';
 import { GUEST_MAX_BLOCKS, persistGuestBlocksUsed, readGuestBlocksUsed } from './practiceAppStorage';
 import {
@@ -27,6 +27,8 @@ const GUEST_IDENTITY: AccountIdentity = {
   player_mode: 'generic',
   previous_usernames: [],
 };
+
+const debugCoachV2 = import.meta.env.DEV || import.meta.env.VITE_COACH_V2_DEBUG === '1';
 
 /**
  * Fachada de composición: datos (React Query), flujo de sesión de práctica, estado de shell de UI,
@@ -95,18 +97,42 @@ export const usePracticeApp = () => {
     PRACTICE_BATCH_SIZE,
   );
 
-  const coachPlan = useMemo(
-    () =>
-      buildPracticeCoachPlan({
-        learningDashboard,
-        pressureInsights,
-        examTarget,
-        recommendedBatchNumber,
-        totalBatches,
-        batchSize: PRACTICE_BATCH_SIZE,
-      }),
-    [examTarget, learningDashboard, pressureInsights, recommendedBatchNumber, totalBatches],
+  const { coachPlan, coachPlanV2ForDebug } = useMemo(() => {
+    const { coachPlan: nextCoachPlan, planV2 } = buildPracticeCoachPlanV2Bundle({
+      learningDashboard,
+      learningDashboardV2,
+      pressureInsights,
+      pressureInsightsV2,
+      examTarget,
+      recentSessions,
+      recommendedBatchNumber,
+      totalBatches,
+      batchSize: PRACTICE_BATCH_SIZE,
+    });
+    return { coachPlan: nextCoachPlan, coachPlanV2ForDebug: planV2 };
+  },
+    [
+      examTarget,
+      learningDashboard,
+      learningDashboardV2,
+      pressureInsights,
+      pressureInsightsV2,
+      recentSessions,
+      recommendedBatchNumber,
+      totalBatches,
+    ],
   );
+
+  const coachDecisionLog = useMemo(
+    () => (debugCoachV2 ? toCoachDecisionLog(coachPlanV2ForDebug) : null),
+    [coachPlanV2ForDebug],
+  );
+
+  useEffect(() => {
+    if (!debugCoachV2 || !coachDecisionLog) return;
+    // Observabilidad local: inspección/calibración en runtime (sin analytics externos).
+    console.debug('[coach-v2]', coachDecisionLog);
+  }, [coachDecisionLog]);
 
   const handleGuestBlockConsumed = useCallback((nextBlockNumber: number) => {
     setGuestBlocksUsed(nextBlockNumber);
@@ -124,6 +150,8 @@ export const usePracticeApp = () => {
     handleEndSessionEarly,
     handleRetrySession,
     handleSimulacroTimeExpired,
+    pauseActiveSession,
+    resumeActiveSession,
     resetActiveSession,
     startAntiTrap,
     startFromBeginning,
@@ -245,6 +273,8 @@ export const usePracticeApp = () => {
     weakCategories,
     weakQuestions,
     onStartLawTraining: startLawSession,
+    pauseActiveSession,
+    resumeActiveSession,
     setActiveTab,
   };
 };

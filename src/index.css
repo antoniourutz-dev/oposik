@@ -147,7 +147,7 @@ body {
   border: 1px solid rgba(186, 198, 218, 0.42);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.88),
-    0 28px 56px -34px rgba(30, 41, 59, 0.1);
+    0 30px 64px -36px rgba(30, 41, 59, 0.12);
 }
 
 .quantia-home-hero:hover {
