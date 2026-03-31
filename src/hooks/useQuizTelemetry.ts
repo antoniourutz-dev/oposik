@@ -31,9 +31,12 @@ export function useQuizTelemetry(questionId: string | number) {
     }
   };
 
-  const flushQuizTelemetry = (outcome: 'answered' | 'skipped' | 'timeout', metadata?: Record<string, any>) => {
+  const flushQuizTelemetry = (
+    outcome: 'answered' | 'skipped' | 'timeout',
+    metadata?: Record<string, any>,
+  ) => {
     const totalDuration = performance.now() - startTime.current;
-    
+
     recordRender('quiz_question_session', {
       durationMs: totalDuration,
       status: outcome === 'answered' ? 'success' : 'success', // 'info' is not a status, so we use success for non-error paths
@@ -45,13 +48,13 @@ export function useQuizTelemetry(questionId: string | number) {
         interactionCount: interactionCount.current,
         maxScrollDepth: Math.round(scrollDepth.current * 100) / 100,
         isDoubtful: interactionCount.current > 1,
-        ...metadata
-      }
+        ...metadata,
+      },
     });
   };
 
   return {
     recordInteraction,
-    flushQuizTelemetry
+    flushQuizTelemetry,
   };
 }

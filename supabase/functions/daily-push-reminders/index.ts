@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 import { corsHeaders } from '../_shared/cors.ts';
+import { createEdgeLogger } from '../_shared/observability.ts';
 
 type DueReminderRow = {
   subscription_id: number;
@@ -180,11 +181,13 @@ const sendReminder = async (row: DueReminderRow) => {
 };
 
 Deno.serve(async (request) => {
+  const log = createEdgeLogger('daily-push-reminders', request);
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   if (request.method !== 'POST') {
+    log.warn('request.method_not_allowed', { method: request.method }, 'METHOD_NOT_ALLOWED', 405);
     return new Response(JSON.stringify({ message: 'Method not allowed' }), {
       status: 405,
       headers: corsHeaders
@@ -192,6 +195,7 @@ Deno.serve(async (request) => {
   }
 
   if (!ensureAuthorized(request)) {
+    log.warn('auth.cron_unauthorized', undefined, 'PUSH_CRON_UNAUTHORIZED', 401);
     return new Response(JSON.stringify({ message: 'Unauthorized' }), {
       status: 401,
       headers: corsHeaders
@@ -200,6 +204,7 @@ Deno.serve(async (request) => {
 
   try {
     ensureRuntimeConfiguration();
+    log.info('push.start');
 
     const { data, error } = await adminClient
       .schema('app')
@@ -218,6 +223,13 @@ Deno.serve(async (request) => {
     const delivered = results.filter((result) => result.delivered).length;
     const deactivated = results.filter((result) => result.deactivated).length;
 
+    log.info('push.done', {
+      processed: dueRows.length,
+      delivered,
+      failed: dueRows.length - delivered,
+      deactivated,
+      durationMs: log.durationMs(),
+    });
     return new Response(
       JSON.stringify({
         processed: dueRows.length,
@@ -231,7 +243,7 @@ Deno.serve(async (request) => {
       }
     );
   } catch (error) {
-    console.error('daily-push-reminders error', error);
+    log.error('push.failed', error, undefined, 'INTERNAL_ERROR', 500);
     return new Response(
       JSON.stringify({
         message: error instanceof Error ? error.message : 'Unexpected error'

@@ -4,7 +4,7 @@ import type { AccountIdentity } from '../services/accountApi';
 import type {
   PracticeProfile,
   PracticeQuestionScopeFilter,
-  PracticeSessionSummary
+  PracticeSessionSummary,
 } from '../practiceTypes';
 import type { MainTab } from './BottomDock';
 import QuestionScopePicker from './QuestionScopePicker';
@@ -12,6 +12,7 @@ import QuestionScopePicker from './QuestionScopePicker';
 type GenericDashboardScreenProps = {
   activeTab: MainTab;
   identity: AccountIdentity;
+  catalogLoading?: boolean;
   profile: PracticeProfile | null;
   recentSessions: PracticeSessionSummary[];
   weakQuestionCount: number;
@@ -37,14 +38,14 @@ const formatLastStudy = (value: string | null | undefined) => {
 
   return new Intl.DateTimeFormat('es-ES', {
     day: '2-digit',
-    month: 'short'
+    month: 'short',
   }).format(parsed);
 };
 
 const MiniMetric: React.FC<{ label: string; value: string; caption?: string }> = ({
   label,
   value,
-  caption
+  caption,
 }) => (
   <div className="rounded-[1.05rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.9))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
     <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">{label}</p>
@@ -76,13 +77,20 @@ const ActionTile: React.FC<{
         {icon}
       </span>
       <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500">
-        <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+        <ArrowRight
+          size={14}
+          className="transition-transform duration-200 group-hover:translate-x-0.5"
+        />
       </span>
     </div>
 
     <div className="mt-3">
       <p className="text-[1rem] font-black leading-[1.08] text-slate-950">{title}</p>
-      {meta ? <p className="mt-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">{meta}</p> : null}
+      {meta ? (
+        <p className="mt-1.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+          {meta}
+        </p>
+      ) : null}
     </div>
   </button>
 );
@@ -90,6 +98,7 @@ const ActionTile: React.FC<{
 const GenericDashboardScreen: React.FC<GenericDashboardScreenProps> = ({
   activeTab,
   identity,
+  catalogLoading = false,
   profile,
   recentSessions,
   weakQuestionCount,
@@ -99,10 +108,11 @@ const GenericDashboardScreen: React.FC<GenericDashboardScreenProps> = ({
   onStartRandom,
   onStartWeakReview,
   onStartFromBeginning,
-  onSignOut
+  onSignOut,
 }) => {
   const lastSession = recentSessions[0] ?? null;
   const canReviewWeakQuestions = weakQuestionCount > 0;
+  const practiceLocked = catalogLoading;
 
   if (activeTab === 'study') {
     return (
@@ -124,16 +134,35 @@ const GenericDashboardScreen: React.FC<GenericDashboardScreenProps> = ({
         </section>
 
         <section className="grid gap-3 sm:grid-cols-2">
-          <ActionTile title="Guiado" meta="20 preguntas" icon={<Target size={18} />} onClick={onStartSimple} accent />
-          <ActionTile title="Aleatorio" meta="20 preguntas" icon={<Shuffle size={18} />} onClick={onStartRandom} />
+          <ActionTile
+            title="Guiado"
+            meta="20 preguntas"
+            icon={<Target size={18} />}
+            onClick={onStartSimple}
+            accent
+            disabled={practiceLocked}
+          />
+          <ActionTile
+            title="Aleatorio"
+            meta="20 preguntas"
+            icon={<Shuffle size={18} />}
+            onClick={onStartRandom}
+            disabled={practiceLocked}
+          />
           <ActionTile
             title="Falladas"
             meta={canReviewWeakQuestions ? `${weakQuestionCount} visibles` : 'sin fallos'}
             icon={<Target size={18} />}
             onClick={onStartWeakReview}
-            disabled={!canReviewWeakQuestions}
+            disabled={practiceLocked || !canReviewWeakQuestions}
           />
-          <ActionTile title="Inicio" meta="bloque 1" icon={<ListRestart size={18} />} onClick={onStartFromBeginning} />
+          <ActionTile
+            title="Inicio"
+            meta="bloque 1"
+            icon={<ListRestart size={18} />}
+            onClick={onStartFromBeginning}
+            disabled={practiceLocked}
+          />
         </section>
       </div>
     );

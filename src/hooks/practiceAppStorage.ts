@@ -19,9 +19,7 @@ export const readGuestBlocksUsed = () => {
     if (!rawValue) return 0;
 
     const parsed = JSON.parse(rawValue) as number | { usedBlocks?: number };
-    return clampGuestBlocksUsed(
-      typeof parsed === 'number' ? parsed : parsed?.usedBlocks
-    );
+    return clampGuestBlocksUsed(typeof parsed === 'number' ? parsed : parsed?.usedBlocks);
   } catch {
     return 0;
   }
@@ -34,8 +32,8 @@ export const persistGuestBlocksUsed = (usedBlocks: number) => {
     GUEST_ACCESS_STORAGE_KEY,
     JSON.stringify({
       usedBlocks: clampGuestBlocksUsed(usedBlocks),
-      updatedAt: new Date().toISOString()
-    })
+      updatedAt: new Date().toISOString(),
+    }),
   );
 };
 
@@ -64,7 +62,7 @@ export const persistQuestionScope = (questionScope: PracticeQuestionScopeFilter)
     QUESTION_SCOPE_STORAGE_KEY,
     JSON.stringify({
       questionScope,
-      updatedAt: new Date().toISOString()
-    })
+      updatedAt: new Date().toISOString(),
+    }),
   );
 };

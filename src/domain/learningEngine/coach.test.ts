@@ -29,7 +29,7 @@ describe('buildPracticeCoachPlan', () => {
           dailyReviewCapacity: 35,
           dailyNewCapacity: 10,
           examDate: '2026-06-15',
-          riskBreakdown: []
+          riskBreakdown: [],
         },
         pressureInsights: {
           learningAccuracy: 0.78,
@@ -40,14 +40,14 @@ describe('buildPracticeCoachPlan', () => {
           avgSimulacroFatigue: null,
           overconfidenceRate: null,
           recommendedMode: 'simulacro',
-          pressureMessage: 'Ya tienes base suficiente. Conviene medirte con un simulacro completo.'
+          pressureMessage: 'Ya tienes base suficiente. Conviene medirte con un simulacro completo.',
         },
         examTarget: null,
         recommendedBatchNumber: 4,
         totalBatches: 25,
-        batchSize: 20
+        batchSize: 20,
       },
-      referenceDate
+      referenceDate,
     );
 
     expect(plan.mode).toBe('simulacro');
@@ -80,7 +80,7 @@ describe('buildPracticeCoachPlan', () => {
           dailyReviewCapacity: 30,
           dailyNewCapacity: 8,
           examDate: '2026-05-30',
-          riskBreakdown: []
+          riskBreakdown: [],
         },
         pressureInsights: {
           learningAccuracy: 0.83,
@@ -91,14 +91,14 @@ describe('buildPracticeCoachPlan', () => {
           avgSimulacroFatigue: 0.24,
           overconfidenceRate: 0.18,
           recommendedMode: 'anti_trap',
-          pressureMessage: 'Tu rendimiento cae 16 puntos bajo presion.'
+          pressureMessage: 'Tu rendimiento cae 16 puntos bajo presion.',
         },
         examTarget: null,
         recommendedBatchNumber: 6,
         totalBatches: 25,
-        batchSize: 20
+        batchSize: 20,
       },
-      referenceDate
+      referenceDate,
     );
 
     expect(plan.mode).toBe('anti_trap');
@@ -131,15 +131,15 @@ describe('buildPracticeCoachPlan', () => {
           dailyReviewCapacity: 20,
           dailyNewCapacity: 6,
           examDate: null,
-          riskBreakdown: []
+          riskBreakdown: [],
         },
         pressureInsights: null,
         examTarget: null,
         recommendedBatchNumber: 2,
         totalBatches: 25,
-        batchSize: 20
+        batchSize: 20,
       },
-      referenceDate
+      referenceDate,
     );
 
     expect(plan.tone).toBe('rescue');
@@ -172,7 +172,7 @@ describe('buildPracticeCoachPlan', () => {
           dailyReviewCapacity: 30,
           dailyNewCapacity: 10,
           examDate: '2026-07-01',
-          riskBreakdown: []
+          riskBreakdown: [],
         },
         pressureInsights: {
           learningAccuracy: 0.82,
@@ -183,14 +183,14 @@ describe('buildPracticeCoachPlan', () => {
           avgSimulacroFatigue: 0.18,
           overconfidenceRate: 0.09,
           recommendedMode: null,
-          pressureMessage: 'La brecha bajo presion esta controlada.'
+          pressureMessage: 'La brecha bajo presion esta controlada.',
         },
         examTarget: null,
         recommendedBatchNumber: 8,
         totalBatches: 25,
-        batchSize: 20
+        batchSize: 20,
       },
-      referenceDate
+      referenceDate,
     );
 
     expect(plan.mode).toBe('standard');

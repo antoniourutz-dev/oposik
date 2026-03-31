@@ -23,7 +23,7 @@ window.setTimeout(() => {
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+  throw new Error('Could not find root element to mount to');
 }
 
 const root = ReactDOM.createRoot(rootElement);
@@ -32,21 +32,20 @@ root.render(
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
 
 if (typeof window !== 'undefined') {
-  void import('./telemetry/telemetryClient').then(
-    ({ initializeTelemetry, recordNavigation }) => {
+  void import('./telemetry/telemetryClient')
+    .then(({ initializeTelemetry, recordNavigation }) => {
       initializeTelemetry();
       window.requestAnimationFrame(() => {
         recordNavigation('app_rendered', {
-          timeSinceLoadMs:
-            typeof performance !== 'undefined' ? performance.now() : Date.now()
+          timeSinceLoadMs: typeof performance !== 'undefined' ? performance.now() : Date.now(),
         });
       });
-    }
-  ).catch(() => undefined);
+    })
+    .catch(() => undefined);
 
   void import('./telemetry/webVitals')
     .then(({ installWebVitalsObservers }) => {

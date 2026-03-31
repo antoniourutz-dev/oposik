@@ -6,7 +6,7 @@ export const computeMasteryLevel = ({
   pEstimated,
   consecutiveCorrect,
   distinctSuccessfulDays,
-  lapseCount
+  lapseCount,
 }: {
   attempts: number;
   pEstimated: number;
@@ -32,7 +32,7 @@ export const updateStabilityScore = ({
   oldStability,
   isCorrect,
   latencyFactor,
-  difficultyFactor
+  difficultyFactor,
 }: {
   oldStability: number;
   isCorrect: boolean;
@@ -48,7 +48,7 @@ export const updateStabilityScore = ({
 
 export const computeRetrievabilityScore = ({
   stabilityScore,
-  elapsedDays
+  elapsedDays,
 }: {
   stabilityScore: number;
   elapsedDays: number;

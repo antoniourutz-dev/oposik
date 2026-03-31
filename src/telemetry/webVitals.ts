@@ -49,7 +49,7 @@ export const installWebVitalsObservers = () => {
     | undefined;
   if (navigationEntry) {
     recordVital('ttfb', navigationEntry.responseStart, rateTtfb(navigationEntry.responseStart), {
-      navigationType: navigationEntry.type
+      navigationType: navigationEntry.type,
     });
   }
 
@@ -92,7 +92,7 @@ export const installWebVitalsObservers = () => {
           reportLcp();
         }
       },
-      { once: true }
+      { once: true },
     );
   }
 
@@ -124,7 +124,7 @@ export const installWebVitalsObservers = () => {
           reportCls();
         }
       },
-      { once: true }
+      { once: true },
     );
   }
 
@@ -146,7 +146,7 @@ export const installWebVitalsObservers = () => {
       if (inpReported || maxInp === 0) return;
       inpReported = true;
       recordVital('inp', maxInp, rateInp(maxInp), {
-        eventName: inpTarget
+        eventName: inpTarget,
       });
       inpObserver.disconnect();
     };
@@ -154,7 +154,7 @@ export const installWebVitalsObservers = () => {
     inpObserver.observe({
       type: 'event',
       buffered: true,
-      durationThreshold: 40
+      durationThreshold: 40,
     } as PerformanceObserverInit);
     window.addEventListener('pagehide', reportInp, { once: true });
     document.addEventListener(
@@ -164,7 +164,7 @@ export const installWebVitalsObservers = () => {
           reportInp();
         }
       },
-      { once: true }
+      { once: true },
     );
   }
 };

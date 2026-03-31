@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ActivePracticeSession } from '../practiceTypes';
 import { resolveReviewContinuation } from './practiceSessionFlowDecisions';
 
-const buildSession = (
-  overrides: Partial<ActivePracticeSession> = {}
-): ActivePracticeSession => ({
+const buildSession = (overrides: Partial<ActivePracticeSession> = {}): ActivePracticeSession => ({
   id: 'session-1',
   mode: 'standard',
   feedbackMode: 'immediate',
@@ -19,7 +17,7 @@ const buildSession = (
   batchStartIndex: 0,
   continueLabel: 'Continuar',
   nextStandardBatchStartIndex: 20,
-  ...overrides
+  ...overrides,
 });
 
 describe('practiceSessionFlowDecisions', () => {
@@ -28,13 +26,13 @@ describe('practiceSessionFlowDecisions', () => {
       activeSession: buildSession({ questionScope: 'specific', nextStandardBatchStartIndex: 40 }),
       guestBlocksRemaining: 0,
       isGuest: false,
-      selectedQuestionScope: 'all'
+      selectedQuestionScope: 'all',
     });
 
     expect(decision).toEqual({
       type: 'standard_next',
       batchStartIndex: 40,
-      questionScope: 'specific'
+      questionScope: 'specific',
     });
   });
 
@@ -43,7 +41,7 @@ describe('practiceSessionFlowDecisions', () => {
       activeSession: buildSession({ mode: 'random', nextStandardBatchStartIndex: null }),
       guestBlocksRemaining: 1,
       isGuest: true,
-      selectedQuestionScope: 'all'
+      selectedQuestionScope: 'all',
     });
 
     expect(decision).toEqual({ type: 'guest_next' });
@@ -55,8 +53,8 @@ describe('practiceSessionFlowDecisions', () => {
         activeSession: null,
         guestBlocksRemaining: 0,
         isGuest: false,
-        selectedQuestionScope: 'all'
-      })
+        selectedQuestionScope: 'all',
+      }),
     ).toEqual({ type: 'reset' });
 
     expect(
@@ -64,8 +62,8 @@ describe('practiceSessionFlowDecisions', () => {
         activeSession: buildSession({ mode: 'mixed', nextStandardBatchStartIndex: null }),
         guestBlocksRemaining: 0,
         isGuest: false,
-        selectedQuestionScope: 'all'
-      })
+        selectedQuestionScope: 'all',
+      }),
     ).toEqual({ type: 'reset' });
   });
 });

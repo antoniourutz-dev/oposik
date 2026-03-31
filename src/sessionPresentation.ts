@@ -10,34 +10,34 @@ export const getSessionPresentation = (mode: PracticeMode): SessionPresentation 
     case 'mixed':
       return {
         eyebrow: 'Ruta adaptativa',
-        compactLabel: 'Mixto'
+        compactLabel: 'Mixto',
       };
     case 'anti_trap':
       return {
         eyebrow: 'Entrenamiento fino',
-        compactLabel: 'Anti-trampas'
+        compactLabel: 'Anti-trampas',
       };
     case 'random':
       return {
         eyebrow: 'Recuperacion libre',
-        compactLabel: 'Aleatorio'
+        compactLabel: 'Aleatorio',
       };
     case 'weakest':
     case 'review':
       return {
         eyebrow: 'Repaso critico',
-        compactLabel: 'Falladas'
+        compactLabel: 'Falladas',
       };
     case 'simulacro':
       return {
         eyebrow: 'Examen real',
-        compactLabel: 'Simulacro'
+        compactLabel: 'Simulacro',
       };
     case 'standard':
     default:
       return {
         eyebrow: 'Ruta principal',
-        compactLabel: 'Bloque'
+        compactLabel: 'Bloque',
       };
   }
 };

@@ -7,3 +7,5 @@ dev-dist/
 .env.local
 .env.supabase
 .devserver.pid
+.claude/
+tsc-*.txt

@@ -15,7 +15,7 @@ export const resolveReviewContinuation = ({
   activeSession,
   guestBlocksRemaining,
   isGuest,
-  selectedQuestionScope
+  selectedQuestionScope,
 }: {
   activeSession: ActivePracticeSession | null;
   guestBlocksRemaining: number;
@@ -38,7 +38,7 @@ export const resolveReviewContinuation = ({
     return {
       type: 'standard_next',
       batchStartIndex: activeSession.nextStandardBatchStartIndex,
-      questionScope: activeSession.questionScope ?? selectedQuestionScope
+      questionScope: activeSession.questionScope ?? selectedQuestionScope,
     };
   }
 

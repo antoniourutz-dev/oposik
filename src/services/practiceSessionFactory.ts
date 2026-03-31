@@ -1,19 +1,23 @@
-import {
-  PRACTICE_BATCH_SIZE,
-  SIMULACRO_TIME_LIMIT_SECONDS
-} from '../practiceConfig';
+import { PRACTICE_BATCH_SIZE, SIMULACRO_TIME_LIMIT_SECONDS } from '../practiceConfig';
 import {
   ActivePracticeSession,
   PracticeQuestionScopeFilter,
   PracticeQuestion,
-  WeakQuestionInsight
+  WeakQuestionInsight,
 } from '../practiceTypes';
 import { getQuestionScopeHint, getQuestionScopeLabel } from '../utils/practiceQuestionScope';
 
-export const buildSessionId = () =>
-  typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `session-${Date.now()}`;
+/** UUID v4 sin depender de `crypto.randomUUID` (p. ej. entornos antiguos o tests). */
+const uuidV4 = (): string =>
+  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+
+/** `practice_sessions.session_id` es UUID en Supabase; cadenas como `session-123` fallan al upsert. */
+export const buildSessionId = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : uuidV4();
 
 const dedupeQuestions = (questions: PracticeQuestion[]) => {
   const seenIds = new Set<string>();
@@ -37,7 +41,7 @@ export const buildStandardPracticeSession = ({
   questionsCount,
   questions,
   questionScope = 'all',
-  batchSize = PRACTICE_BATCH_SIZE
+  batchSize = PRACTICE_BATCH_SIZE,
 }: {
   batchStartIndex: number;
   questionsCount: number;
@@ -68,20 +72,17 @@ export const buildStandardPracticeSession = ({
     totalBatches,
     questionScope,
     batchStartIndex: normalizedStartIndex,
-    continueLabel:
-      nextBatchStartIndex > 0 ? 'Continuar con las siguientes 20' : 'Volver al panel',
-    nextStandardBatchStartIndex: nextBatchStartIndex
+    continueLabel: nextBatchStartIndex > 0 ? 'Continuar con las siguientes 20' : 'Volver al panel',
+    nextStandardBatchStartIndex: nextBatchStartIndex,
   };
 };
 
 export const buildWeakestPracticeSession = (
   weakQuestions: WeakQuestionInsight[],
   questionScope: PracticeQuestionScopeFilter = 'all',
-  batchSize = PRACTICE_BATCH_SIZE
+  batchSize = PRACTICE_BATCH_SIZE,
 ): ActivePracticeSession | null => {
-  const questions = dedupeQuestions(
-    weakQuestions.map((item) => item.question)
-  ).slice(0, batchSize);
+  const questions = dedupeQuestions(weakQuestions.map((item) => item.question)).slice(0, batchSize);
   if (questions.length === 0) return null;
 
   return {
@@ -98,13 +99,13 @@ export const buildWeakestPracticeSession = (
     questionScope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
-    nextStandardBatchStartIndex: null
+    nextStandardBatchStartIndex: null,
   };
 };
 
 export const buildRandomPracticeSession = (
   questions: PracticeQuestion[],
-  questionScope: PracticeQuestionScopeFilter = 'all'
+  questionScope: PracticeQuestionScopeFilter = 'all',
 ): ActivePracticeSession | null => {
   const uniqueQuestions = dedupeQuestions(questions);
   if (uniqueQuestions.length === 0) return null;
@@ -126,14 +127,14 @@ export const buildRandomPracticeSession = (
     questionScope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
-    nextStandardBatchStartIndex: null
+    nextStandardBatchStartIndex: null,
   };
 };
 
 export const buildGuestPracticeSession = ({
   questions,
   blockNumber,
-  totalBlocks
+  totalBlocks,
 }: {
   questions: PracticeQuestion[];
   blockNumber: number;
@@ -143,10 +144,7 @@ export const buildGuestPracticeSession = ({
   if (uniqueQuestions.length === 0) return null;
 
   const normalizedTotalBlocks = Math.max(1, totalBlocks);
-  const normalizedBlockNumber = Math.min(
-    normalizedTotalBlocks,
-    Math.max(1, blockNumber)
-  );
+  const normalizedBlockNumber = Math.min(normalizedTotalBlocks, Math.max(1, blockNumber));
 
   return {
     id: buildSessionId(),
@@ -163,13 +161,13 @@ export const buildGuestPracticeSession = ({
     batchStartIndex: null,
     continueLabel:
       normalizedBlockNumber < normalizedTotalBlocks ? 'Siguiente bloque' : 'Cerrar acceso',
-    nextStandardBatchStartIndex: null
+    nextStandardBatchStartIndex: null,
   };
 };
 
 export const buildMixedPracticeSession = (
   questions: PracticeQuestion[],
-  questionScope: PracticeQuestionScopeFilter = 'all'
+  questionScope: PracticeQuestionScopeFilter = 'all',
 ): ActivePracticeSession | null => {
   const uniqueQuestions = dedupeQuestions(questions);
   if (uniqueQuestions.length === 0) return null;
@@ -191,13 +189,13 @@ export const buildMixedPracticeSession = (
     questionScope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
-    nextStandardBatchStartIndex: null
+    nextStandardBatchStartIndex: null,
   };
 };
 
 export const buildAntiTrapPracticeSession = (
   questions: PracticeQuestion[],
-  questionScope: PracticeQuestionScopeFilter = 'all'
+  questionScope: PracticeQuestionScopeFilter = 'all',
 ): ActivePracticeSession | null => {
   const uniqueQuestions = dedupeQuestions(questions);
   if (uniqueQuestions.length === 0) return null;
@@ -219,21 +217,19 @@ export const buildAntiTrapPracticeSession = (
     questionScope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
-    nextStandardBatchStartIndex: null
+    nextStandardBatchStartIndex: null,
   };
 };
 
 export const buildSimulacroPracticeSession = (
   questions: PracticeQuestion[],
   questionScopeOrTimeLimit: PracticeQuestionScopeFilter | number = 'all',
-  timeLimitSeconds = SIMULACRO_TIME_LIMIT_SECONDS
+  timeLimitSeconds = SIMULACRO_TIME_LIMIT_SECONDS,
 ): ActivePracticeSession | null => {
   const questionScope =
     typeof questionScopeOrTimeLimit === 'number' ? 'all' : questionScopeOrTimeLimit;
   const resolvedTimeLimitSeconds =
-    typeof questionScopeOrTimeLimit === 'number'
-      ? questionScopeOrTimeLimit
-      : timeLimitSeconds;
+    typeof questionScopeOrTimeLimit === 'number' ? questionScopeOrTimeLimit : timeLimitSeconds;
   const uniqueQuestions = dedupeQuestions(questions);
   if (uniqueQuestions.length === 0) return null;
 
@@ -242,9 +238,7 @@ export const buildSimulacroPracticeSession = (
     mode: 'simulacro',
     feedbackMode: 'deferred',
     title:
-      questionScope === 'all'
-        ? 'Simulacro'
-        : `Simulacro - ${getQuestionScopeLabel(questionScope)}`,
+      questionScope === 'all' ? 'Simulacro' : `Simulacro - ${getQuestionScopeLabel(questionScope)}`,
     subtitle: `Sin correccion inmediata y con tiempo global sobre ${getQuestionScopeHint(questionScope)}.`,
     questions: uniqueQuestions,
     startedAt: new Date().toISOString(),
@@ -254,21 +248,19 @@ export const buildSimulacroPracticeSession = (
     questionScope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
-    nextStandardBatchStartIndex: null
+    nextStandardBatchStartIndex: null,
   };
 };
 
-export const restartPracticeSession = (
-  session: ActivePracticeSession
-): ActivePracticeSession => ({
+export const restartPracticeSession = (session: ActivePracticeSession): ActivePracticeSession => ({
   ...session,
   id: buildSessionId(),
-  startedAt: new Date().toISOString()
+  startedAt: new Date().toISOString(),
 });
 
 export const buildLawPracticeSession = (
   questions: PracticeQuestion[],
-  law: string
+  law: string,
 ): ActivePracticeSession | null => {
   const uniqueQuestions = dedupeQuestions(questions);
   if (uniqueQuestions.length === 0) return null;
@@ -288,6 +280,6 @@ export const buildLawPracticeSession = (
     questionScope: 'all',
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
-    nextStandardBatchStartIndex: null
+    nextStandardBatchStartIndex: null,
   };
 };

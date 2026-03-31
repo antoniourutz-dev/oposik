@@ -27,12 +27,12 @@ export const computeSessionFatigueScore = (attempts: SessionAttemptInsight[]) =>
   const firstAvgMs = average(
     firstHalf
       .map((attempt) => attempt.responseTimeMs)
-      .filter((value): value is number => value !== null)
+      .filter((value): value is number => value !== null),
   );
   const secondAvgMs = average(
     secondHalf
       .map((attempt) => attempt.responseTimeMs)
-      .filter((value): value is number => value !== null)
+      .filter((value): value is number => value !== null),
   );
 
   const accuracyDrop = Math.max(0, firstAccuracy - secondAccuracy);
@@ -49,14 +49,11 @@ export const computeOverconfidenceScore = (attempts: SessionAttemptInsight[]) =>
 
   const fastWrong = attempts.filter(
     (attempt) =>
-      !attempt.isCorrect &&
-      attempt.responseTimeMs !== null &&
-      attempt.responseTimeMs <= 2500
+      !attempt.isCorrect && attempt.responseTimeMs !== null && attempt.responseTimeMs <= 2500,
   ).length;
   const changedToWrong = attempts.filter(
-    (attempt) => !attempt.isCorrect && Boolean(attempt.changedAnswer)
+    (attempt) => !attempt.isCorrect && Boolean(attempt.changedAnswer),
   ).length;
 
   return clamp(0, 1, (fastWrong + changedToWrong) / attempts.length);
 };
-

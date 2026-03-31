@@ -8,9 +8,6 @@ export const practiceQueryKeys = {
     ['practice', 'user', userId, curriculum, 'account'] as const,
   scopeRoot: (userId: string, curriculum: string) =>
     ['practice', 'user', userId, curriculum, 'scope'] as const,
-  scope: (
-    userId: string,
-    curriculum: string,
-    questionScope: PracticeQuestionScopeFilter
-  ) => ['practice', 'user', userId, curriculum, 'scope', questionScope] as const
+  scope: (userId: string, curriculum: string, questionScope: PracticeQuestionScopeFilter) =>
+    ['practice', 'user', userId, curriculum, 'scope', questionScope] as const,
 };

@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildGuestPracticeSession,
+  buildSessionId,
   buildSimulacroPracticeSession,
   buildRandomPracticeSession,
   buildStandardPracticeSession,
   buildWeakestPracticeSession,
-  restartPracticeSession
+  restartPracticeSession,
 } from './practiceSessionFactory';
 
 const buildQuestion = (id: string) => ({
@@ -16,19 +17,28 @@ const buildQuestion = (id: string) => ({
     a: 'A',
     b: 'B',
     c: 'C',
-    d: 'D'
+    d: 'D',
   },
   correctOption: 'a' as const,
   category: null,
-  explanation: null
+  explanation: null,
 });
 
+const uuidV4Re =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 describe('practiceSessionFactory', () => {
+  it('genera session_id en formato UUID (compatible con columnas uuid en Supabase)', () => {
+    const id = buildSessionId();
+    expect(id).toMatch(uuidV4Re);
+    expect(id.startsWith('session-')).toBe(false);
+  });
+
   it('crea bloques estandar con continuidad cuando quedan preguntas', () => {
     const session = buildStandardPracticeSession({
       batchStartIndex: 20,
       questionsCount: 55,
-      questions: [buildQuestion('q1'), buildQuestion('q2')]
+      questions: [buildQuestion('q1'), buildQuestion('q2')],
     });
 
     expect(session).toMatchObject({
@@ -38,14 +48,14 @@ describe('practiceSessionFactory', () => {
       totalBatches: 3,
       batchStartIndex: 20,
       nextStandardBatchStartIndex: 40,
-      continueLabel: 'Continuar con las siguientes 20'
+      continueLabel: 'Continuar con las siguientes 20',
     });
   });
 
   it('crea sesiones de repaso y permite reiniciarlas sin mutar el contrato', () => {
     const session = buildWeakestPracticeSession([
       { question: buildQuestion('q1'), stat: {} as never },
-      { question: buildQuestion('q2'), stat: {} as never }
+      { question: buildQuestion('q2'), stat: {} as never },
     ]);
 
     expect(session).toMatchObject({
@@ -53,7 +63,7 @@ describe('practiceSessionFactory', () => {
       feedbackMode: 'immediate',
       batchNumber: 1,
       totalBatches: 1,
-      continueLabel: 'Volver al panel'
+      continueLabel: 'Volver al panel',
     });
 
     const restarted = restartPracticeSession(session!);
@@ -62,17 +72,14 @@ describe('practiceSessionFactory', () => {
   });
 
   it('crea sesiones aleatorias sin continuidad estandar', () => {
-    const session = buildRandomPracticeSession([
-      buildQuestion('q1'),
-      buildQuestion('q2')
-    ]);
+    const session = buildRandomPracticeSession([buildQuestion('q1'), buildQuestion('q2')]);
 
     expect(session).toMatchObject({
       mode: 'random',
       feedbackMode: 'immediate',
       title: 'Sesion aleatoria',
       batchStartIndex: null,
-      nextStandardBatchStartIndex: null
+      nextStandardBatchStartIndex: null,
     });
   });
 
@@ -80,7 +87,7 @@ describe('practiceSessionFactory', () => {
     const session = buildRandomPracticeSession([
       buildQuestion('q1'),
       buildQuestion('q1'),
-      buildQuestion('q2')
+      buildQuestion('q2'),
     ]);
 
     expect(session?.questions.map((question) => question.id)).toEqual(['q1', 'q2']);
@@ -90,7 +97,7 @@ describe('practiceSessionFactory', () => {
     const session = buildGuestPracticeSession({
       questions: [buildQuestion('q1'), buildQuestion('q2')],
       blockNumber: 1,
-      totalBlocks: 2
+      totalBlocks: 2,
     });
 
     expect(session).toMatchObject({
@@ -98,21 +105,18 @@ describe('practiceSessionFactory', () => {
       title: 'Bloque de prueba 1/2',
       totalBatches: 2,
       batchNumber: 1,
-      continueLabel: 'Siguiente bloque'
+      continueLabel: 'Siguiente bloque',
     });
   });
 
   it('crea simulacros con feedback diferido y tiempo global', () => {
-    const session = buildSimulacroPracticeSession([
-      buildQuestion('q1'),
-      buildQuestion('q2')
-    ], 3600);
+    const session = buildSimulacroPracticeSession([buildQuestion('q1'), buildQuestion('q2')], 3600);
 
     expect(session).toMatchObject({
       mode: 'simulacro',
       feedbackMode: 'deferred',
       timeLimitSeconds: 3600,
-      continueLabel: 'Volver al panel'
+      continueLabel: 'Volver al panel',
     });
   });
 });

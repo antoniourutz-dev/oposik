@@ -1,9 +1,9 @@
-import type { ActivePracticeSession, PracticeQuestionScopeFilter, WeakQuestionInsight } from '../practiceTypes';
-import {
-  DEFAULT_CURRICULUM,
-  PRACTICE_BATCH_SIZE,
-  SIMULACRO_BATCH_SIZE
-} from '../practiceConfig';
+import type {
+  ActivePracticeSession,
+  PracticeQuestionScopeFilter,
+  WeakQuestionInsight,
+} from '../practiceTypes';
+import { DEFAULT_CURRICULUM, PRACTICE_BATCH_SIZE, SIMULACRO_BATCH_SIZE } from '../practiceConfig';
 import {
   getAntiTrapPracticeBatch,
   getGuestPracticeBatch,
@@ -11,7 +11,7 @@ import {
   getMixedPracticeBatch,
   getRandomPracticeBatch,
   getSimulacroPracticeBatch,
-  getStandardPracticeBatch
+  getStandardPracticeBatch,
 } from '../services/preguntasApi';
 import {
   buildAntiTrapPracticeSession,
@@ -21,7 +21,7 @@ import {
   buildRandomPracticeSession,
   buildSimulacroPracticeSession,
   buildStandardPracticeSession,
-  buildWeakestPracticeSession
+  buildWeakestPracticeSession,
 } from '../services/practiceSessionFactory';
 import { GUEST_MAX_BLOCKS } from './practiceAppStorage';
 
@@ -33,7 +33,7 @@ export type SessionStarterCommandResult = {
 export const loadStandardSessionCommand = async ({
   batchStartIndex,
   questionsCount,
-  questionScope
+  questionScope,
 }: {
   batchStartIndex: number;
   questionsCount: number;
@@ -45,7 +45,7 @@ export const loadStandardSessionCommand = async ({
     normalizedStartIndex,
     PRACTICE_BATCH_SIZE,
     DEFAULT_CURRICULUM,
-    questionScope
+    questionScope,
   );
 
   return {
@@ -54,52 +54,49 @@ export const loadStandardSessionCommand = async ({
       questionsCount,
       questions: batchQuestions,
       questionScope,
-      batchSize: PRACTICE_BATCH_SIZE
-    })
+      batchSize: PRACTICE_BATCH_SIZE,
+    }),
   };
 };
 
 export const loadRandomSessionCommand = async ({
-  questionScope
+  questionScope,
 }: {
   questionScope: PracticeQuestionScopeFilter;
 }): Promise<SessionStarterCommandResult> => {
   const randomQuestions = await getRandomPracticeBatch(
     PRACTICE_BATCH_SIZE,
     DEFAULT_CURRICULUM,
-    questionScope
+    questionScope,
   );
 
   return {
-    session: buildRandomPracticeSession(randomQuestions, questionScope)
+    session: buildRandomPracticeSession(randomQuestions, questionScope),
   };
 };
 
 export const loadGuestSessionCommand = async ({
-  guestBlocksUsed
+  guestBlocksUsed,
 }: {
   guestBlocksUsed: number;
 }): Promise<SessionStarterCommandResult> => {
   const nextBlockNumber = guestBlocksUsed + 1;
-  const guestQuestions = await getGuestPracticeBatch(
-    PRACTICE_BATCH_SIZE,
-    DEFAULT_CURRICULUM
-  );
+  const guestQuestions = await getGuestPracticeBatch(PRACTICE_BATCH_SIZE, DEFAULT_CURRICULUM);
 
   return {
     session: buildGuestPracticeSession({
       questions: guestQuestions,
       blockNumber: nextBlockNumber,
-      totalBlocks: GUEST_MAX_BLOCKS
+      totalBlocks: GUEST_MAX_BLOCKS,
     }),
-    nextGuestBlockNumber: nextBlockNumber
+    nextGuestBlockNumber: nextBlockNumber,
   };
 };
 
 export const loadMixedSessionCommand = async ({
   questionScope,
   recommendedBatchStartIndex,
-  questionsCount
+  questionsCount,
 }: {
   questionScope: PracticeQuestionScopeFilter;
   recommendedBatchStartIndex: number;
@@ -109,17 +106,17 @@ export const loadMixedSessionCommand = async ({
     const mixedQuestions = await getMixedPracticeBatch(
       PRACTICE_BATCH_SIZE,
       DEFAULT_CURRICULUM,
-      questionScope
+      questionScope,
     );
 
     return {
-      session: buildMixedPracticeSession(mixedQuestions, questionScope)
+      session: buildMixedPracticeSession(mixedQuestions, questionScope),
     };
   } catch (error) {
     const fallback = await loadStandardSessionCommand({
       batchStartIndex: recommendedBatchStartIndex,
       questionsCount,
-      questionScope
+      questionScope,
     }).catch(() => null);
 
     if (fallback?.session) {
@@ -132,7 +129,7 @@ export const loadMixedSessionCommand = async ({
 
 export const loadAntiTrapSessionCommand = async ({
   questionScope,
-  weakQuestions
+  weakQuestions,
 }: {
   questionScope: PracticeQuestionScopeFilter;
   weakQuestions: WeakQuestionInsight[];
@@ -141,11 +138,11 @@ export const loadAntiTrapSessionCommand = async ({
     const antiTrapQuestions = await getAntiTrapPracticeBatch(
       PRACTICE_BATCH_SIZE,
       DEFAULT_CURRICULUM,
-      questionScope
+      questionScope,
     );
 
     return {
-      session: buildAntiTrapPracticeSession(antiTrapQuestions, questionScope)
+      session: buildAntiTrapPracticeSession(antiTrapQuestions, questionScope),
     };
   } catch (error) {
     const fallback = buildWeakestPracticeSession(weakQuestions, questionScope);
@@ -158,7 +155,7 @@ export const loadAntiTrapSessionCommand = async ({
 };
 
 export const loadSimulacroSessionCommand = async ({
-  questionScope
+  questionScope,
 }: {
   questionScope: PracticeQuestionScopeFilter;
 }): Promise<SessionStarterCommandResult> => {
@@ -166,17 +163,17 @@ export const loadSimulacroSessionCommand = async ({
     const simulacroQuestions = await getSimulacroPracticeBatch(
       SIMULACRO_BATCH_SIZE,
       DEFAULT_CURRICULUM,
-      questionScope
+      questionScope,
     );
 
     return {
-      session: buildSimulacroPracticeSession(simulacroQuestions, questionScope)
+      session: buildSimulacroPracticeSession(simulacroQuestions, questionScope),
     };
   } catch (error) {
     const fallbackQuestions = await getRandomPracticeBatch(
       SIMULACRO_BATCH_SIZE,
       DEFAULT_CURRICULUM,
-      questionScope
+      questionScope,
     ).catch(() => null);
 
     const fallbackSession = fallbackQuestions
@@ -192,17 +189,13 @@ export const loadSimulacroSessionCommand = async ({
 };
 
 export const loadLawSessionCommand = async ({
-  law
+  law,
 }: {
   law: string;
 }): Promise<SessionStarterCommandResult> => {
-  const lawQuestions = await getLawPracticeBatch(
-    law,
-    PRACTICE_BATCH_SIZE,
-    DEFAULT_CURRICULUM
-  );
+  const lawQuestions = await getLawPracticeBatch(law, PRACTICE_BATCH_SIZE, DEFAULT_CURRICULUM);
 
   return {
-    session: buildLawPracticeSession(lawQuestions, law)
+    session: buildLawPracticeSession(lawQuestions, law),
   };
 };

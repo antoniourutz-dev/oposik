@@ -8,7 +8,7 @@ import {
   computeReadinessSnapshot,
   getErrorTypeLabel,
   inferAttemptErrorType,
-  updateQuestionState
+  updateQuestionState,
 } from './index';
 import { UserQuestionState } from './types';
 
@@ -31,8 +31,8 @@ describe('learningEngine', () => {
         masteryLevel: 3,
         difficultyFactor: 1,
         latencyFactor: 1,
-        examFactor: 0.65
-      })
+        examFactor: 0.65,
+      }),
     ).toBe(9);
   });
 
@@ -56,8 +56,8 @@ describe('learningEngine', () => {
         changedAnswer: false,
         answeredAt: '2026-03-27T10:00:00.000Z',
         referenceTimeMs: 12000,
-        globalDifficulty: 0.4
-      }
+        globalDifficulty: 0.4,
+      },
     });
 
     expect(transition.nextState.attempts).toBe(1);
@@ -103,7 +103,7 @@ describe('learningEngine', () => {
       reviewsNeededBeforeExam: 1,
       dominantErrorType: null,
       timesExplanationOpened: 0,
-      timesChangedAnswer: 0
+      timesChangedAnswer: 0,
     };
 
     const transition = updateQuestionState({
@@ -126,8 +126,8 @@ describe('learningEngine', () => {
         answeredAt: '2026-03-27T12:00:00.000Z',
         errorTypeInferred: 'sobreconfianza',
         referenceTimeMs: 12000,
-        globalDifficulty: 0.5
-      }
+        globalDifficulty: 0.5,
+      },
     });
 
     expect(transition.nextState.lapseCount).toBe(1);
@@ -175,7 +175,7 @@ describe('learningEngine', () => {
           reviewsNeededBeforeExam: 2,
           dominantErrorType: null,
           timesExplanationOpened: 0,
-          timesChangedAnswer: 0
+          timesChangedAnswer: 0,
         },
         {
           userId: 'u1',
@@ -210,9 +210,9 @@ describe('learningEngine', () => {
           reviewsNeededBeforeExam: 1,
           dominantErrorType: null,
           timesExplanationOpened: 0,
-          timesChangedAnswer: 0
-        }
-      ]
+          timesChangedAnswer: 0,
+        },
+      ],
     });
 
     expect(snapshot.overdueCount).toBe(1);
@@ -225,12 +225,13 @@ describe('learningEngine', () => {
   it('infiere errores rentables para preguntas trampa', () => {
     expect(
       inferAttemptErrorType({
-        statement: 'Segun la norma, cual de las siguientes es incorrecta excepto en caso de urgencia?',
+        statement:
+          'Segun la norma, cual de las siguientes es incorrecta excepto en caso de urgencia?',
         selectedOptionText: 'En 5 dias naturales',
         correctOptionText: 'En 10 dias habiles',
         responseTimeMs: 6200,
-        isCorrect: false
-      })
+        isCorrect: false,
+      }),
     ).toBe('excepcion');
 
     expect(
@@ -239,8 +240,8 @@ describe('learningEngine', () => {
         selectedOptionText: '15 dias naturales',
         correctOptionText: '10 dias habiles',
         responseTimeMs: 1800,
-        isCorrect: false
-      })
+        isCorrect: false,
+      }),
     ).toBe('sobreconfianza');
 
     expect(getErrorTypeLabel('plazo')).toBe('Plazo');
@@ -253,12 +254,12 @@ describe('learningEngine', () => {
       { isCorrect: true, responseTimeMs: 6800 },
       { isCorrect: false, responseTimeMs: 11000 },
       { isCorrect: false, responseTimeMs: 12500 },
-      { isCorrect: false, responseTimeMs: 13500 }
+      { isCorrect: false, responseTimeMs: 13500 },
     ]);
     const overconfidenceScore = computeOverconfidenceScore([
       { isCorrect: false, responseTimeMs: 1700 },
       { isCorrect: true, responseTimeMs: 6000 },
-      { isCorrect: false, responseTimeMs: 2200, changedAnswer: true }
+      { isCorrect: false, responseTimeMs: 2200, changedAnswer: true },
     ]);
 
     expect(fatigueScore).toBeGreaterThan(0.2);

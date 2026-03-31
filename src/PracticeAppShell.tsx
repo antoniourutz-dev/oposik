@@ -1,24 +1,27 @@
 import React, { Suspense, lazy, useLayoutEffect, useMemo } from 'react';
-const SpinnerSVG: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-  </svg>
-);
-
+import { AppLoadingSurface, CatalogSyncBanner } from './components/ui/app-loading-surface';
 const DatabaseSVG: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-    <ellipse cx="12" cy="5" rx="9" ry="3"/>
-    <path d="M3 5V19A9 3 0 0 0 21 19V5"/>
-    <path d="M3 12A9 3 0 0 0 21 12"/>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <ellipse cx="12" cy="5" rx="9" ry="3" />
+    <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+    <path d="M3 12A9 3 0 0 0 21 12" />
   </svg>
 );
 import BottomDock from './components/BottomDock';
 import TopBar from './components/TopBar';
+import { Alert } from './components/ui/alert';
 import { usePracticeApp } from './hooks/usePracticeApp';
-import {
-  getScreenTelemetryKey,
-  useNavigationTelemetry
-} from './hooks/useNavigationTelemetry';
+import { getScreenTelemetryKey, useNavigationTelemetry } from './hooks/useNavigationTelemetry';
 import { PRACTICE_BATCH_SIZE } from './practiceConfig';
 import ScreenTelemetryBoundary from './telemetry/ScreenTelemetryBoundary';
 
@@ -28,26 +31,6 @@ const GuestDashboardScreen = lazy(() => import('./components/GuestDashboardScree
 const GenericDashboardScreen = lazy(() => import('./components/GenericDashboardScreen'));
 const QuizScreen = lazy(() => import('./components/QuizScreen'));
 const PracticeReviewScreen = lazy(() => import('./components/PracticeReviewScreen'));
-
-const FullscreenLoader: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex min-h-[100dvh] items-center justify-center bg-[radial-gradient(circle_at_12%_0%,rgba(124,182,232,0.18),transparent_26%),radial-gradient(circle_at_88%_8%,rgba(141,147,242,0.2),transparent_24%),radial-gradient(circle_at_50%_100%,rgba(194,223,255,0.16),transparent_28%),linear-gradient(180deg,#f4f8ff_0%,#f7faff_34%,#edf4ff_100%)] px-4">
-    <div className="relative overflow-hidden rounded-[1.9rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] px-6 py-8 text-center shadow-[0_28px_70px_-40px_rgba(141,147,242,0.24)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_24%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_38%)]" />
-      <div className="relative">
-        <span className="inline-flex items-center gap-2 rounded-full border border-[#d7e4fb] bg-white/86 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[0_12px_24px_-22px_rgba(141,147,242,0.18)]">
-          <span className="h-1.5 w-1.5 rounded-full quantia-bg-gradient" />
-          Quantia
-        </span>
-        <div className="mx-auto mt-5 flex h-14 w-14 items-center justify-center rounded-[1.2rem] border border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.22))] text-[#7cb6e8] shadow-[0_18px_30px_-22px_rgba(141,147,242,0.22)]">
-          <SpinnerSVG className="h-8 w-8 animate-spin" />
-        </div>
-      </div>
-      <p className="relative mt-4 text-sm font-black uppercase tracking-[0.16em] text-slate-600">
-        {label}
-      </p>
-    </div>
-  </div>
-);
 
 const PracticeAppShell: React.FC = () => {
   const {
@@ -107,13 +90,15 @@ const PracticeAppShell: React.FC = () => {
     weakCategories,
     weakQuestions,
     onStartLawTraining,
-    setActiveTab
+    setActiveTab,
   } = usePracticeApp();
   const navigationScrollKey = view === 'home' ? `home:${activeTab}` : view;
   const contentEnterClass =
     view === 'quiz' || view === 'review' ? 'screen-enter-fixed-safe' : 'screen-enter';
   const topBarSection =
-    view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer) ? undefined : topBarSubtitle;
+    view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer)
+      ? undefined
+      : topBarSubtitle;
   const mainTopPadding =
     view === 'quiz'
       ? 'pt-4'
@@ -121,7 +106,9 @@ const PracticeAppShell: React.FC = () => {
         ? 'pt-[4.05rem]'
         : 'pt-[5.2rem]';
   const shellBackgroundClass =
-    view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer) ? 'app-shell-home' : 'app-shell-default';
+    view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer)
+      ? 'app-shell-home'
+      : 'app-shell-default';
   const showDesktopRail = view === 'home' && !isGuest;
   const screenTelemetryKey = useMemo(
     () =>
@@ -129,19 +116,20 @@ const PracticeAppShell: React.FC = () => {
         activeTab,
         isGenericPlayer,
         isGuest,
-        view
+        view,
       }),
-    [activeTab, isGenericPlayer, isGuest, view]
+    [activeTab, isGenericPlayer, isGuest, view],
   );
   const screenTelemetryMeta = useMemo(
     () => ({
       activeTab,
       isGenericPlayer,
       isGuest,
-      questionCount: view === 'quiz' || view === 'review' ? activeSession?.questions.length ?? 0 : undefined,
+      questionCount:
+        view === 'quiz' || view === 'review' ? (activeSession?.questions.length ?? 0) : undefined,
       selectedScope: selectedQuestionScope,
       sessionMode: activeSession?.mode,
-      view
+      view,
     }),
     [
       activeSession?.mode,
@@ -150,15 +138,15 @@ const PracticeAppShell: React.FC = () => {
       isGenericPlayer,
       isGuest,
       selectedQuestionScope,
-      view
-    ]
+      view,
+    ],
   );
 
   useNavigationTelemetry({
     activeTab,
     isGenericPlayer,
     isGuest,
-    view
+    view,
   });
 
   useLayoutEffect(() => {
@@ -168,12 +156,12 @@ const PracticeAppShell: React.FC = () => {
   }, [navigationScrollKey]);
 
   if (!authReady) {
-    return <FullscreenLoader label="Preparando acceso" />;
+    return <AppLoadingSurface label="Preparando acceso" />;
   }
 
   if (!session && !isGuest) {
     return (
-      <Suspense fallback={<FullscreenLoader label="Cargando acceso" />}>
+      <Suspense fallback={<AppLoadingSurface label="Cargando acceso" />}>
         <AuthScreen
           onSignedIn={handleSignedIn}
           onEnterGuest={handleEnterGuest}
@@ -184,15 +172,13 @@ const PracticeAppShell: React.FC = () => {
     );
   }
 
-  if (!identity || syncingState) {
-    return <FullscreenLoader label="Sincronizando cuenta" />;
-  }
-
   return (
     <div className={`min-h-[100dvh] text-slate-900 ${shellBackgroundClass}`}>
       {view !== 'quiz' && <TopBar section={topBarSection} />}
       <div className="flex min-h-[100dvh] w-full flex-col px-3 sm:px-5 lg:px-5 xl:px-6 2xl:px-8">
-        <div className={`flex flex-1 flex-col ${showDesktopRail ? 'xl:grid xl:grid-cols-[92px_minmax(0,1fr)] xl:gap-5 2xl:grid-cols-[98px_minmax(0,1fr)] 2xl:gap-6' : ''}`}>
+        <div
+          className={`flex flex-1 flex-col ${showDesktopRail ? 'xl:grid xl:grid-cols-[92px_minmax(0,1fr)] xl:gap-5 2xl:grid-cols-[98px_minmax(0,1fr)] 2xl:gap-6' : ''}`}
+        >
           {showDesktopRail ? (
             <BottomDock
               activeTab={activeTab}
@@ -201,190 +187,179 @@ const PracticeAppShell: React.FC = () => {
             />
           ) : null}
 
-          <main className={`flex flex-1 flex-col px-1 pb-8 ${mainTopPadding} sm:px-2 lg:px-2 xl:px-0 ${view === 'home' ? 'pb-28 xl:pb-12' : ''}`}>
-          {syncError && view === 'home' ? (
-            <div className="mx-auto mb-4 w-full max-w-4xl rounded-[1.2rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-              {syncError}
-            </div>
-          ) : null}
-
-          {loadingQuestions ? (
-            <div className="mx-auto flex w-full max-w-3xl flex-1 items-center justify-center py-10">
-              <div className="relative w-full overflow-hidden rounded-[2rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] p-8 text-center shadow-[0_30px_70px_-35px_rgba(141,147,242,0.24)] backdrop-blur">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_24%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_38%)]" />
-                <div className="relative">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-[#d7e4fb] bg-white/86 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-600 shadow-[0_12px_24px_-22px_rgba(141,147,242,0.18)]">
-                    <span className="h-1.5 w-1.5 rounded-full quantia-bg-gradient" />
-                    Quantia
-                  </span>
-                </div>
-                <div className="relative mx-auto mt-5 flex h-16 w-16 items-center justify-center rounded-[1.35rem] border border-[#d7e4fb] bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.22))] text-[#7cb6e8] shadow-[0_20px_34px_-24px_rgba(141,147,242,0.22)]">
-                  <SpinnerSVG className="h-9 w-9 animate-spin" />
-                </div>
-                <p className="relative mt-5 text-sm font-black uppercase tracking-[0.22em] text-slate-600">
-                  Cargando preguntas
-                </p>
-              </div>
-            </div>
-          ) : null}
-
-          {!loadingQuestions && questionsError ? (
-            <div className="mx-auto flex w-full max-w-3xl flex-1 items-center py-10">
-              <div className="w-full rounded-[2rem] border border-rose-200 bg-white/85 p-8 shadow-[0_30px_70px_-35px_rgba(127,29,29,0.28)] backdrop-blur">
-                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-rose-700">
-                  Error de carga
-                </p>
-                <h2 className="mt-2 text-2xl font-black text-slate-900">
-                  No se ha podido cargar la practica
-                </h2>
-                <p className="mt-3 text-sm font-medium leading-6 text-slate-600">{questionsError}</p>
-              </div>
-            </div>
-          ) : null}
-
-          {!loadingQuestions && !questionsError && !isGuest && questionsCount === 0 ? (
-            <div className="mx-auto flex w-full max-w-3xl flex-1 items-center py-10">
-              <div className="w-full rounded-[2rem] border border-slate-200 bg-white/85 p-8 shadow-[0_30px_70px_-35px_rgba(15,23,42,0.32)] backdrop-blur">
-                <DatabaseSVG className="h-12 w-12 text-slate-400" />
-                <h2 className="mt-5 text-2xl font-black text-slate-900">
-                  No hay preguntas visibles todavia
-                </h2>
-                <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
-                  El catalogo de practica no ha devuelto preguntas visibles. Revisa la tabla
-                  `preguntas` y sus politicas de acceso.
-                </p>
-              </div>
-            </div>
-          ) : null}
-
-          <Suspense fallback={<FullscreenLoader label="Cargando modulo" />}>
-            {!loadingQuestions && !questionsError && (isGuest || questionsCount > 0) ? (
-              <div key={navigationScrollKey} className={contentEnterClass}>
-                <ScreenTelemetryBoundary
-                  key={screenTelemetryKey}
-                  screen={screenTelemetryKey}
-                  meta={screenTelemetryMeta}
-                >
-                  {view === 'home' ? (
-                    isGuest ? (
-                      <GuestDashboardScreen
-                        remainingBlocks={guestBlocksRemaining}
-                        maxBlocks={guestMaxBlocks}
-                        loading={loadingQuestions}
-                        onStart={startGuest}
-                        onExit={() => void handleSignOut()}
-                      />
-                    ) : isGenericPlayer ? (
-                      <GenericDashboardScreen
-                        activeTab={activeTab}
-                        identity={identity}
-                        profile={profile}
-                        recentSessions={recentSessions}
-                        weakQuestionCount={weakQuestions.length}
-                        questionScope={selectedQuestionScope}
-                        onQuestionScopeChange={handleQuestionScopeChange}
-                        onStartSimple={startGenericRecommended}
-                        onStartRandom={startRandom}
-                        onStartWeakReview={startWeakReview}
-                        onStartFromBeginning={startFromBeginning}
-                        onSignOut={() => void handleSignOut()}
-                      />
-                    ) : (
-                      <DashboardScreen
-                        activeTab={activeTab}
-                        identity={identity}
-                        examTarget={examTarget}
-                        examTargetError={examTargetError}
-                        savingExamTarget={savingExamTarget}
-                        learningDashboard={learningDashboard}
-                        learningDashboardV2={learningDashboardV2}
-                        coachPlan={coachPlan}
-                        pressureInsights={pressureInsights}
-                        pressureInsightsV2={pressureInsightsV2}
-                        profile={profile}
-                        recentSessions={recentSessions}
-                        questionsCount={questionsCount}
-                        totalBatches={totalBatches}
-                        batchSize={PRACTICE_BATCH_SIZE}
-                        recommendedBatchNumber={recommendedBatchNumber}
-                        weakQuestions={weakQuestions}
-                        weakCategories={weakCategories}
-                        questionScope={selectedQuestionScope}
-                        onQuestionScopeChange={handleQuestionScopeChange}
-                        onStartRecommended={startRecommended}
-                        onStartSimulacro={startSimulacro}
-                        onStartAntiTrap={startAntiTrap}
-                        onStartMixed={startMixed}
-                        onStartRandom={startRandom}
-                        onStartFromBeginning={startFromBeginning}
-                        onStartWeakReview={startWeakReview}
-                        onReloadQuestions={() => void reloadPracticeData()}
-                        onSaveExamTarget={(payload) => void handleSaveExamTarget(payload)}
-                        onStartLawTraining={onStartLawTraining}
-                        onSignOut={() => void handleSignOut()}
-                      />
-                    )
-                  ) : null}
-
-                  {view === 'quiz' && currentQuestion && activeSession ? (
-                    <div>
-                      <QuizScreen
-                        mode={activeSession.mode}
-                        title={activeSession.title}
-                        subtitle={activeSession.subtitle}
-                        feedbackMode={activeSession.feedbackMode}
-                        startedAt={activeSession.startedAt}
-                        timeLimitSeconds={activeSession.timeLimitSeconds}
-                        question={currentQuestion}
-                        questionIndex={currentQuestionIndex}
-                        totalQuestions={activeSession.questions.length}
-                        batchNumber={activeSession.batchNumber}
-                        totalBatches={activeSession.totalBatches}
-                        questionScope={activeSession.questionScope ?? selectedQuestionScope}
-                        simplified={isGuest || isGenericPlayer}
-                        showCompactProgress={isGenericPlayer}
-                        answers={answers}
-                        onAnswer={handleAnswer}
-                        onEndSession={handleEndSessionEarly}
-                        onTimeExpired={handleSimulacroTimeExpired}
-                      />
-                    </div>
-                  ) : null}
-
-                  {view === 'review' && activeSession ? (
-                    <div>
-                      <PracticeReviewScreen
-                        answers={answers}
-                        batchNumber={activeSession.batchNumber}
-                        totalBatches={activeSession.totalBatches}
-                        sessionId={activeSession.id}
-                        curriculum={profile?.curriculum}
-                        sessionMode={activeSession.mode}
-                        sessionStartedAt={activeSession.startedAt}
-                        sessionQuestionCount={activeSession.questions.length}
-                        timeLimitSeconds={activeSession.timeLimitSeconds}
-                        hasNextBatch={
-                          isGuest
-                            ? guestBlocksRemaining > 0
-                            : activeSession.mode === 'standard' &&
-                              activeSession.nextStandardBatchStartIndex !== null &&
-                              activeSession.nextStandardBatchStartIndex > 0
-                        }
-                        title={activeSession.title}
-                        subtitle={activeSession.subtitle}
-                        continueLabel={activeSession.continueLabel}
-                        showRetry={!isGuest && !isGenericPlayer}
-                        simplified={isGuest || isGenericPlayer}
-                        onRetryBatch={handleRetrySession}
-                        onContinue={handleContinueAfterReview}
-                        onBackToStart={goHome}
-                      />
-                    </div>
-                  ) : null}
-                </ScreenTelemetryBoundary>
+          <main
+            className={`flex flex-1 flex-col px-1 pb-8 ${mainTopPadding} sm:px-2 lg:px-2 xl:px-0 ${view === 'home' ? 'pb-28 xl:pb-12' : ''}`}
+          >
+            {syncError && view === 'home' ? (
+              <div className="mx-auto mb-4 w-full max-w-4xl">
+                <Alert variant="warning" title="Sincronización pendiente">
+                  {syncError}
+                </Alert>
               </div>
             ) : null}
-          </Suspense>
+
+            {view === 'home' && !isGuest ? (
+              <CatalogSyncBanner syncingAccount={syncingState} loadingCatalog={loadingQuestions} />
+            ) : null}
+
+            {questionsError ? (
+              <div className="mx-auto flex w-full max-w-3xl flex-1 items-center py-10">
+                <div className="w-full ui-surface-solid p-8">
+                  <p className="ui-label text-rose-700">Error de carga</p>
+                  <h2 className="mt-2 text-2xl ui-title">No se ha podido cargar la práctica</h2>
+                  <p className="mt-3 ui-body">{questionsError}</p>
+                  <div className="mt-5">
+                    <Alert variant="error" title="Detalle">
+                      Reintenta en unos segundos. Si persiste, revisa tu conexión o vuelve a abrir la app.
+                    </Alert>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {!loadingQuestions && !questionsError && !isGuest && questionsCount === 0 ? (
+              <div className="mx-auto flex w-full max-w-3xl flex-1 items-center py-10">
+                <div className="w-full ui-surface-solid p-8">
+                  <DatabaseSVG className="h-12 w-12 text-slate-400" />
+                  <h2 className="mt-5 text-2xl ui-title">No hay preguntas visibles todavía</h2>
+                  <p className="mt-3 ui-body">
+                    El catálogo de práctica no ha devuelto preguntas visibles. Revisa la tabla `preguntas` y sus
+                    políticas de acceso.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <Suspense fallback={<AppLoadingSurface label="Cargando módulo" />}>
+              {!questionsError && (isGuest || loadingQuestions || questionsCount > 0) ? (
+                <div key={navigationScrollKey} className={contentEnterClass}>
+                  <ScreenTelemetryBoundary
+                    key={screenTelemetryKey}
+                    screen={screenTelemetryKey}
+                    meta={screenTelemetryMeta}
+                  >
+                    {view === 'home' ? (
+                      isGuest ? (
+                        <GuestDashboardScreen
+                          remainingBlocks={guestBlocksRemaining}
+                          maxBlocks={guestMaxBlocks}
+                          loading={loadingQuestions}
+                          onStart={startGuest}
+                          onExit={() => void handleSignOut()}
+                        />
+                      ) : isGenericPlayer ? (
+                        <GenericDashboardScreen
+                          activeTab={activeTab}
+                          identity={identity!}
+                          catalogLoading={loadingQuestions}
+                          profile={profile}
+                          recentSessions={recentSessions}
+                          weakQuestionCount={weakQuestions.length}
+                          questionScope={selectedQuestionScope}
+                          onQuestionScopeChange={handleQuestionScopeChange}
+                          onStartSimple={startGenericRecommended}
+                          onStartRandom={startRandom}
+                          onStartWeakReview={startWeakReview}
+                          onStartFromBeginning={startFromBeginning}
+                          onSignOut={() => void handleSignOut()}
+                        />
+                      ) : (
+                        <DashboardScreen
+                          activeTab={activeTab}
+                          identity={identity!}
+                          catalogLoading={loadingQuestions}
+                          examTarget={examTarget}
+                          examTargetError={examTargetError}
+                          savingExamTarget={savingExamTarget}
+                          learningDashboard={learningDashboard}
+                          learningDashboardV2={learningDashboardV2}
+                          coachPlan={coachPlan}
+                          pressureInsights={pressureInsights}
+                          pressureInsightsV2={pressureInsightsV2}
+                          profile={profile}
+                          recentSessions={recentSessions}
+                          questionsCount={questionsCount}
+                          totalBatches={totalBatches}
+                          batchSize={PRACTICE_BATCH_SIZE}
+                          recommendedBatchNumber={recommendedBatchNumber}
+                          weakQuestions={weakQuestions}
+                          weakCategories={weakCategories}
+                          questionScope={selectedQuestionScope}
+                          onQuestionScopeChange={handleQuestionScopeChange}
+                          onStartRecommended={startRecommended}
+                          onStartSimulacro={startSimulacro}
+                          onStartAntiTrap={startAntiTrap}
+                          onStartMixed={startMixed}
+                          onStartRandom={startRandom}
+                          onStartFromBeginning={startFromBeginning}
+                          onStartWeakReview={startWeakReview}
+                          onReloadQuestions={() => void reloadPracticeData()}
+                          onSaveExamTarget={(payload) => void handleSaveExamTarget(payload)}
+                          onStartLawTraining={onStartLawTraining}
+                          onSignOut={() => void handleSignOut()}
+                        />
+                      )
+                    ) : null}
+
+                    {view === 'quiz' && currentQuestion && activeSession ? (
+                      <div>
+                        <QuizScreen
+                          mode={activeSession.mode}
+                          title={activeSession.title}
+                          subtitle={activeSession.subtitle}
+                          feedbackMode={activeSession.feedbackMode}
+                          startedAt={activeSession.startedAt}
+                          timeLimitSeconds={activeSession.timeLimitSeconds}
+                          question={currentQuestion}
+                          questionIndex={currentQuestionIndex}
+                          totalQuestions={activeSession.questions.length}
+                          batchNumber={activeSession.batchNumber}
+                          totalBatches={activeSession.totalBatches}
+                          questionScope={activeSession.questionScope ?? selectedQuestionScope}
+                          simplified={isGuest || isGenericPlayer}
+                          showCompactProgress={isGenericPlayer}
+                          answers={answers}
+                          onAnswer={handleAnswer}
+                          onEndSession={handleEndSessionEarly}
+                          onTimeExpired={handleSimulacroTimeExpired}
+                        />
+                      </div>
+                    ) : null}
+
+                    {view === 'review' && activeSession ? (
+                      <div>
+                        <PracticeReviewScreen
+                          answers={answers}
+                          batchNumber={activeSession.batchNumber}
+                          totalBatches={activeSession.totalBatches}
+                          sessionId={activeSession.id}
+                          curriculum={profile?.curriculum}
+                          sessionMode={activeSession.mode}
+                          sessionStartedAt={activeSession.startedAt}
+                          sessionQuestionCount={activeSession.questions.length}
+                          timeLimitSeconds={activeSession.timeLimitSeconds}
+                          hasNextBatch={
+                            isGuest
+                              ? guestBlocksRemaining > 0
+                              : activeSession.mode === 'standard' &&
+                                activeSession.nextStandardBatchStartIndex !== null &&
+                                activeSession.nextStandardBatchStartIndex > 0
+                          }
+                          title={activeSession.title}
+                          subtitle={activeSession.subtitle}
+                          continueLabel={activeSession.continueLabel}
+                          showRetry={!isGuest && !isGenericPlayer}
+                          simplified={isGuest || isGenericPlayer}
+                          onRetryBatch={handleRetrySession}
+                          onContinue={handleContinueAfterReview}
+                          onBackToStart={goHome}
+                        />
+                      </div>
+                    ) : null}
+                  </ScreenTelemetryBoundary>
+                </div>
+              ) : null}
+            </Suspense>
           </main>
         </div>
       </div>

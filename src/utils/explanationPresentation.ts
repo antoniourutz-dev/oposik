@@ -11,7 +11,8 @@ export type ExplanationPresentation = {
   blocks: ExplanationBlock[];
 };
 
-const LEGAL_MARKER = /\b(articulo|ley|decreto|reglamento|normativa|estatuto|constitucion|real decreto)\b/i;
+const LEGAL_MARKER =
+  /\b(articulo|ley|decreto|reglamento|normativa|estatuto|constitucion|real decreto)\b/i;
 const TRAP_MARKER =
   /\b(por que\b|por qué\b|opcion(?:es)?\s+[a-d]|\bl[ao]s?\s+opciones?\b|\bincorrectas?\b)\b/i;
 
@@ -28,7 +29,7 @@ const normalizeText = (value: string) =>
 const stripCorrectAnswerLead = (value: string) => {
   const stripped = value.replace(
     /^(?:la\s+)?(?:respuesta|opcion)\s+correcta\s+es(?:\s+(?:la|el))?\s+[^.?!]*[.?!]\s*/i,
-    ''
+    '',
   );
 
   return stripped || value;
@@ -46,8 +47,20 @@ const splitSentences = (value: string) =>
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 const deriveLeadFromLegalSentence = (value: string) => {
-  if (/^(?:De acuerdo con|Segun|Según|Conforme a|En virtud de)\b/i.test(value) && value.includes(',')) {
-    const anchorPatterns = [', tanto ', ', el ', ', la ', ', los ', ', las ', ', debe ', ', deben ', ', se '];
+  if (
+    /^(?:De acuerdo con|Segun|Según|Conforme a|En virtud de)\b/i.test(value) &&
+    value.includes(',')
+  ) {
+    const anchorPatterns = [
+      ', tanto ',
+      ', el ',
+      ', la ',
+      ', los ',
+      ', las ',
+      ', debe ',
+      ', deben ',
+      ', se ',
+    ];
 
     for (const anchor of anchorPatterns) {
       const index = value.toLowerCase().indexOf(anchor);
@@ -66,7 +79,7 @@ const deriveLeadFromLegalSentence = (value: string) => {
   }
 
   const statementMatch = value.match(
-    /(?:establece|dispone|senala|señala|indica|recoge)\s+que\s+(.+)/i
+    /(?:establece|dispone|senala|señala|indica|recoge)\s+que\s+(.+)/i,
   );
   if (statementMatch && statementMatch[1].trim().length >= 24) {
     return capitalize(statementMatch[1].trim());
@@ -84,7 +97,7 @@ const cleanTrapSentence = (value: string) =>
 const joinSentences = (sentences: string[]) => sentences.join(' ').trim();
 
 export const buildExplanationPresentation = (
-  rawExplanation: string | null
+  rawExplanation: string | null,
 ): ExplanationPresentation | null => {
   if (!rawExplanation) return null;
 
@@ -95,7 +108,7 @@ export const buildExplanationPresentation = (
   if (!sentences.length) {
     return {
       lead: normalized,
-      blocks: []
+      blocks: [],
     };
   }
 
@@ -144,7 +157,7 @@ export const buildExplanationPresentation = (
     blocks.push({
       tone: 'detail',
       title: 'Detalle util',
-      text: joinSentences(detailSentences)
+      text: joinSentences(detailSentences),
     });
   }
 
@@ -152,7 +165,7 @@ export const buildExplanationPresentation = (
     blocks.push({
       tone: 'basis',
       title: 'Apoyo legal',
-      text: joinSentences(legalSentences)
+      text: joinSentences(legalSentences),
     });
   }
 
@@ -160,12 +173,12 @@ export const buildExplanationPresentation = (
     blocks.push({
       tone: 'trap',
       title: 'Donde estaba la trampa',
-      text: joinSentences(trapSentences)
+      text: joinSentences(trapSentences),
     });
   }
 
   return {
     lead: joinSentences(leadParts) || normalized,
-    blocks
+    blocks,
   };
 };

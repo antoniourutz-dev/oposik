@@ -8,14 +8,13 @@ type UseNavigationTelemetryOptions = {
   view: string;
 };
 
-const now = () =>
-  typeof performance !== 'undefined' ? performance.now() : Date.now();
+const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 export const getScreenTelemetryKey = ({
   activeTab,
   isGenericPlayer,
   isGuest,
-  view
+  view,
 }: UseNavigationTelemetryOptions) => {
   if (isGuest) return 'guest:home';
   if (isGenericPlayer) return `generic:${view}:${activeTab}`;
@@ -26,7 +25,7 @@ export const useNavigationTelemetry = ({
   activeTab,
   isGenericPlayer,
   isGuest,
-  view
+  view,
 }: UseNavigationTelemetryOptions) => {
   const screenKey = useMemo(
     () =>
@@ -34,9 +33,9 @@ export const useNavigationTelemetry = ({
         activeTab,
         isGenericPlayer,
         isGuest,
-        view
+        view,
       }),
-    [activeTab, isGenericPlayer, isGuest, view]
+    [activeTab, isGenericPlayer, isGuest, view],
   );
 
   const screenEnteredAtRef = useRef(now());
@@ -50,12 +49,12 @@ export const useNavigationTelemetry = ({
       recordNavigation('screen_leave', {
         from: previousScreen,
         to: screenKey,
-        durationMs: enteredAt - screenEnteredAtRef.current
+        durationMs: enteredAt - screenEnteredAtRef.current,
       });
     }
 
     recordNavigation('screen_enter', {
-      screen: screenKey
+      screen: screenKey,
     });
 
     previousScreenRef.current = screenKey;
@@ -69,9 +68,9 @@ export const useNavigationTelemetry = ({
       recordNavigation('screen_leave', {
         from: previousScreenRef.current,
         durationMs: now() - screenEnteredAtRef.current,
-        reason: 'unmount'
+        reason: 'unmount',
       });
     },
-    []
+    [],
   );
 };

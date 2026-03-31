@@ -1,4 +1,8 @@
-import { PracticeQuestion, PracticeQuestionScope, PracticeQuestionScopeFilter } from '../practiceTypes';
+import {
+  PracticeQuestion,
+  PracticeQuestionScope,
+  PracticeQuestionScopeFilter,
+} from '../practiceTypes';
 
 const normalizeScopeToken = (value: unknown) =>
   String(value ?? '')
@@ -15,11 +19,7 @@ export const normalizeQuestionScope = (value: unknown): PracticeQuestionScope | 
     return 'common';
   }
 
-  if (
-    normalized === 'especifico' ||
-    normalized === 'specific' ||
-    normalized === 'especialidad'
-  ) {
+  if (normalized === 'especifico' || normalized === 'specific' || normalized === 'especialidad') {
     return 'specific';
   }
 
@@ -27,7 +27,7 @@ export const normalizeQuestionScope = (value: unknown): PracticeQuestionScope | 
 };
 
 export const readQuestionScopeFromRow = (
-  row: Record<string, unknown>
+  row: Record<string, unknown>,
 ): PracticeQuestionScope | null => {
   const candidates = [
     row.grupo,
@@ -38,7 +38,7 @@ export const readQuestionScopeFromRow = (
     row.tipo_temario,
     row.question_track,
     row.track,
-    row.tipo
+    row.tipo,
   ];
 
   for (const candidate of candidates) {
@@ -51,16 +51,19 @@ export const readQuestionScopeFromRow = (
 
 export const matchesQuestionScope = (
   question: Pick<PracticeQuestion, 'questionScope'>,
-  filter: PracticeQuestionScopeFilter
+  filter: PracticeQuestionScopeFilter,
 ) => filter === 'all' || question.questionScope === filter;
 
 export const filterQuestionsByScope = (
   questions: PracticeQuestion[],
-  filter: PracticeQuestionScopeFilter
-) => (filter === 'all' ? questions : questions.filter((question) => matchesQuestionScope(question, filter)));
+  filter: PracticeQuestionScopeFilter,
+) =>
+  filter === 'all'
+    ? questions
+    : questions.filter((question) => matchesQuestionScope(question, filter));
 
 export const getQuestionScopeLabel = (
-  value: PracticeQuestionScopeFilter | PracticeQuestionScope | null | undefined
+  value: PracticeQuestionScopeFilter | PracticeQuestionScope | null | undefined,
 ) => {
   switch (value) {
     case 'common':

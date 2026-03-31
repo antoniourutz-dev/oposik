@@ -1,4 +1,5 @@
 import React from 'react';
+import { APP_DISPLAY_NAME } from '../appMeta';
 import { Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -7,7 +8,7 @@ type TopBarProps = {
   section?: string;
 };
 
-const TopBar: React.FC<TopBarProps> = ({ title = 'Quantia', section }) => {
+const TopBar: React.FC<TopBarProps> = ({ title = APP_DISPLAY_NAME, section }) => {
   const isIntegrated = !section;
 
   return (
@@ -16,21 +17,19 @@ const TopBar: React.FC<TopBarProps> = ({ title = 'Quantia', section }) => {
         className={`${
           isIntegrated
             ? 'mx-auto flex h-[48px] w-full max-w-7xl items-center justify-between'
-            : 'mx-auto flex h-[64px] w-full max-w-7xl items-center justify-between rounded-[2rem] border border-white/40 bg-white/60 px-6 shadow-[0_32px_64px_-32px_rgba(15,23,42,0.2)] backdrop-blur-2xl transition-all duration-500 hover:bg-white/70'
+            : 'mx-auto flex h-[64px] w-full max-w-7xl items-center justify-between px-6 transition-all duration-500 hover:bg-white/70 ui-surface'
         }`}
       >
         <div className="flex items-center gap-4">
           <div aria-hidden="true" className="relative flex h-8 w-8 items-center justify-center">
-             <motion.div
-               animate={{ rotate: 360 }}
-               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-               className="absolute inset-0 rounded-xl bg-gradient-to-tr from-indigo-500/20 via-sky-400/20 to-indigo-500/20 blur-md"
-             />
-             <div className="relative h-2.5 w-2.5 rounded-full bg-slate-950 shadow-[0_0_12px_rgba(15,23,42,0.4)]" />
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+              className="absolute inset-0 rounded-xl bg-gradient-to-tr from-indigo-500/20 via-sky-400/20 to-indigo-500/20 blur-md"
+            />
+            <div className="relative h-2.5 w-2.5 rounded-full bg-slate-950 shadow-[0_0_12px_rgba(15,23,42,0.4)]" />
           </div>
-          <h1 className="text-xl font-black tracking-tight text-slate-950 opacity-90">
-             {title}
-          </h1>
+          <h1 className="text-xl font-black tracking-tight text-slate-950 opacity-90">{title}</h1>
         </div>
 
         {section && (

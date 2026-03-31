@@ -25,11 +25,14 @@ export const StudyCalendar: React.FC<StudyCalendarProps> = ({ sessions, classNam
     return days;
   }, [sessions]);
 
-  const daysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const daysInMonth = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   const startDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
 
-  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  const prevMonth = () =>
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  const nextMonth = () =>
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
 
   const monthName = currentDate.toLocaleString('es-ES', { month: 'long' });
   const year = currentDate.getFullYear();
@@ -46,14 +49,19 @@ export const StudyCalendar: React.FC<StudyCalendarProps> = ({ sessions, classNam
   const dayNames = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
   return (
-    <SectionCard className={`flex flex-col border-slate-200/50 bg-white shadow-sm ${className}`} translucent={false}>
+    <SectionCard
+      className={`flex flex-col border-slate-200/50 bg-white shadow-sm ${className}`}
+      translucent={false}
+    >
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
             <CalendarIcon size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Tu Constancia</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+              Tu Constancia
+            </p>
             <h3 className="text-lg font-black capitalize tracking-tight text-slate-950">
               {monthName} <span className="text-slate-300">{year}</span>
             </h3>
@@ -102,9 +110,7 @@ export const StudyCalendar: React.FC<StudyCalendarProps> = ({ sessions, classNam
               } ${isToday ? 'ring-2 ring-quantia-pink ring-offset-2' : ''}`}
             >
               {day}
-              {isStudied && (
-                 <span className="absolute bottom-1 h-1 w-1 rounded-full bg-white/60" />
-              )}
+              {isStudied && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-white/60" />}
             </div>
           );
         })}
@@ -113,11 +119,15 @@ export const StudyCalendar: React.FC<StudyCalendarProps> = ({ sessions, classNam
       <div className="mt-8 flex items-center gap-4 border-t border-slate-100 pt-6">
         <div className="flex items-center gap-2">
           <div className="h-3 w-3 rounded-md quantia-bg-gradient" />
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Estudiado</span>
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+            Estudiado
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <div className="h-3 w-3 rounded-md bg-slate-100" />
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Sin actividad</span>
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+            Sin actividad
+          </span>
         </div>
       </div>
     </SectionCard>

@@ -3,7 +3,7 @@ import type {
   PracticeCoachPlanChip,
   PracticeExamTarget,
   PracticeLearningDashboard,
-  PracticePressureInsights
+  PracticePressureInsights,
 } from '../../practiceTypes';
 
 type BuildPracticeCoachPlanInput = {
@@ -34,7 +34,7 @@ const getDaysToExam = (examDate: string | null | undefined, referenceDate: Date)
 
 const getExamChip = (
   examTarget: PracticeExamTarget | null,
-  referenceDate: Date
+  referenceDate: Date,
 ): PracticeCoachPlanChip | null => {
   const daysToExam = getDaysToExam(examTarget?.examDate, referenceDate);
   if (daysToExam === null) return null;
@@ -51,13 +51,13 @@ const buildDefaultPlan = (
     recommendedBatchNumber,
     totalBatches,
     batchSize,
-    examTarget
+    examTarget,
   }: Omit<BuildPracticeCoachPlanInput, 'learningDashboard' | 'pressureInsights'>,
-  referenceDate: Date
+  referenceDate: Date,
 ): PracticeCoachPlan => {
   const chips: PracticeCoachPlanChip[] = [
     { label: 'Bloque', value: `${recommendedBatchNumber}/${Math.max(1, totalBatches)}` },
-    { label: 'Sesion', value: `${batchSize} preguntas` }
+    { label: 'Sesion', value: `${batchSize} preguntas` },
   ];
   const examChip = getExamChip(examTarget, referenceDate);
   if (examChip) chips.push(examChip);
@@ -73,15 +73,15 @@ const buildDefaultPlan = (
     impactLabel: 'Vas a activar memoria util sin meter ruido ni mezcla prematura.',
     reasons: [
       'Ahora mismo conviene convertir conocimiento suelto en una primera senal estable.',
-      'El objetivo no es correr: es crear una base sobre la que luego si tenga sentido mezclar.'
+      'El objetivo no es correr: es crear una base sobre la que luego si tenga sentido mezclar.',
     ],
-    chips
+    chips,
   };
 };
 
 export const buildPracticeCoachPlan = (
   input: BuildPracticeCoachPlanInput,
-  referenceDate = new Date()
+  referenceDate = new Date(),
 ): PracticeCoachPlan => {
   const {
     learningDashboard,
@@ -89,7 +89,7 @@ export const buildPracticeCoachPlan = (
     examTarget,
     recommendedBatchNumber,
     totalBatches,
-    batchSize
+    batchSize,
   } = input;
 
   if (!learningDashboard) {
@@ -98,9 +98,9 @@ export const buildPracticeCoachPlan = (
         examTarget,
         recommendedBatchNumber,
         totalBatches,
-        batchSize
+        batchSize,
       },
-      referenceDate
+      referenceDate,
     );
   }
 
@@ -113,7 +113,7 @@ export const buildPracticeCoachPlan = (
           dailyReviewCapacity:
             examTarget?.dailyReviewCapacity ?? learningDashboard.dailyReviewCapacity,
           dailyNewCapacity: examTarget?.dailyNewCapacity ?? learningDashboard.dailyNewCapacity,
-          updatedAt: examTarget?.updatedAt ?? null
+          updatedAt: examTarget?.updatedAt ?? null,
         }
       : null;
 
@@ -144,12 +144,12 @@ export const buildPracticeCoachPlan = (
       impactLabel: 'Vas a medir transferencia real, no memoria en caliente ni familiaridad.',
       reasons: [
         'Sin simulacro, el readiness se parece demasiado al entrenamiento y demasiado poco al examen.',
-        pressureInsights.pressureMessage
+        pressureInsights.pressureMessage,
       ],
       chips: withExamChip([
         { label: 'Banco visto', value: String(learningDashboard.seenQuestions) },
-        { label: 'Readiness', value: formatPercent(learningDashboard.readiness) }
-      ])
+        { label: 'Readiness', value: formatPercent(learningDashboard.readiness) },
+      ]),
     };
   }
 
@@ -171,12 +171,12 @@ export const buildPracticeCoachPlan = (
       reasons: [
         pressureInsights?.pressureMessage ??
           'Conviene atacar negaciones, plazos, excepciones y respuestas demasiado parecidas.',
-        'Aqui gana mas valor afinar lectura y discriminacion que abrir preguntas nuevas.'
+        'Aqui gana mas valor afinar lectura y discriminacion que abrir preguntas nuevas.',
       ],
       chips: withExamChip([
         { label: 'Brecha', value: formatPoints(pressureGap) },
-        { label: 'Simulacro', value: formatPercent(pressureInsights?.simulacroAccuracy) }
-      ])
+        { label: 'Simulacro', value: formatPercent(pressureInsights?.simulacroAccuracy) },
+      ]),
     };
   }
 
@@ -192,12 +192,12 @@ export const buildPracticeCoachPlan = (
       impactLabel: 'Bajas deuda sin saturarte y mantienes vivas las preguntas con mas riesgo.',
       reasons: [
         `Tu capacidad diaria esta en ${learningDashboard.dailyReviewCapacity}; meter mas hoy subiria fatiga y bajaria calidad.`,
-        'El objetivo es proteger memoria util, no castigarte con una lista imposible.'
+        'El objetivo es proteger memoria util, no castigarte con una lista imposible.',
       ],
       chips: withExamChip([
         { label: 'Urgentes', value: String(learningDashboard.overdueCount) },
-        { label: 'Hoy', value: String(learningDashboard.recommendedTodayCount) }
-      ])
+        { label: 'Hoy', value: String(learningDashboard.recommendedTodayCount) },
+      ]),
     };
   }
 
@@ -216,12 +216,12 @@ export const buildPracticeCoachPlan = (
           : 'Mantendras memoria viva y seguiras ampliando banco sin ruido innecesario.',
       reasons: [
         learningDashboard.focusMessage,
-        'Este es el punto donde mas retorno da una sesion adaptativa bien medida.'
+        'Este es el punto donde mas retorno da una sesion adaptativa bien medida.',
       ],
       chips: withExamChip([
         { label: 'Repasos', value: String(learningDashboard.recommendedReviewCount) },
-        { label: 'Nuevas', value: String(learningDashboard.recommendedNewCount) }
-      ])
+        { label: 'Nuevas', value: String(learningDashboard.recommendedNewCount) },
+      ]),
     };
   }
 
@@ -235,15 +235,16 @@ export const buildPracticeCoachPlan = (
         'No hay urgencias reales ni caida bajo presion grave. Puedes ganar cobertura de temario con avance limpio.',
       primaryActionLabel: `Abrir bloque ${recommendedBatchNumber}`,
       focusLabel: 'Avance limpio',
-      impactLabel: 'Ampliaras banco sin comprometer mantenimiento ni convertir el dia en puro repaso.',
+      impactLabel:
+        'Ampliaras banco sin comprometer mantenimiento ni convertir el dia en puro repaso.',
       reasons: [
         'Tu estado actual permite introducir nuevas sin deteriorar lo ya consolidado.',
-        `Estas en el bloque ${recommendedBatchNumber} de ${Math.max(1, totalBatches)}.`
+        `Estas en el bloque ${recommendedBatchNumber} de ${Math.max(1, totalBatches)}.`,
       ],
       chips: withExamChip([
         { label: 'Bloque', value: `${recommendedBatchNumber}/${Math.max(1, totalBatches)}` },
-        { label: 'Nuevas', value: String(learningDashboard.recommendedNewCount) }
-      ])
+        { label: 'Nuevas', value: String(learningDashboard.recommendedNewCount) },
+      ]),
     };
   }
 
@@ -256,14 +257,15 @@ export const buildPracticeCoachPlan = (
       'Hoy no manda ni la deuda ni la presion. Lo mas util es mezclar para sostener fluidez y reconocimiento rapido.',
     primaryActionLabel: 'Practicar mezcladas',
     focusLabel: 'Fluidez',
-    impactLabel: 'Mantendras agilidad, discriminacion y resistencia a la falsa sensacion de dominio.',
+    impactLabel:
+      'Mantendras agilidad, discriminacion y resistencia a la falsa sensacion de dominio.',
     reasons: [
       'Cuando el sistema esta estable, la mezcla corta da mejor senal que seguir demasiado guiado.',
-      'Te interesa proteger velocidad y claridad, no solo porcentaje bruto de acierto.'
+      'Te interesa proteger velocidad y claridad, no solo porcentaje bruto de acierto.',
     ],
     chips: withExamChip([
       { label: 'Readiness', value: formatPercent(learningDashboard.readiness) },
-      { label: 'Dominadas', value: String(learningDashboard.masteredCount) }
-    ])
+      { label: 'Dominadas', value: String(learningDashboard.masteredCount) },
+    ]),
   };
 };

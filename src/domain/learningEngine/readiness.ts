@@ -6,7 +6,7 @@ export const projectExamRetentionProbability = ({
   pEstimated,
   stabilityScore,
   fromDate,
-  examDate
+  examDate,
 }: {
   pEstimated: number;
   stabilityScore: number;
@@ -22,7 +22,7 @@ export const projectExamRetentionProbability = ({
 export const computeReadinessSnapshot = ({
   states,
   today = new Date(),
-  examDate = null
+  examDate = null,
 }: {
   states: UserQuestionState[];
   today?: Date;
@@ -36,7 +36,7 @@ export const computeReadinessSnapshot = ({
       overdueCount: 0,
       fragileCount: 0,
       masteredCount: 0,
-      projectedReadiness: null
+      projectedReadiness: null,
     };
   }
 
@@ -45,8 +45,8 @@ export const computeReadinessSnapshot = ({
       pEstimated: state.pCorrectEstimated,
       stabilityScore: state.stabilityScore,
       fromDate: today,
-      examDate
-    })
+      examDate,
+    }),
   );
 
   const readiness = projectedValues.reduce((total, value) => total + value, 0) / states.length;
@@ -57,10 +57,11 @@ export const computeReadinessSnapshot = ({
     readiness,
     readinessLower: rangeHalfWidth === null ? null : clamp(0, 1, readiness - rangeHalfWidth),
     readinessUpper: rangeHalfWidth === null ? null : clamp(0, 1, readiness + rangeHalfWidth),
-    overdueCount: states.filter((state) => state.nextReviewAt && new Date(state.nextReviewAt) <= today)
-      .length,
+    overdueCount: states.filter(
+      (state) => state.nextReviewAt && new Date(state.nextReviewAt) <= today,
+    ).length,
     fragileCount: states.filter((state) => state.masteryLevel <= 1).length,
     masteredCount: states.filter((state) => state.masteryLevel >= 4).length,
-    projectedReadiness: examDate ? readiness : null
+    projectedReadiness: examDate ? readiness : null,
   };
 };

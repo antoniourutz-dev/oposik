@@ -3,7 +3,7 @@ import {
   CloudPracticeState,
   ActivePracticeSession,
   PracticeLearningDashboardV2,
-  PracticePressureInsightsV2
+  PracticePressureInsightsV2,
 } from '../practiceTypes';
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { supabase } from '../supabaseClient';
@@ -16,7 +16,7 @@ import {
   mapPressureInsights,
   mapPressureInsightsV2,
   mapProfile,
-  mapSession
+  mapSession,
 } from './practiceCloudMappers';
 
 const buildAttemptPayloads = (answers: PracticeAnswer[]) => {
@@ -36,7 +36,7 @@ const buildAttemptPayloads = (answers: PracticeAnswer[]) => {
       response_time_ms: number | null;
       time_to_first_selection_ms: number | null;
       changed_answer: boolean;
-      error_type_inferred: string | null;
+      error_type_inferred: PracticeAnswer['errorTypeInferred'];
     }
   >();
 
@@ -58,7 +58,7 @@ const buildAttemptPayloads = (answers: PracticeAnswer[]) => {
       response_time_ms: answer.responseTimeMs,
       time_to_first_selection_ms: answer.timeToFirstSelectionMs,
       changed_answer: answer.changedAnswer,
-      error_type_inferred: answer.errorTypeInferred
+      error_type_inferred: answer.errorTypeInferred,
     });
   }
 
@@ -66,7 +66,7 @@ const buildAttemptPayloads = (answers: PracticeAnswer[]) => {
 };
 
 export const getMyPracticeState = async (
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
 ): Promise<CloudPracticeState> => {
   return trackAsyncOperation(
     'practiceCloud.getMyPracticeState',
@@ -76,12 +76,12 @@ export const getMyPracticeState = async (
         { data: sessionsData, error: sessionsError },
         { data: learningDashboardData, error: learningDashboardError },
         { data: examTargetData, error: examTargetError },
-        { data: pressureInsightsData, error: pressureInsightsError }
+        { data: pressureInsightsData, error: pressureInsightsError },
       ] = await Promise.all([
         supabase
           .schema('app')
           .rpc('get_my_practice_profile_for_curriculum', {
-            p_curriculum: curriculum
+            p_curriculum: curriculum,
           })
           .maybeSingle(),
         supabase
@@ -94,21 +94,21 @@ export const getMyPracticeState = async (
         supabase
           .schema('app')
           .rpc('get_readiness_dashboard', {
-            p_curriculum: curriculum
+            p_curriculum: curriculum,
           })
           .maybeSingle(),
         supabase
           .schema('app')
           .rpc('get_my_exam_target', {
-            p_curriculum: curriculum
+            p_curriculum: curriculum,
           })
           .maybeSingle(),
         supabase
           .schema('app')
           .rpc('get_pressure_dashboard', {
-            p_curriculum: curriculum
+            p_curriculum: curriculum,
           })
-          .maybeSingle()
+          .maybeSingle(),
       ]);
 
       const firstError = profileError || sessionsError;
@@ -127,15 +127,15 @@ export const getMyPracticeState = async (
           : mapExamTarget((examTargetData ?? null) as Record<string, unknown> | null),
         pressureInsights: pressureInsightsError
           ? null
-          : mapPressureInsights((pressureInsightsData ?? null) as Record<string, unknown> | null)
+          : mapPressureInsights((pressureInsightsData ?? null) as Record<string, unknown> | null),
       };
     },
-    { curriculum }
+    { curriculum },
   );
 };
 
 export const getMyLearningDashboardV2 = async (
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
 ): Promise<PracticeLearningDashboardV2 | null> => {
   return trackAsyncOperation(
     'practiceCloud.getReadinessDashboardV2',
@@ -143,7 +143,7 @@ export const getMyLearningDashboardV2 = async (
       const { data, error } = await supabase
         .schema('app')
         .rpc('get_readiness_dashboard_v2', {
-          p_curriculum: curriculum
+          p_curriculum: curriculum,
         })
         .maybeSingle();
 
@@ -153,7 +153,7 @@ export const getMyLearningDashboardV2 = async (
 
       return mapLearningDashboardV2((data ?? null) as Record<string, unknown> | null);
     },
-    { curriculum }
+    { curriculum },
   );
 };
 
@@ -162,7 +162,7 @@ export const recordQuestionExplanationOpened = async ({
   curriculum = DEFAULT_CURRICULUM,
   sessionId = null,
   surface = 'review',
-  explanationKind = 'base'
+  explanationKind = 'base',
 }: {
   questionId: string;
   curriculum?: string;
@@ -178,7 +178,7 @@ export const recordQuestionExplanationOpened = async ({
     p_curriculum: curriculum,
     p_session_id: sessionId,
     p_surface: surface,
-    p_explanation_kind: explanationKind
+    p_explanation_kind: explanationKind,
   });
 
   if (error) {
@@ -187,7 +187,7 @@ export const recordQuestionExplanationOpened = async ({
 };
 
 export const getMyPressureDashboardV2 = async (
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
 ): Promise<PracticePressureInsightsV2 | null> => {
   return trackAsyncOperation(
     'practiceCloud.getPressureDashboardV2',
@@ -195,7 +195,7 @@ export const getMyPressureDashboardV2 = async (
       const { data, error } = await supabase
         .schema('app')
         .rpc('get_pressure_dashboard_v2', {
-          p_curriculum: curriculum
+          p_curriculum: curriculum,
         })
         .maybeSingle();
 
@@ -205,7 +205,7 @@ export const getMyPressureDashboardV2 = async (
 
       return mapPressureInsightsV2((data ?? null) as Record<string, unknown> | null);
     },
-    { curriculum }
+    { curriculum },
   );
 };
 
@@ -213,7 +213,7 @@ export const upsertMyExamTarget = async ({
   curriculum = DEFAULT_CURRICULUM,
   examDate,
   dailyReviewCapacity,
-  dailyNewCapacity
+  dailyNewCapacity,
 }: {
   curriculum?: string;
   examDate: string | null;
@@ -229,7 +229,7 @@ export const upsertMyExamTarget = async ({
           p_curriculum: curriculum,
           p_exam_date: examDate,
           p_daily_review_capacity: dailyReviewCapacity,
-          p_daily_new_capacity: dailyNewCapacity
+          p_daily_new_capacity: dailyNewCapacity,
         })
         .maybeSingle();
 
@@ -243,18 +243,18 @@ export const upsertMyExamTarget = async ({
       curriculum,
       hasExamDate: Boolean(examDate),
       dailyReviewCapacity,
-      dailyNewCapacity
-    }
+      dailyNewCapacity,
+    },
   );
 };
 
 export const recordPracticeSessionInCloud = async (
   session: ActivePracticeSession,
   answers: PracticeAnswer[],
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
 ) => {
   const attemptPayloads = buildAttemptPayloads(answers);
-  
+
   await trackAsyncOperation(
     'practiceCloud.recordPracticeSessionSync',
     async () => {
@@ -262,12 +262,20 @@ export const recordPracticeSessionInCloud = async (
         body: {
           session,
           attempts: attemptPayloads,
-          curriculum
-        }
+          curriculum,
+        },
       });
 
       if (error) {
-        throw new Error(mapPracticeCloudError(error));
+        const body =
+          data && typeof data === 'object' && data !== null
+            ? (data as { code?: string; message?: string; error?: string })
+            : null;
+        const detail = body
+          ? [body.code, body.message ?? body.error].filter(Boolean).join(': ')
+          : '';
+        const base = mapPracticeCloudError(error);
+        throw new Error(detail ? `${base} (${detail})` : base);
       }
 
       return data;
@@ -275,8 +283,7 @@ export const recordPracticeSessionInCloud = async (
     {
       curriculum,
       mode: session.mode,
-      answers: attemptPayloads.length
-    }
+      answers: attemptPayloads.length,
+    },
   );
 };
-

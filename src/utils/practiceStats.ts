@@ -4,7 +4,8 @@ export const getAccuracy = (correct: number, total: number) =>
   total === 0 ? 0 : Math.round((correct / total) * 100);
 
 export const getWeakCategories = (questionStats: PracticeQuestionStat[]) => {
-  if (!questionStats.length) return [] as Array<{ category: string; incorrectAttempts: number; attempts: number }>;
+  if (!questionStats.length)
+    return [] as Array<{ category: string; incorrectAttempts: number; attempts: number }>;
 
   const grouped = new Map<string, { incorrectAttempts: number; attempts: number }>();
 

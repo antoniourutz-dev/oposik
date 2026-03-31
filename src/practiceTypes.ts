@@ -1,3 +1,12 @@
+/**
+ * Contratos de aplicacion: catalogo de preguntas, sesiones activas, dashboard y estado en nube.
+ * Los tipos de clasificacion de errores del motor de aprendizaje (`ErrorType`) se definen en
+ * `domain/learningEngine/types` y se reexportan aqui para un punto de entrada unico en la app.
+ */
+import type { ErrorType } from './domain/learningEngine/types';
+
+export type { ErrorType };
+
 export type OptionKey = 'a' | 'b' | 'c' | 'd';
 export type PracticeQuestionScope = 'common' | 'specific';
 export type PracticeQuestionScopeFilter = 'all' | PracticeQuestionScope;
@@ -23,6 +32,7 @@ export interface PracticeQuestion {
   editorialExplanation?: string | null;
 }
 
+/** Respuesta registrada en una sesion de practica (UI + inferencia de error del dominio). */
 export interface PracticeAnswer {
   question: PracticeQuestion;
   selectedOption: OptionKey | null;
@@ -31,16 +41,17 @@ export interface PracticeAnswer {
   responseTimeMs: number | null;
   timeToFirstSelectionMs: number | null;
   changedAnswer: boolean;
-  errorTypeInferred: string | null;
+  errorTypeInferred: ErrorType | null;
 }
 
+/** Payload enviado al registrar una respuesta (sin la pregunta completa; se combina en el hook). */
 export interface PracticeAnswerSubmission {
   selectedOption: OptionKey;
   answeredAt: string;
   responseTimeMs: number | null;
   timeToFirstSelectionMs: number | null;
   changedAnswer: boolean;
-  errorTypeInferred?: string | null;
+  errorTypeInferred?: ErrorType | null;
 }
 
 export interface PracticeQuestionStat {
@@ -103,7 +114,7 @@ export interface PracticeCategoryRiskSummary {
 }
 
 export interface PracticeRiskInsight {
-  errorType: string;
+  errorType: ErrorType;
   label: string;
   count: number;
 }

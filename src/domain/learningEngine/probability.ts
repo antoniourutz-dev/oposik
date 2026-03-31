@@ -10,7 +10,7 @@ export const computeRecentProbability = (scores: RecentPerformanceScore[]) => {
   if (scores.length === 0) return 0.25;
 
   const weights = [0.5, 0.3, 0.2];
-  const weightedSum = scores.slice(0, 3).reduce((total, score, index) => {
+  const weightedSum = scores.slice(0, 3).reduce<number>((total, score, index) => {
     return total + score * weights[index];
   }, 0);
   const totalWeight = weights.slice(0, Math.min(scores.length, 3)).reduce((a, b) => a + b, 0);
@@ -18,17 +18,14 @@ export const computeRecentProbability = (scores: RecentPerformanceScore[]) => {
   return clamp(0.25, 1, weightedSum / totalWeight);
 };
 
-export const computeLatencyFactor = (
-  responseTimeMs: number | null,
-  referenceTimeMs = 15000
-) => {
+export const computeLatencyFactor = (responseTimeMs: number | null, referenceTimeMs = 15000) => {
   if (!responseTimeMs || responseTimeMs <= 0) return 1;
   return clamp(0.7, 1.05, referenceTimeMs / responseTimeMs);
 };
 
 export const scoreRecentAttempt = ({
   isCorrect,
-  latencyFactor
+  latencyFactor,
 }: {
   isCorrect: boolean;
   latencyFactor: number;
@@ -44,7 +41,7 @@ export const computeEstimatedProbability = ({
   baseProbability,
   recentProbability,
   latencyFactor,
-  errorPenalty
+  errorPenalty,
 }: {
   baseProbability: number;
   recentProbability: number;

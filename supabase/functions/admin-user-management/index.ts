@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { createEdgeLogger, safeUserId } from '../_shared/observability.ts';
 
 type CreateUserPayload = {
   action: 'create_user';
@@ -723,16 +724,19 @@ const setUserPlayerMode = async (
 };
 
 Deno.serve(async (request) => {
+  const log = createEdgeLogger('admin-user-management', request);
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   if (request.method !== 'POST') {
+    log.warn('request.method_not_allowed', { method: request.method }, 'METHOD_NOT_ALLOWED', 405);
     return jsonResponse(405, { message: 'Method not allowed' });
   }
 
   const authorizationHeader = request.headers.get('Authorization');
   if (!authorizationHeader) {
+    log.warn('auth.missing_authorization', undefined, 'UNAUTHORIZED', 401);
     return jsonResponse(401, { message: 'La sesion no es valida. Vuelve a iniciar sesion.' });
   }
 
@@ -740,6 +744,8 @@ Deno.serve(async (request) => {
     const payload = (await request.json()) as RequestPayload;
     const { actorClient, user } = await getActorUser(authorizationHeader);
     await ensureActorIsAdmin(actorClient, user.id);
+
+    log.info('admin.start', { actorUserId: safeUserId(user.id), action: payload.action });
 
     if (payload.action === 'create_user') {
       return await createUser(actorClient, payload);
@@ -770,14 +776,16 @@ Deno.serve(async (request) => {
     const message = error instanceof Error ? error.message : 'unknown_error';
 
     if (message === 'not_authenticated') {
+      log.warn('auth.not_authenticated', undefined, 'UNAUTHORIZED', 401);
       return jsonResponse(401, { message: 'La sesion no es valida. Vuelve a iniciar sesion.' });
     }
 
     if (message === 'forbidden') {
+      log.warn('auth.forbidden', undefined, 'FORBIDDEN', 403);
       return jsonResponse(403, { message: 'No tienes permisos para realizar esta accion.' });
     }
 
-    console.error('admin-user-management error', error);
+    log.error('admin.failed', error, undefined, 'ADMIN_ACTION_FAILED', 500);
     return jsonResponse(500, { message: 'No se ha podido completar la accion de administracion.' });
   }
 });

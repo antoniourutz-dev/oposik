@@ -43,7 +43,7 @@ Esto debe dejar disponibles, entre otras, estas piezas:
 
 ```bash
 npx supabase functions deploy login-with-username --no-verify-jwt
-npx supabase functions deploy admin-user-management --no-verify-jwt
+npx supabase functions deploy admin-user-management
 ```
 
 ## 5. Crear el primer admin en Auth

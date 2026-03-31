@@ -14,7 +14,7 @@ const GuestDashboardScreen: React.FC<GuestDashboardScreenProps> = ({
   maxBlocks,
   loading,
   onStart,
-  onExit
+  onExit,
 }) => {
   const nextBlockNumber = Math.min(maxBlocks, maxBlocks - remainingBlocks + 1);
   const isLocked = remainingBlocks <= 0;
@@ -38,8 +38,8 @@ const GuestDashboardScreen: React.FC<GuestDashboardScreenProps> = ({
             Prueba la app sin entrar
           </h1>
           <p className="mt-3 max-w-[23rem] text-sm font-medium leading-6 text-sky-50/84 sm:text-[0.98rem]">
-            Dos bloques aleatorios del temario comun, revision completa al terminar y nada mas.
-            Sin estadisticas, sin perfil y sin progreso guardado.
+            Dos bloques aleatorios del temario comun, revision completa al terminar y nada mas. Sin
+            estadisticas, sin perfil y sin progreso guardado.
           </p>
 
           <div className="mt-5 rounded-[1.35rem] border border-white/76 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,250,255,0.94))] p-3.5 text-slate-950 shadow-[0_24px_42px_-28px_rgba(141,147,242,0.24)] sm:p-4">

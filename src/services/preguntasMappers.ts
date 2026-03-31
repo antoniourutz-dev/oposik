@@ -2,7 +2,7 @@ import {
   OptionKey,
   PracticeQuestion,
   PracticeQuestionStat,
-  WeakQuestionInsight
+  WeakQuestionInsight,
 } from '../practiceTypes';
 import { readQuestionScopeFromRow } from '../utils/practiceQuestionScope';
 
@@ -12,7 +12,7 @@ const OPTION_FIELD_ALIASES: Record<OptionKey, string[]> = {
   a: ['opcion_a', 'option_a', 'respuesta_a', 'a'],
   b: ['opcion_b', 'option_b', 'respuesta_b', 'b'],
   c: ['opcion_c', 'option_c', 'respuesta_c', 'c'],
-  d: ['opcion_d', 'option_d', 'respuesta_d', 'd']
+  d: ['opcion_d', 'option_d', 'respuesta_d', 'd'],
 };
 
 export const readText = (value: unknown) => {
@@ -34,11 +34,7 @@ export const readNumber = (value: unknown) => {
 };
 
 const normalizeComparable = (value: string) =>
-  value
-    .normalize('NFKC')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
+  value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
 
 const pickFirstText = (row: Record<string, unknown>, fieldNames: string[]) => {
   for (const fieldName of fieldNames) {
@@ -65,17 +61,15 @@ const extractOptionsFromObject = (rawOptions: unknown) => {
 
 const extractOptions = (row: Record<string, unknown>) => {
   const nestedOptions =
-    extractOptionsFromObject(row.opciones) ??
-    extractOptionsFromObject(row.options);
+    extractOptionsFromObject(row.opciones) ?? extractOptionsFromObject(row.options);
 
   if (nestedOptions) {
     return nestedOptions;
   }
 
-  const entries = OPTION_KEYS.map((key) => [
-    key,
-    pickFirstText(row, OPTION_FIELD_ALIASES[key])
-  ] as const);
+  const entries = OPTION_KEYS.map(
+    (key) => [key, pickFirstText(row, OPTION_FIELD_ALIASES[key])] as const,
+  );
 
   if (entries.some(([, value]) => !value)) {
     return null;
@@ -91,7 +85,7 @@ const mapNumericOption = (value: number): OptionKey | null => {
 
 const extractCorrectOption = (
   row: Record<string, unknown>,
-  options: Record<OptionKey, string>
+  options: Record<OptionKey, string>,
 ): OptionKey | null => {
   const rawCorrectValue =
     row.respuesta_correcta ??
@@ -119,13 +113,17 @@ const extractCorrectOption = (
     return mapNumericOption(numericCandidate);
   }
 
-  return (
-    OPTION_KEYS.find((key) => normalizeComparable(options[key]) === normalizedCorrect) ?? null
-  );
+  return OPTION_KEYS.find((key) => normalizeComparable(options[key]) === normalizedCorrect) ?? null;
 };
 
 export const mapQuestion = (row: Record<string, unknown>): PracticeQuestion | null => {
-  const statement = pickFirstText(row, ['pregunta', 'question_text', 'enunciado', 'texto', 'question']);
+  const statement = pickFirstText(row, [
+    'pregunta',
+    'question_text',
+    'enunciado',
+    'texto',
+    'question',
+  ]);
   const options = extractOptions(row);
 
   if (!statement || !options) {
@@ -153,12 +151,14 @@ export const mapQuestion = (row: Record<string, unknown>): PracticeQuestion | nu
       'editorial_summary',
       'idea_clave',
       'summary',
-      'resumen'
-    ])
+      'resumen',
+    ]),
   };
 };
 
-export const mapWeakQuestionInsight = (row: Record<string, unknown>): WeakQuestionInsight | null => {
+export const mapWeakQuestionInsight = (
+  row: Record<string, unknown>,
+): WeakQuestionInsight | null => {
   const payload =
     row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
       ? (row.payload as Record<string, unknown>)
@@ -181,7 +181,7 @@ export const mapWeakQuestionInsight = (row: Record<string, unknown>): WeakQuesti
     correctAttempts: readNumber(row.correct_attempts) ?? 0,
     incorrectAttempts: readNumber(row.incorrect_attempts) ?? 0,
     lastAnsweredAt: readText(row.last_answered_at) ?? '',
-    lastIncorrectAt: readText(row.last_incorrect_at)
+    lastIncorrectAt: readText(row.last_incorrect_at),
   };
 
   return { question, stat };

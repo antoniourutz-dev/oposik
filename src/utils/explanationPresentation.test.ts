@@ -15,24 +15,24 @@ describe('explanationPresentation', () => {
       {
         tone: 'basis',
         title: 'Apoyo legal',
-        text: expect.stringContaining('Ley 44/2003')
+        text: expect.stringContaining('Ley 44/2003'),
       },
       {
         tone: 'trap',
         title: 'Donde estaba la trampa',
-        text: expect.stringContaining('Opcion a:')
-      }
+        text: expect.stringContaining('Opcion a:'),
+      },
     ]);
   });
 
   it('deja una explicacion corta como idea principal sin inventar bloques', () => {
     const result = buildExplanationPresentation(
-      'La categoria solo se informa cuando esta definida en el centro. No forma parte del minimo obligatorio.'
+      'La categoria solo se informa cuando esta definida en el centro. No forma parte del minimo obligatorio.',
     );
 
     expect(result).toEqual({
       lead: 'La categoria solo se informa cuando esta definida en el centro. No forma parte del minimo obligatorio.',
-      blocks: []
+      blocks: [],
     });
   });
 });

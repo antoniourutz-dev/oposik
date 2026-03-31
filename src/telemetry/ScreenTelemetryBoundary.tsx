@@ -7,13 +7,12 @@ type ScreenTelemetryBoundaryProps = {
   screen: string;
 };
 
-const now = () =>
-  typeof performance !== 'undefined' ? performance.now() : Date.now();
+const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 const ScreenTelemetryBoundary: React.FC<ScreenTelemetryBoundaryProps> = ({
   children,
   meta,
-  screen
+  screen,
 }) => {
   const mountedAtRef = useRef(now());
   const commitCountRef = useRef(0);
@@ -36,8 +35,8 @@ const ScreenTelemetryBoundary: React.FC<ScreenTelemetryBoundaryProps> = ({
           durationMs: now() - mountedAtRef.current,
           meta: {
             screen,
-            ...metaRef.current
-          }
+            ...metaRef.current,
+          },
         });
       });
     });
@@ -62,11 +61,11 @@ const ScreenTelemetryBoundary: React.FC<ScreenTelemetryBoundaryProps> = ({
           commitTime,
           commitCount: commitCountRef.current,
           sinceMountMs: commitTime - mountedAtRef.current,
-          ...metaRef.current
-        }
+          ...metaRef.current,
+        },
       });
     },
-    [screen]
+    [screen],
   );
 
   return (

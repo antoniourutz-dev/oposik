@@ -23,14 +23,14 @@ const canUseLegacyFallback =
 const signInWithLegacyEmail = async (username: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email: buildLegacyInternalEmail(username),
-    password
+    password,
   });
 
   if (error || !data.session) {
     throw new Error(
       error?.message?.includes('Invalid login credentials')
         ? 'Usuario o contrasena incorrectos. Revisa tus datos.'
-        : error?.message || 'No se ha podido iniciar sesion. Intentalo de nuevo.'
+        : error?.message || 'No se ha podido iniciar sesion. Intentalo de nuevo.',
     );
   }
 
@@ -56,9 +56,9 @@ export const loginWithUsername = async (username: string, password: string) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        apikey: supabaseAnonKey
+        apikey: supabaseAnonKey,
       },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password }),
     });
 
     const payload = (await response.json().catch(() => null)) as
@@ -70,12 +70,12 @@ export const loginWithUsername = async (username: string, password: string) => {
         return await tryLegacyFallback(
           username,
           password,
-          'El servicio de acceso por usuario no esta disponible todavia. El acceso alternativo tambien ha fallado:'
+          'El servicio de acceso por usuario no esta disponible todavia. El acceso alternativo tambien ha fallado:',
         );
       }
 
       throw new Error(
-        'No esta desplegado el servicio de acceso por usuario. Publica la funcion `login-with-username`.'
+        'No esta desplegado el servicio de acceso por usuario. Publica la funcion `login-with-username`.',
       );
     }
 
@@ -85,7 +85,7 @@ export const loginWithUsername = async (username: string, password: string) => {
 
     const { data, error } = await supabase.auth.setSession({
       access_token: payload.access_token,
-      refresh_token: payload.refresh_token
+      refresh_token: payload.refresh_token,
     });
 
     if (error || !data.session) {
@@ -102,7 +102,7 @@ export const loginWithUsername = async (username: string, password: string) => {
       return await tryLegacyFallback(
         username,
         password,
-        'El servicio de acceso por usuario no esta disponible en este momento. El acceso alternativo tambien ha fallado:'
+        'El servicio de acceso por usuario no esta disponible en este momento. El acceso alternativo tambien ha fallado:',
       );
     }
 
@@ -111,7 +111,7 @@ export const loginWithUsername = async (username: string, password: string) => {
     }
 
     throw new Error(
-      'El servicio de acceso por usuario no esta disponible. Publica la funcion `login-with-username`.'
+      'El servicio de acceso por usuario no esta disponible. Publica la funcion `login-with-username`.',
     );
   }
 };

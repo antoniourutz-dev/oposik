@@ -1,5 +1,14 @@
 import React from 'react';
-import { Brain, ChartNoAxesColumn, Flame, Layers3, Shield, Target, Sparkles, Wand2 } from 'lucide-react';
+import {
+  Brain,
+  ChartNoAxesColumn,
+  Flame,
+  Layers3,
+  Shield,
+  Target,
+  Sparkles,
+  Wand2,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { DEFAULT_CURRICULUM } from '../../practiceConfig';
 import { recordQuestionExplanationOpened } from '../../services/practiceCloudApi';
@@ -12,12 +21,12 @@ import {
   StudyActionCard,
   getAccuracy,
   formatOptionalPercent,
-  formatPercent
+  formatPercent,
 } from './shared';
 
 const getExplanationKind = ({
   explanation,
-  editorialExplanation
+  editorialExplanation,
 }: {
   explanation: string | null;
   editorialExplanation?: string | null;
@@ -34,7 +43,7 @@ const getCategoryRiskPercent = ({
   attempts,
   incorrectAttempts,
   rawFailRate,
-  smoothedFailRate
+  smoothedFailRate,
 }: {
   attempts: number;
   incorrectAttempts: number;
@@ -48,7 +57,7 @@ const getCategoryRiskPercent = ({
 
 const getCategoryRiskSupportLabel = ({
   confidenceFlag,
-  sampleOk
+  sampleOk,
 }: {
   confidenceFlag: 'low' | 'medium' | 'high';
   sampleOk: boolean;
@@ -60,6 +69,7 @@ const getCategoryRiskSupportLabel = ({
 
 const DashboardStudyTab: React.FC<DashboardContentProps> = ({
   batchSize,
+  catalogLoading = false,
   coachPlan,
   learningDashboard,
   learningDashboardV2,
@@ -78,10 +88,11 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
   questionsCount,
   totalBatches,
   weakCategories,
-  weakQuestions
+  weakQuestions,
 }) => {
+  const practiceLocked = catalogLoading || questionsCount === 0;
   const readinessLabel = formatPercent(
-    learningDashboardV2?.examReadinessRate ?? learningDashboard?.readiness ?? null
+    learningDashboardV2?.examReadinessRate ?? learningDashboard?.readiness ?? null,
   );
   const recommendedReview =
     learningDashboardV2?.recommendedReviewCount ?? learningDashboard?.recommendedReviewCount ?? 0;
@@ -93,15 +104,15 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
     (pressureInsightsV2?.pressureGapRaw ?? pressureInsights?.pressureGap) === undefined
       ? null
       : Math.round(
-          Math.abs(pressureInsightsV2?.pressureGapRaw ?? pressureInsights?.pressureGap ?? 0) * 100
+          Math.abs(pressureInsightsV2?.pressureGapRaw ?? pressureInsights?.pressureGap ?? 0) * 100,
         );
-  const studyPrimarySummary = learningDashboard || learningDashboardV2
-    ? `${recommendedReview} repasos y ${recommendedNew} nuevas para sostener progreso sin ruido.`
-    : 'Combina repaso, fragiles y nuevas en una sola sesion adaptativa.';
-  const studyFocusLine =
-    topRiskBreakdown[0]?.label
-      ? `Vigila ${topRiskBreakdown[0].label.toLowerCase()} antes de ampliar carga.`
-      : learningDashboardV2?.focusMessage ?? coachPlan.reasons[0] ?? coachPlan.impactLabel;
+  const studyPrimarySummary =
+    learningDashboard || learningDashboardV2
+      ? `${recommendedReview} repasos y ${recommendedNew} nuevas para sostener progreso sin ruido.`
+      : 'Combina repaso, fragiles y nuevas en una sola sesion adaptativa.';
+  const studyFocusLine = topRiskBreakdown[0]?.label
+    ? `Vigila ${topRiskBreakdown[0].label.toLowerCase()} antes de ampliar carga.`
+    : (learningDashboardV2?.focusMessage ?? coachPlan.reasons[0] ?? coachPlan.impactLabel);
   const mixedIsRecommended = coachPlan.mode === 'mixed' || coachPlan.mode === 'standard';
   const randomIsRecommended = coachPlan.mode === 'random';
   const antiTrapIsRecommended = coachPlan.mode === 'anti_trap';
@@ -131,66 +142,85 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
 
   return (
     <div className="grid gap-6">
-      <QuestionScopePicker
-        value={questionScope}
-        onChange={onQuestionScopeChange}
-        label="Temario"
-      />
+      <QuestionScopePicker value={questionScope} onChange={onQuestionScopeChange} label="Temario" />
 
       {/* 🔮 EL SESIÓN SASHIMI: OPTIMIZADOR PROACTIVO */}
-      <motion.section 
+      <motion.section
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         className="relative overflow-hidden rounded-[2.5rem] border border-[#dbeafe] bg-white p-6 shadow-[0_32px_80px_-40px_rgba(15,23,42,0.18)] lg:p-10"
       >
         <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-sky-50 blur-3xl opacity-60" />
         <div className="absolute -right-24 -bottom-24 h-80 w-80 rounded-full bg-indigo-50 blur-3xl opacity-60" />
-        
+
         <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-10">
           <div className="flex-1">
-             <div className="flex items-center gap-2.5 mb-5">
-               <span className="flex h-9 w-9 items-center justify-center rounded-2xl quantia-bg-gradient text-white shadow-lg ring-4 ring-white">
-                 <Wand2 size={18} />
-               </span>
-               <span className="text-[12px] font-black uppercase tracking-[0.2em] text-sky-600">Sesión recomendada</span>
-             </div>
+            <div className="flex items-center gap-2.5 mb-5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl quantia-bg-gradient text-white shadow-lg ring-4 ring-white">
+                <Wand2 size={18} />
+              </span>
+              <span className="text-[12px] font-black uppercase tracking-[0.2em] text-sky-600">
+                Sesión recomendada
+              </span>
+            </div>
 
-             <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-               Tu sesión <span className="brand-gradient-h bg-clip-text text-transparent">adaptada a hoy</span>
-             </h2>
+            <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Tu sesión{' '}
+              <span className="brand-gradient-h bg-clip-text text-transparent">adaptada a hoy</span>
+            </h2>
 
-             <p className="mt-5 max-w-2xl text-[16px] font-semibold leading-relaxed text-slate-600">
-               Mezcla repaso, preguntas frágiles y material nuevo para avanzar sin dejar huecos. El mix cambia cada día según tu estado real.
-             </p>
+            <p className="mt-5 max-w-2xl text-[16px] font-semibold leading-relaxed text-slate-600">
+              Mezcla repaso, preguntas frágiles y material nuevo para avanzar sin dejar huecos. El
+              mix cambia cada día según tu estado real.
+            </p>
 
-             <div className="mt-8 flex flex-wrap gap-4">
-               {[
-                 { label: 'Repaso Crítico', value: `${recommendedReview}`, color: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
-                 { label: 'Fragilidad Alta', value: `${weakQuestions.length}`, color: 'bg-rose-50 text-rose-600 border-rose-100' },
-                 { label: 'Nuevas Capas', value: `${recommendedNew}`, color: 'bg-sky-50 text-sky-600 border-sky-100' }
-               ].map((chip) => (
-                 <div key={chip.label} className={`flex items-center gap-3 rounded-[1.25rem] border px-4 py-2.5 ${chip.color} shadow-sm transition-all hover:-translate-y-0.5`}>
-                   <span className="text-sm font-black">{chip.value}</span>
-                   <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{chip.label}</span>
-                 </div>
-               ))}
-             </div>
+            <div className="mt-8 flex flex-wrap gap-4">
+              {[
+                {
+                  label: 'Repaso Crítico',
+                  value: `${recommendedReview}`,
+                  color: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                },
+                {
+                  label: 'Fragilidad Alta',
+                  value: `${weakQuestions.length}`,
+                  color: 'bg-rose-50 text-rose-600 border-rose-100',
+                },
+                {
+                  label: 'Nuevas Capas',
+                  value: `${recommendedNew}`,
+                  color: 'bg-sky-50 text-sky-600 border-sky-100',
+                },
+              ].map((chip) => (
+                <div
+                  key={chip.label}
+                  className={`flex items-center gap-3 rounded-[1.25rem] border px-4 py-2.5 ${chip.color} shadow-sm transition-all hover:-translate-y-0.5`}
+                >
+                  <span className="text-sm font-black">{chip.value}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
+                    {chip.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="shrink-0 xl:w-[22rem]">
-             <motion.button
-               whileHover={{ scale: 1.02, y: -2 }}
-               whileTap={{ scale: 0.98 }}
-               onClick={onStartRecommended}
-               className="group relative w-full overflow-hidden rounded-[2rem] bg-slate-950 px-8 py-7 text-white shadow-2xl transition-all hover:bg-slate-900"
-             >
-                <div className="absolute inset-x-0 bottom-0 h-1 brand-gradient-h" />
-                <div className="flex items-center justify-center gap-3">
-                   <Sparkles size={20} className="text-sky-400" />
-                   <span className="text-xl font-bold tracking-tight">Empezar sesión</span>
-                </div>
-                <p className="mt-2 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 group-hover:text-sky-300 transition-colors">{recommendedReview} repasos · {recommendedNew} nuevas</p>
-             </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onStartRecommended}
+              className="group relative w-full overflow-hidden rounded-[2rem] bg-slate-950 px-8 py-7 text-white shadow-2xl transition-all hover:bg-slate-900"
+            >
+              <div className="absolute inset-x-0 bottom-0 h-1 brand-gradient-h" />
+              <div className="flex items-center justify-center gap-3">
+                <Sparkles size={20} className="text-sky-400" />
+                <span className="text-xl font-bold tracking-tight">Empezar sesión</span>
+              </div>
+              <p className="mt-2 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 group-hover:text-sky-300 transition-colors">
+                {recommendedReview} repasos · {recommendedNew} nuevas
+              </p>
+            </motion.button>
           </div>
         </div>
       </motion.section>
@@ -201,7 +231,8 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             Modos disponibles
           </p>
           <p className="mt-1 text-sm leading-6 text-slate-500">
-            Aqui eliges herramienta. La ruta sugerida te orienta y el resto te deja desviarte con criterio.
+            Aqui eliges herramienta. La ruta sugerida te orienta y el resto te deja desviarte con
+            criterio.
           </p>
         </div>
 
@@ -232,7 +263,9 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                 {recommendedNew} nuevas
               </span>
               <span className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                {pressureGapPoints === null ? 'sin brecha visible' : `${pressureGapPoints} pts de presion`}
+                {pressureGapPoints === null
+                  ? 'sin brecha visible'
+                  : `${pressureGapPoints} pts de presion`}
               </span>
             </div>
           </div>
@@ -247,7 +280,9 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             <AnalyticsMiniTile
               label="Retencion vista"
               value={retentionSeenLabel}
-              caption={learningDashboardV2 ? `${learningDashboardV2.retentionSeenN} vistas` : 'sin base'}
+              caption={
+                learningDashboardV2 ? `${learningDashboardV2.retentionSeenN} vistas` : 'sin base'
+              }
             />
             <AnalyticsMiniTile
               label="Presion"
@@ -257,7 +292,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             <AnalyticsMiniTile
               label="Backlog"
               value={String(
-                learningDashboardV2?.backlogOverdueCount ?? learningDashboard?.backlogCount ?? 0
+                learningDashboardV2?.backlogOverdueCount ?? learningDashboard?.backlogCount ?? 0,
               )}
               caption={
                 learningDashboardV2
@@ -277,6 +312,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             icon={<Target size={18} />}
             onClick={mixedIsRecommended ? onStartRecommended : onStartMixed}
             tone={mixedIsRecommended ? 'primary' : 'default'}
+            disabled={practiceLocked}
           />
           <StudyActionCard
             label="Repaso"
@@ -285,7 +321,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             meta={`${weakQuestions.length} visibles`}
             icon={<Flame size={18} />}
             onClick={onStartWeakReview}
-            disabled={weakQuestions.length === 0}
+            disabled={practiceLocked || weakQuestions.length === 0}
           />
           <StudyActionCard
             label={randomIsRecommended ? 'Recomendado hoy' : 'Aleatorio'}
@@ -295,6 +331,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             icon={<Brain size={18} />}
             onClick={randomIsRecommended ? onStartRecommended : onStartRandom}
             tone={randomIsRecommended ? 'primary' : 'default'}
+            disabled={practiceLocked}
           />
           <StudyActionCard
             label="Secuencial"
@@ -303,6 +340,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             meta={`${totalBatches} bloques`}
             icon={<Layers3 size={18} />}
             onClick={onStartFromBeginning}
+            disabled={practiceLocked}
           />
           <StudyActionCard
             label={antiTrapIsRecommended ? 'Recomendado hoy' : 'Anti-trampas'}
@@ -312,6 +350,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             icon={<Shield size={18} />}
             onClick={antiTrapIsRecommended ? onStartRecommended : onStartAntiTrap}
             tone={antiTrapIsRecommended ? 'primary' : 'default'}
+            disabled={practiceLocked}
           />
           <StudyActionCard
             label={simulacroIsRecommended ? 'Recomendado hoy' : 'Simulacro'}
@@ -321,12 +360,16 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             icon={<ChartNoAxesColumn size={18} />}
             onClick={simulacroIsRecommended ? onStartRecommended : onStartSimulacro}
             tone={simulacroIsRecommended ? 'primary' : 'default'}
+            disabled={practiceLocked}
           />
         </div>
       </section>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)]">
-        <StatsDisclosure title="Senales de hoy" hint="Abre esto si quieres ajustar la sesion antes de empezar.">
+        <StatsDisclosure
+          title="Senales de hoy"
+          hint="Abre esto si quieres ajustar la sesion antes de empezar."
+        >
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-2.5">
               <AnalyticsMiniTile
@@ -338,7 +381,9 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
               <AnalyticsMiniTile
                 label="Backlog"
                 value={learningDashboard ? String(learningDashboard.backlogCount) : '--'}
-                caption={learningDashboard ? `${learningDashboard.overdueCount} urgentes` : 'sin base'}
+                caption={
+                  learningDashboard ? `${learningDashboard.overdueCount} urgentes` : 'sin base'
+                }
               />
               <AnalyticsMiniTile
                 label="Tema critico"
@@ -398,8 +443,8 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                       surface: 'study',
                       explanationKind: getExplanationKind({
                         explanation: question.explanation,
-                        editorialExplanation: question.editorialExplanation
-                      })
+                        editorialExplanation: question.editorialExplanation,
+                      }),
                     }).catch(() => {});
                   }}
                 >
@@ -451,7 +496,8 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                         Respuesta correcta
                       </p>
                       <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
-                        {question.correctOption.toUpperCase()}) {question.options[question.correctOption]}
+                        {question.correctOption.toUpperCase()}){' '}
+                        {question.options[question.correctOption]}
                       </p>
                     </div>
                     <div className="rounded-[1.15rem] bg-[linear-gradient(180deg,rgba(232,240,255,0.92),rgba(241,247,255,0.92))] px-4 py-3">

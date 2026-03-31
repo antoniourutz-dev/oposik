@@ -15,10 +15,13 @@ const QuestionScopePicker: React.FC<QuestionScopePickerProps> = ({
   value,
   onChange,
   label = 'Temario',
-  compact = false
+  compact = false,
 }) => (
   <div className={compact ? 'grid gap-2' : 'grid gap-2.5'}>
-    <p id={`scope-label-${label}`} className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+    <p
+      id={`scope-label-${label}`}
+      className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500"
+    >
       {label}
     </p>
     <div

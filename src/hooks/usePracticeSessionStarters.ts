@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type {
   ActivePracticeSession,
   PracticeQuestionScopeFilter,
-  WeakQuestionInsight
+  WeakQuestionInsight,
 } from '../practiceTypes';
 import type { SessionStarterCommandResult } from './practiceSessionStarterCommands';
 
@@ -36,7 +36,7 @@ export const usePracticeSessionStarters = ({
   setLoadingQuestions,
   setQuestionsError,
   startSession,
-  weakQuestions
+  weakQuestions,
 }: UsePracticeSessionStartersOptions) => {
   const executeStarter = useCallback(
     async ({ command, emptyMessage, fallbackErrorMessage }: StarterExecutionOptions) => {
@@ -56,14 +56,12 @@ export const usePracticeSessionStarters = ({
 
         startSession(result.session);
       } catch (error) {
-        setQuestionsError(
-          error instanceof Error ? error.message : fallbackErrorMessage
-        );
+        setQuestionsError(error instanceof Error ? error.message : fallbackErrorMessage);
       } finally {
         setLoadingQuestions(false);
       }
     },
-    [onGuestBlockConsumed, setLoadingQuestions, setQuestionsError, startSession]
+    [onGuestBlockConsumed, setLoadingQuestions, setQuestionsError, startSession],
   );
 
   const startStandardSession = useCallback(
@@ -74,14 +72,14 @@ export const usePracticeSessionStarters = ({
           return loadStandardSessionCommand({
             batchStartIndex,
             questionsCount,
-            questionScope
+            questionScope,
           });
         },
         emptyMessage: 'No se ha encontrado un bloque de preguntas para esa posicion.',
-        fallbackErrorMessage: 'No se han podido cargar las preguntas.'
+        fallbackErrorMessage: 'No se han podido cargar las preguntas.',
       });
     },
-    [executeStarter, questionsCount, selectedQuestionScope]
+    [executeStarter, questionsCount, selectedQuestionScope],
   );
 
   const startRandomSession = useCallback(async () => {
@@ -89,11 +87,11 @@ export const usePracticeSessionStarters = ({
       command: async () => {
         const { loadRandomSessionCommand } = await import('./practiceSessionStarterCommands');
         return loadRandomSessionCommand({
-          questionScope: selectedQuestionScope
+          questionScope: selectedQuestionScope,
         });
       },
       emptyMessage: 'No se ha podido construir una sesion aleatoria con el catalogo actual.',
-      fallbackErrorMessage: 'No se han podido cargar preguntas aleatorias.'
+      fallbackErrorMessage: 'No se han podido cargar preguntas aleatorias.',
     });
   }, [executeStarter, selectedQuestionScope]);
 
@@ -107,11 +105,11 @@ export const usePracticeSessionStarters = ({
       command: async () => {
         const { loadGuestSessionCommand } = await import('./practiceSessionStarterCommands');
         return loadGuestSessionCommand({
-          guestBlocksUsed
+          guestBlocksUsed,
         });
       },
       emptyMessage: 'No se ha podido preparar el bloque invitado.',
-      fallbackErrorMessage: 'No se ha podido cargar el bloque de invitado.'
+      fallbackErrorMessage: 'No se ha podido cargar el bloque de invitado.',
     });
   }, [executeStarter, guestBlocksRemaining, guestBlocksUsed, setQuestionsError]);
 
@@ -122,11 +120,11 @@ export const usePracticeSessionStarters = ({
         return loadMixedSessionCommand({
           questionScope: selectedQuestionScope,
           recommendedBatchStartIndex,
-          questionsCount
+          questionsCount,
         });
       },
       emptyMessage: 'No se ha podido construir una sesion adaptativa con el estado actual.',
-      fallbackErrorMessage: 'No se ha podido preparar la sesion del dia.'
+      fallbackErrorMessage: 'No se ha podido preparar la sesion del dia.',
     });
   }, [executeStarter, questionsCount, recommendedBatchStartIndex, selectedQuestionScope]);
 
@@ -140,11 +138,11 @@ export const usePracticeSessionStarters = ({
         const { loadAntiTrapSessionCommand } = await import('./practiceSessionStarterCommands');
         return loadAntiTrapSessionCommand({
           questionScope: selectedQuestionScope,
-          weakQuestions
+          weakQuestions,
         });
       },
       emptyMessage: 'No se ha podido preparar un entrenamiento anti-trampas con el estado actual.',
-      fallbackErrorMessage: 'No se ha podido preparar el entrenamiento anti-trampas.'
+      fallbackErrorMessage: 'No se ha podido preparar el entrenamiento anti-trampas.',
     });
   }, [executeStarter, selectedQuestionScope, weakQuestions]);
 
@@ -153,11 +151,11 @@ export const usePracticeSessionStarters = ({
       command: async () => {
         const { loadSimulacroSessionCommand } = await import('./practiceSessionStarterCommands');
         return loadSimulacroSessionCommand({
-          questionScope: selectedQuestionScope
+          questionScope: selectedQuestionScope,
         });
       },
       emptyMessage: 'No se ha podido preparar el simulacro con el catalogo actual.',
-      fallbackErrorMessage: 'No se ha podido preparar el simulacro.'
+      fallbackErrorMessage: 'No se ha podido preparar el simulacro.',
     });
   }, [executeStarter, selectedQuestionScope]);
 
@@ -178,7 +176,7 @@ export const usePracticeSessionStarters = ({
           return loadLawSessionCommand({ law });
         },
         emptyMessage: `No se han encontrado preguntas para la ley: ${law}.`,
-        fallbackErrorMessage: 'No se ha podido iniciar el entrenamiento por ley.'
-      })
+        fallbackErrorMessage: 'No se ha podido iniciar el entrenamiento por ley.',
+      }),
   };
 };

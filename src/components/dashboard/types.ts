@@ -11,7 +11,7 @@ import type {
   PracticeProfile,
   PracticeQuestionScopeFilter,
   PracticeSessionSummary,
-  WeakQuestionInsight
+  WeakQuestionInsight,
 } from '../../practiceTypes';
 
 export type DashboardExamTargetPayload = {
@@ -23,6 +23,8 @@ export type DashboardExamTargetPayload = {
 export type DashboardScreenProps = {
   activeTab: MainTab;
   identity: AccountIdentity;
+  /** Catálogo de preguntas aún en carga: bloquea inicio de sesiones que dependen del banco. */
+  catalogLoading?: boolean;
   coachPlan: PracticeCoachPlan;
   examTarget: PracticeExamTarget | null;
   examTargetError: string | null;

@@ -25,11 +25,10 @@ declare global {
 
 const isBrowser = typeof window !== 'undefined';
 const telemetryEndpoint = import.meta.env.VITE_TELEMETRY_ENDPOINT?.trim() || null;
-const debugTelemetry =
-  import.meta.env.DEV || import.meta.env.VITE_TELEMETRY_DEBUG === '1';
+const debugTelemetry = import.meta.env.DEV || import.meta.env.VITE_TELEMETRY_DEBUG === '1';
 const sampleRate = Math.max(
   0,
-  Math.min(1, Number.parseFloat(import.meta.env.VITE_TELEMETRY_SAMPLE_RATE ?? '1') || 1)
+  Math.min(1, Number.parseFloat(import.meta.env.VITE_TELEMETRY_SAMPLE_RATE ?? '1') || 1),
 );
 const bufferLimit = 200;
 
@@ -47,8 +46,7 @@ const sessionId = (() => {
 
 const telemetryEnabled = !isBrowser || sampleRate >= 1 ? true : Math.random() <= sampleRate;
 
-const now = () =>
-  typeof performance !== 'undefined' ? performance.now() : Date.now();
+const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 const roundMetric = (value: number) => Math.round(value * 100) / 100;
 
@@ -106,13 +104,13 @@ const sendTelemetryBatch = (events: TelemetryEvent[], reason: string) => {
     sessionId,
     href: window.location.href,
     userAgent: navigator.userAgent,
-    events
+    events,
   });
 
   if (navigator.sendBeacon) {
     const success = navigator.sendBeacon(
       telemetryEndpoint,
-      new Blob([payload], { type: 'application/json' })
+      new Blob([payload], { type: 'application/json' }),
     );
 
     if (success) {
@@ -123,10 +121,10 @@ const sendTelemetryBatch = (events: TelemetryEvent[], reason: string) => {
   void fetch(telemetryEndpoint, {
     method: 'POST',
     headers: {
-      'content-type': 'application/json'
+      'content-type': 'application/json',
     },
     body: payload,
-    keepalive: true
+    keepalive: true,
   }).catch(() => undefined);
 };
 
@@ -167,10 +165,9 @@ const emitTelemetry = (event: Omit<TelemetryEvent, 'recordedAt'>) => {
   const normalizedEvent: TelemetryEvent = {
     ...event,
     recordedAt: new Date().toISOString(),
-    durationMs:
-      typeof event.durationMs === 'number' ? roundMetric(event.durationMs) : undefined,
+    durationMs: typeof event.durationMs === 'number' ? roundMetric(event.durationMs) : undefined,
     value: typeof event.value === 'number' ? roundMetric(event.value) : undefined,
-    meta: sanitizeMeta(event.meta)
+    meta: sanitizeMeta(event.meta),
   };
 
   if (isBrowser) {
@@ -195,7 +192,7 @@ export const recordVital = (
   name: string,
   value: number,
   rating: TelemetryRating,
-  meta?: TelemetryMeta
+  meta?: TelemetryMeta,
 ) => {
   emitTelemetry({
     kind: 'vital',
@@ -204,7 +201,7 @@ export const recordVital = (
     rating,
     severity: rating === 'poor' ? 'warning' : 'info',
     status: 'success',
-    meta
+    meta,
   });
 };
 
@@ -213,7 +210,7 @@ export const recordNavigation = (name: string, meta?: TelemetryMeta) => {
     kind: 'navigation',
     name,
     status: 'success',
-    meta
+    meta,
   });
 };
 
@@ -224,14 +221,14 @@ export const recordRender = (
     meta,
     severity = 'info',
     status = 'success',
-    value
+    value,
   }: {
     durationMs?: number;
     meta?: TelemetryMeta;
     severity?: TelemetrySeverity;
     status?: TelemetryStatus;
     value?: number;
-  } = {}
+  } = {},
 ) => {
   emitTelemetry({
     kind: 'render',
@@ -240,7 +237,7 @@ export const recordRender = (
     meta,
     severity,
     status,
-    value
+    value,
   });
 };
 
@@ -250,14 +247,14 @@ export const recordQueryError = (name: string, meta?: TelemetryMeta) => {
     name,
     status: 'error',
     severity: 'error',
-    meta
+    meta,
   });
 };
 
 export const trackAsyncOperation = async <T>(
   name: string,
   run: () => Promise<T>,
-  meta?: TelemetryMeta
+  meta?: TelemetryMeta,
 ): Promise<T> => {
   const startedAt = now();
 
@@ -269,7 +266,7 @@ export const trackAsyncOperation = async <T>(
       durationMs: now() - startedAt,
       status: 'success',
       severity: 'info',
-      meta
+      meta,
     });
     return result;
   } catch (error) {
@@ -281,11 +278,8 @@ export const trackAsyncOperation = async <T>(
       severity: 'error',
       meta: {
         ...meta,
-        error:
-          error instanceof Error
-            ? `${error.name}: ${error.message}`
-            : 'unknown error'
-      }
+        error: error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error',
+      },
     });
     throw error;
   }

@@ -13,7 +13,7 @@ describe('preguntasMappers', () => {
       correct_answer: '  paris ',
       category: 'geografia',
       explanation: 'Paris es la capital de Francia.',
-      explicacion_editorial: 'La clave es simple: Paris es la capital de Francia.'
+      explicacion_editorial: 'La clave es simple: Paris es la capital de Francia.',
     });
 
     expect(question).toEqual({
@@ -24,13 +24,13 @@ describe('preguntasMappers', () => {
         a: 'Madrid',
         b: 'Paris',
         c: 'Roma',
-        d: 'Lisboa'
+        d: 'Lisboa',
       },
       correctOption: 'b',
       category: 'geografia',
       questionScope: null,
       explanation: 'Paris es la capital de Francia.',
-      editorialExplanation: 'La clave es simple: Paris es la capital de Francia.'
+      editorialExplanation: 'La clave es simple: Paris es la capital de Francia.',
     });
   });
 
@@ -42,8 +42,8 @@ describe('preguntasMappers', () => {
         opcion_a: 'A',
         opcion_b: 'B',
         opcion_c: 'C',
-        respuesta_correcta: 'a'
-      })
+        respuesta_correcta: 'a',
+      }),
     ).toBeNull();
   });
 
@@ -61,14 +61,14 @@ describe('preguntasMappers', () => {
           a: 'Uno',
           b: 'Dos',
           c: 'Tres',
-          d: 'Cuatro'
+          d: 'Cuatro',
         },
         respuesta_correcta: 4,
         grupo: 'comun',
         tema: 'sanidad',
         explicacion: 'La opcion correcta es la cuarta.',
-        resumen_editorial: 'La buena es la d: es la cuarta opcion.'
-      }
+        resumen_editorial: 'La buena es la d: es la cuarta opcion.',
+      },
     });
 
     expect(insight?.question.correctOption).toBe('d');
@@ -79,7 +79,7 @@ describe('preguntasMappers', () => {
       attempts: 7,
       category: 'sanidad',
       questionScope: 'common',
-      editorialExplanation: 'La buena es la d: es la cuarta opcion.'
+      editorialExplanation: 'La buena es la d: es la cuarta opcion.',
     });
   });
 });

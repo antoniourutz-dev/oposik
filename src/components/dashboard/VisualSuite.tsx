@@ -17,7 +17,7 @@ import {
   RadarChart,
   PolarGrid,
   PolarAngleAxis,
-  PolarRadiusAxis
+  PolarRadiusAxis,
 } from 'recharts';
 
 // --- STYLES & TOKENS ---
@@ -29,15 +29,15 @@ const COLORS = {
   warning: '#f59e0b',
   danger: '#ef4444',
   muted: 'rgba(148, 163, 184, 0.1)',
-  text: '#64748b'
+  text: '#64748b',
 };
 
 const CHART_STYLES = {
   grid: { stroke: 'rgba(148,163,184,0.06)', strokeDasharray: '3 3' },
   tooltip: {
     contentStyle: { display: 'none' },
-    wrapperClassName: 'premium-tooltip'
-  }
+    wrapperClassName: 'premium-tooltip',
+  },
 };
 
 // --- COMPONENTS ---
@@ -132,9 +132,18 @@ export const PerformanceBarChart: React.FC<{ data: any[] }> = ({ data }) => (
       />
       <Tooltip {...CHART_STYLES.tooltip} cursor={{ fill: 'rgba(148,163,184,0.04)' }} />
       <Bar dataKey="accuracy" radius={[0, 8, 8, 0]} barSize={20}>
-         {data.map((entry, index) => (
-           <PieCell key={`bar-${index}`} fill={entry.accuracy >= 70 ? COLORS.success : entry.accuracy >= 50 ? COLORS.primary : COLORS.danger} />
-         ))}
+        {data.map((entry, index) => (
+          <PieCell
+            key={`bar-${index}`}
+            fill={
+              entry.accuracy >= 70
+                ? COLORS.success
+                : entry.accuracy >= 50
+                  ? COLORS.primary
+                  : COLORS.danger
+            }
+          />
+        ))}
       </Bar>
     </BarChart>
   </ResponsiveContainer>
@@ -155,7 +164,9 @@ export const KPIPulseCard: React.FC<{
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-400">
         {icon}
       </div>
-      <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black tracking-tight ${trend >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+      <div
+        className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black tracking-tight ${trend >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}
+      >
         {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
       </div>
     </div>
@@ -174,16 +185,11 @@ export const BehavioralRadarChart: React.FC<{ data: any[] }> = ({ data }) => (
   <ResponsiveContainer width="100%" height={300}>
     <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
       <PolarGrid stroke={COLORS.muted} strokeWidth={1} />
-      <PolarAngleAxis 
-        dataKey="subject" 
-        tick={{ fill: COLORS.text, fontSize: 10, fontWeight: 800 }} 
+      <PolarAngleAxis
+        dataKey="subject"
+        tick={{ fill: COLORS.text, fontSize: 10, fontWeight: 800 }}
       />
-      <PolarRadiusAxis 
-        angle={30} 
-        domain={[0, 100]} 
-        tick={false} 
-        axisLine={false} 
-      />
+      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
       <Radar
         name="Performance"
         dataKey="value"

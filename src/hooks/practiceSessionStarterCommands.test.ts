@@ -5,7 +5,7 @@ import {
   loadMixedSessionCommand,
   loadRandomSessionCommand,
   loadSimulacroSessionCommand,
-  loadStandardSessionCommand
+  loadStandardSessionCommand,
 } from './practiceSessionStarterCommands';
 import {
   getAntiTrapPracticeBatch,
@@ -13,7 +13,7 @@ import {
   getMixedPracticeBatch,
   getRandomPracticeBatch,
   getSimulacroPracticeBatch,
-  getStandardPracticeBatch
+  getStandardPracticeBatch,
 } from '../services/preguntasApi';
 
 vi.mock('../services/preguntasApi', () => ({
@@ -22,7 +22,7 @@ vi.mock('../services/preguntasApi', () => ({
   getMixedPracticeBatch: vi.fn(),
   getRandomPracticeBatch: vi.fn(),
   getSimulacroPracticeBatch: vi.fn(),
-  getStandardPracticeBatch: vi.fn()
+  getStandardPracticeBatch: vi.fn(),
 }));
 
 const mockedGetAntiTrapPracticeBatch = vi.mocked(getAntiTrapPracticeBatch);
@@ -40,11 +40,11 @@ const buildQuestion = (id: string) => ({
     a: 'A',
     b: 'B',
     c: 'C',
-    d: 'D'
+    d: 'D',
   },
   correctOption: 'a' as const,
   category: null,
-  explanation: null
+  explanation: null,
 });
 
 describe('practiceSessionStarterCommands', () => {
@@ -58,14 +58,14 @@ describe('practiceSessionStarterCommands', () => {
     const result = await loadStandardSessionCommand({
       batchStartIndex: 999,
       questionsCount: 55,
-      questionScope: 'all'
+      questionScope: 'all',
     });
 
     expect(mockedGetStandardPracticeBatch).toHaveBeenCalledWith(0, 20, 'general', 'all');
     expect(result.session).toMatchObject({
       mode: 'standard',
       batchStartIndex: 0,
-      nextStandardBatchStartIndex: 20
+      nextStandardBatchStartIndex: 20,
     });
   });
 
@@ -73,13 +73,13 @@ describe('practiceSessionStarterCommands', () => {
     mockedGetGuestPracticeBatch.mockResolvedValue([buildQuestion('g1'), buildQuestion('g2')]);
 
     const result = await loadGuestSessionCommand({
-      guestBlocksUsed: 1
+      guestBlocksUsed: 1,
     });
 
     expect(result.nextGuestBlockNumber).toBe(2);
     expect(result.session).toMatchObject({
       title: 'Bloque de prueba 2/2',
-      questionScope: 'common'
+      questionScope: 'common',
     });
   });
 
@@ -90,13 +90,13 @@ describe('practiceSessionStarterCommands', () => {
     const result = await loadMixedSessionCommand({
       questionScope: 'specific',
       recommendedBatchStartIndex: 20,
-      questionsCount: 80
+      questionsCount: 80,
     });
 
     expect(result.session).toMatchObject({
       mode: 'standard',
       batchStartIndex: 20,
-      questionScope: 'specific'
+      questionScope: 'specific',
     });
   });
 
@@ -107,13 +107,13 @@ describe('practiceSessionStarterCommands', () => {
       questionScope: 'common',
       weakQuestions: [
         { question: buildQuestion('w1'), stat: {} as never },
-        { question: buildQuestion('w2'), stat: {} as never }
-      ]
+        { question: buildQuestion('w2'), stat: {} as never },
+      ],
     });
 
     expect(result.session).toMatchObject({
       mode: 'weakest',
-      questionScope: 'common'
+      questionScope: 'common',
     });
   });
 
@@ -122,12 +122,12 @@ describe('practiceSessionStarterCommands', () => {
     mockedGetRandomPracticeBatch.mockResolvedValue([buildQuestion('s1'), buildQuestion('s2')]);
 
     const result = await loadSimulacroSessionCommand({
-      questionScope: 'all'
+      questionScope: 'all',
     });
 
     expect(result.session).toMatchObject({
       mode: 'simulacro',
-      questionScope: 'all'
+      questionScope: 'all',
     });
   });
 
@@ -135,12 +135,12 @@ describe('practiceSessionStarterCommands', () => {
     mockedGetRandomPracticeBatch.mockResolvedValue([buildQuestion('r1'), buildQuestion('r2')]);
 
     const result = await loadRandomSessionCommand({
-      questionScope: 'specific'
+      questionScope: 'specific',
     });
 
     expect(result.session).toMatchObject({
       mode: 'random',
-      questionScope: 'specific'
+      questionScope: 'specific',
     });
   });
 });

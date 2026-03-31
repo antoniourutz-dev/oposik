@@ -4,7 +4,7 @@ import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import type { PracticeQuestionScopeFilter } from '../practiceTypes';
 import {
   loadPracticeAccountSnapshot,
-  loadPracticeScopeSnapshot
+  loadPracticeScopeSnapshot,
 } from '../services/practiceBootstrapApi';
 import { upsertMyExamTarget } from '../services/practiceCloudApi';
 import { practiceQueryKeys } from '../services/practiceQueryKeys';
@@ -26,11 +26,18 @@ type UsePracticeDataControllerOptions = {
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
+/** No reintentar si ya falló por timeout local (evita duplicar 25s+ de espera). */
+const shouldRetryRemoteQuery = (failureCount: number, error: unknown) => {
+  const m = error instanceof Error ? error.message : '';
+  if (/tiempo de espera agotado/i.test(m)) return false;
+  return failureCount < 1;
+};
+
 export const usePracticeDataController = ({
   authReady,
   isGuest,
   selectedQuestionScope,
-  sessionUserId
+  sessionUserId,
 }: UsePracticeDataControllerOptions) => {
   const queryClient = useQueryClient();
   const [manualLoadingQuestions, setManualLoadingQuestions] = useState(false);
@@ -41,22 +48,22 @@ export const usePracticeDataController = ({
   const queriesEnabled = authReady && !isGuest && Boolean(sessionUserId);
   const accountQueryKey = practiceQueryKeys.account(userId, DEFAULT_CURRICULUM);
   const scopeRootQueryKey = practiceQueryKeys.scopeRoot(userId, DEFAULT_CURRICULUM);
-  const scopeQueryKey = practiceQueryKeys.scope(
-    userId,
-    DEFAULT_CURRICULUM,
-    selectedQuestionScope
-  );
+  const scopeQueryKey = practiceQueryKeys.scope(userId, DEFAULT_CURRICULUM, selectedQuestionScope);
 
   const accountQuery = useQuery({
     queryKey: accountQueryKey,
     queryFn: () => loadPracticeAccountSnapshot(DEFAULT_CURRICULUM),
-    enabled: queriesEnabled
+    enabled: queriesEnabled,
+    staleTime: 30_000,
+    retry: shouldRetryRemoteQuery,
   });
 
   const scopeQuery = useQuery({
     queryKey: scopeQueryKey,
     queryFn: () => loadPracticeScopeSnapshot(DEFAULT_CURRICULUM, selectedQuestionScope),
-    enabled: queriesEnabled
+    enabled: queriesEnabled,
+    staleTime: 30_000,
+    retry: shouldRetryRemoteQuery,
   });
 
   const saveExamTargetMutation = useMutation({
@@ -65,12 +72,12 @@ export const usePracticeDataController = ({
         curriculum: DEFAULT_CURRICULUM,
         examDate,
         dailyReviewCapacity,
-        dailyNewCapacity
+        dailyNewCapacity,
       }),
     onSuccess: async () => {
       if (!sessionUserId) return;
       await queryClient.invalidateQueries({ queryKey: accountQueryKey });
-    }
+    },
   });
 
   useEffect(() => {
@@ -107,10 +114,10 @@ export const usePracticeDataController = ({
         async () => {
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: accountQueryKey }),
-            queryClient.invalidateQueries({ queryKey: scopeQueryKey })
+            queryClient.invalidateQueries({ queryKey: scopeQueryKey }),
           ]);
         },
-        { questionScope: selectedQuestionScope }
+        { questionScope: selectedQuestionScope },
       );
     } finally {
       setManualLoadingQuestions(false);
@@ -123,24 +130,24 @@ export const usePracticeDataController = ({
 
       setSyncErrorOverride(null);
 
-    try {
-      await trackAsyncOperation(
-        'practice.syncPracticeAfterSession',
-        async () => {
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: accountQueryKey }),
-            queryClient.invalidateQueries({ queryKey: scopeRootQueryKey })
-          ]);
-        },
-        { questionScope: _questionScope }
-      );
-    } catch (error) {
-      const message = getErrorMessage(error, 'No se ha podido sincronizar el progreso.');
-      setSyncErrorOverride(message);
+      try {
+        await trackAsyncOperation(
+          'practice.syncPracticeAfterSession',
+          async () => {
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: accountQueryKey }),
+              queryClient.invalidateQueries({ queryKey: scopeRootQueryKey }),
+            ]);
+          },
+          { questionScope: _questionScope },
+        );
+      } catch (error) {
+        const message = getErrorMessage(error, 'No se ha podido sincronizar el progreso.');
+        setSyncErrorOverride(message);
         throw error;
       }
     },
-    [accountQueryKey, queryClient, scopeRootQueryKey, sessionUserId]
+    [accountQueryKey, queryClient, scopeRootQueryKey, sessionUserId],
   );
 
   const handleSaveExamTarget = useCallback(
@@ -149,16 +156,16 @@ export const usePracticeDataController = ({
         await saveExamTargetMutation.mutateAsync({
           examDate,
           dailyReviewCapacity,
-          dailyNewCapacity
+          dailyNewCapacity,
         });
       } catch {
         return;
       }
     },
-    [saveExamTargetMutation]
+    [saveExamTargetMutation],
   );
 
-  const identity = queriesEnabled ? accountQuery.data?.identity ?? null : null;
+  const identity = queriesEnabled ? (accountQuery.data?.identity ?? null) : null;
   const practiceState = accountQuery.data?.practiceState ?? null;
   const scopeSnapshot = scopeQuery.data ?? null;
 
@@ -190,10 +197,7 @@ export const usePracticeDataController = ({
   const questionsError = useMemo(() => {
     if (questionsErrorOverride) return questionsErrorOverride;
     if (scopeQuery.error) {
-      return getErrorMessage(
-        scopeQuery.error,
-        'No se ha podido cargar el catalogo seleccionado.'
-      );
+      return getErrorMessage(scopeQuery.error, 'No se ha podido cargar el catalogo seleccionado.');
     }
     return scopeSnapshot?.questionsError ?? null;
   }, [questionsErrorOverride, scopeQuery.error, scopeSnapshot]);
@@ -201,7 +205,7 @@ export const usePracticeDataController = ({
   const examTargetError = saveExamTargetMutation.error
     ? getErrorMessage(
         saveExamTargetMutation.error,
-        'No se ha podido guardar la configuracion del examen.'
+        'No se ha podido guardar la configuracion del examen.',
       )
     : null;
 
@@ -230,6 +234,6 @@ export const usePracticeDataController = ({
     syncingState,
     syncError,
     weakCategories,
-    weakQuestions
+    weakQuestions,
   };
 };

@@ -1,4 +1,4 @@
-import type { PostgrestError } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../supabaseClient';
 import { trackAsyncOperation } from '../telemetry/telemetryClient';
 
@@ -37,13 +37,36 @@ export const normalizeUsername = (value: string) => value.trim().toLowerCase();
 export const validateUsername = (value: string) => USERNAME_RE.test(normalizeUsername(value));
 
 export const normalizeAccountPlayerMode = (value: unknown): AccountPlayerMode =>
-  String(value ?? '').trim().toLowerCase() === 'generic' ? 'generic' : 'advanced';
+  String(value ?? '')
+    .trim()
+    .toLowerCase() === 'generic'
+    ? 'generic'
+    : 'advanced';
+
+/**
+ * Identidad mostrable antes de que responda `get_my_account_identity` (arranque inmediato del shell).
+ */
+export const buildProvisionalAccountIdentity = (session: Session): AccountIdentity => {
+  const meta = session.user.user_metadata as Record<string, unknown> | undefined;
+  const fromMeta =
+    typeof meta?.username === 'string' && meta.username.trim()
+      ? meta.username.trim()
+      : typeof meta?.preferred_username === 'string' && meta.preferred_username.trim()
+        ? meta.preferred_username.trim()
+        : '';
+  const emailLocal = session.user.email?.split('@')[0]?.trim() ?? '';
+  return {
+    user_id: session.user.id,
+    current_username: fromMeta || emailLocal || 'Alumno',
+    is_admin: false,
+    player_mode: normalizeAccountPlayerMode(meta?.player_mode),
+    previous_usernames: [],
+  };
+};
 
 const toStringArray = (value: unknown) => {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((entry) => String(entry ?? '').trim())
-    .filter(Boolean);
+  return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
 };
 
 const mapAccountIdentity = (value: unknown): AccountIdentity | null => {
@@ -62,7 +85,7 @@ const mapAccountIdentity = (value: unknown): AccountIdentity | null => {
     current_username: currentUsername,
     is_admin: Boolean(record.is_admin),
     player_mode: normalizeAccountPlayerMode(record.player_mode),
-    previous_usernames: toStringArray(record.previous_usernames)
+    previous_usernames: toStringArray(record.previous_usernames),
   };
 };
 
@@ -85,18 +108,26 @@ export const getMyUsernameHistory = async (limit = 10) => {
       const { data, error } = await supabase
         .schema('app')
         .from('username_change_history')
-        .select('change_id, old_username, new_username, changed_at, changed_by, source, reason, request_id')
+        .select(
+          'change_id, old_username, new_username, changed_at, changed_by, source, reason, request_id',
+        )
         .order('changed_at', { ascending: false })
         .limit(limit);
 
       if (error) throw new Error(mapAccountApiError(error));
       return (data ?? []) as UsernameHistoryEntry[];
     },
-    { limit }
+    { limit },
   );
 };
 
-export const mapAccountApiError = (error: Pick<PostgrestError, 'code' | 'message' | 'details' | 'hint'>) => {
+/** Acepta errores PostgREST u objetos parciales (p. ej. antes de mapear en cliente). */
+export const mapAccountApiError = (error: {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+}) => {
   if (error.code === '23505') {
     return 'Ese usuario ya esta en uso o reservado.';
   }
@@ -190,7 +221,7 @@ export const changeMyUsername = async (nextUsernameInput: string) => {
           p_new_username: nextUsername,
           p_reason: 'self_service',
           p_request_id: generateUUID(),
-          p_metadata: { client: 'web' }
+          p_metadata: { client: 'web' },
         })
         .maybeSingle();
 
@@ -211,6 +242,6 @@ export const changeMyUsername = async (nextUsernameInput: string) => {
         changed_at: result.out_changed_at,
       } as UsernameChangeResult;
     },
-    { usernameLength: nextUsername.length }
+    { usernameLength: nextUsername.length },
   );
 };

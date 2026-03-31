@@ -10,11 +10,16 @@ import {
   PracticeQuestionStat,
   PracticeRiskInsight,
   PracticeSessionSummary,
-  PracticeWeakCategorySummary
+  PracticeWeakCategorySummary,
 } from '../practiceTypes';
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { mapAccountApiError } from './accountApi';
 import { normalizeQuestionScope } from '../utils/practiceQuestionScope';
+import { mapExternalErrorType } from './errorTypeMappers';
+import {
+  mapExternalPracticeConfidenceFlag,
+  mapExternalPracticeMode,
+} from './controlledContractMappers';
 
 const toNullableString = (value: unknown) => {
   const normalized = String(value ?? '').trim();
@@ -90,23 +95,12 @@ export const mapProfile = (value: Record<string, unknown> | null): PracticeProfi
     totalCorrect: toNumber(value.total_correct),
     totalIncorrect: toNumber(value.total_incorrect),
     totalSessions: toNumber(value.total_sessions),
-    lastStudiedAt: toNullableString(value.last_studied_at)
+    lastStudiedAt: toNullableString(value.last_studied_at),
   };
 };
 
-const mapPracticeMode = (value: unknown): PracticeSessionSummary['mode'] => {
-  switch (String(value ?? '').trim()) {
-    case 'weakest':
-    case 'random':
-    case 'review':
-    case 'mixed':
-    case 'simulacro':
-    case 'anti_trap':
-      return String(value) as PracticeSessionSummary['mode'];
-    default:
-      return 'standard';
-  }
-};
+const mapPracticeMode = (value: unknown): PracticeSessionSummary['mode'] =>
+  mapExternalPracticeMode(value);
 
 export const mapSession = (value: Record<string, unknown>): PracticeSessionSummary => ({
   id: String(value.session_id ?? value.id ?? ''),
@@ -116,12 +110,15 @@ export const mapSession = (value: Record<string, unknown>): PracticeSessionSumma
   finishedAt: String(value.finished_at ?? value.finishedAt ?? ''),
   score: toNumber(value.score),
   total: toNumber(value.total),
-  questionIds: []
+  questionIds: [],
 });
 
 export const mapQuestionStat = (value: Record<string, unknown>): PracticeQuestionStat => ({
   questionId: String(value.question_id ?? value.questionId ?? ''),
-  questionNumber: value.question_number === null || value.question_number === undefined ? null : toNumber(value.question_number, 0),
+  questionNumber:
+    value.question_number === null || value.question_number === undefined
+      ? null
+      : toNumber(value.question_number, 0),
   statement: String(value.statement ?? value.question_statement ?? ''),
   category: toNullableString(value.category),
   questionScope: normalizeQuestionScope(value.question_scope ?? value.questionScope),
@@ -133,47 +130,39 @@ export const mapQuestionStat = (value: Record<string, unknown>): PracticeQuestio
       value.editorial_summary ??
       value.resumen_editorial ??
       value.summary ??
-      value.resumen
+      value.resumen,
   ),
   attempts: toNumber(value.attempts),
   correctAttempts: toNumber(value.correct_attempts),
   incorrectAttempts: toNumber(value.incorrect_attempts),
   lastAnsweredAt: String(value.last_answered_at ?? value.lastAnsweredAt ?? ''),
-  lastIncorrectAt: toNullableString(value.last_incorrect_at ?? value.lastIncorrectAt)
+  lastIncorrectAt: toNullableString(value.last_incorrect_at ?? value.lastIncorrectAt),
 });
 
 export const mapWeakCategorySummary = (
-  value: Record<string, unknown>
+  value: Record<string, unknown>,
 ): PracticeWeakCategorySummary => ({
   category: toNullableString(value.category) ?? 'Sin grupo',
   incorrectAttempts: toNumber(value.incorrect_attempts),
-  attempts: toNumber(value.attempts)
+  attempts: toNumber(value.attempts),
 });
 
 const mapRiskInsight = (value: unknown): PracticeRiskInsight | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
-  const errorType = toNullableString(row.error_type ?? row.errorType);
+  const errorType = mapExternalErrorType(row.error_type ?? row.errorType);
   const label = toNullableString(row.label);
   if (!errorType || !label) return null;
 
   return {
     errorType,
     label,
-    count: toNumber(row.count, 0)
+    count: toNumber(row.count, 0),
   };
 };
 
-const toConfidenceFlag = (value: unknown): PracticeConfidenceFlag => {
-  switch (String(value ?? '').trim()) {
-    case 'high':
-      return 'high';
-    case 'medium':
-      return 'medium';
-    default:
-      return 'low';
-  }
-};
+const toConfidenceFlag = (value: unknown): PracticeConfidenceFlag =>
+  mapExternalPracticeConfidenceFlag(value);
 
 const toNullableNumber = (value: unknown) => {
   if (value === null || value === undefined) return null;
@@ -182,7 +171,7 @@ const toNullableNumber = (value: unknown) => {
 };
 
 export const mapLearningDashboard = (
-  value: Record<string, unknown> | null
+  value: Record<string, unknown> | null,
 ): PracticeLearningDashboard | null => {
   if (!value) return null;
 
@@ -220,16 +209,19 @@ export const mapLearningDashboard = (
     recommendedTodayCount: toNumber(value.recommended_today_count),
     recommendedMode: mapPracticeMode(value.recommended_mode),
     focusMessage:
-      toNullableString(value.focus_message) ?? 'Hoy conviene mantener el ritmo con una sesion adaptativa.',
+      toNullableString(value.focus_message) ??
+      'Hoy conviene mantener el ritmo con una sesion adaptativa.',
     dailyReviewCapacity: toNumber(value.daily_review_capacity, 35),
     dailyNewCapacity: toNumber(value.daily_new_capacity, 10),
     examDate: toNullableString(value.exam_date),
-    riskBreakdown: rawRiskBreakdown.map(mapRiskInsight).filter((item): item is PracticeRiskInsight => Boolean(item))
+    riskBreakdown: rawRiskBreakdown
+      .map(mapRiskInsight)
+      .filter((item): item is PracticeRiskInsight => Boolean(item)),
   };
 };
 
 export const mapLearningDashboardV2 = (
-  value: Record<string, unknown> | null
+  value: Record<string, unknown> | null,
 ): PracticeLearningDashboardV2 | null => {
   if (!value) return null;
 
@@ -270,13 +262,13 @@ export const mapLearningDashboardV2 = (
       attempts: toNumber(law.attempts),
       questionCount: toNumber(law.question_count),
       correctAttempts: toNumber(law.correct_attempts),
-      accuracyRate: toNumber(law.accuracy_rate)
-    }))
+      accuracyRate: toNumber(law.accuracy_rate),
+    })),
   };
 };
 
 export const mapCategoryRiskSummary = (
-  value: Record<string, unknown>
+  value: Record<string, unknown>,
 ): PracticeCategoryRiskSummary => ({
   category: toNullableString(value.category) ?? 'Sin grupo',
   attempts: toNumber(value.attempts),
@@ -286,12 +278,10 @@ export const mapCategoryRiskSummary = (
   baselineFailRate: toNullableNumber(value.baseline_fail_rate),
   excessRisk: toNullableNumber(value.excess_risk),
   sampleOk: Boolean(value.sample_ok),
-  confidenceFlag: toConfidenceFlag(value.confidence_flag)
+  confidenceFlag: toConfidenceFlag(value.confidence_flag),
 });
 
-export const mapExamTarget = (
-  value: Record<string, unknown> | null
-): PracticeExamTarget | null => {
+export const mapExamTarget = (value: Record<string, unknown> | null): PracticeExamTarget | null => {
   if (!value) return null;
 
   return {
@@ -300,12 +290,12 @@ export const mapExamTarget = (
     examDate: toNullableString(value.exam_date),
     dailyReviewCapacity: toNumber(value.daily_review_capacity, 35),
     dailyNewCapacity: toNumber(value.daily_new_capacity, 10),
-    updatedAt: toNullableString(value.updated_at)
+    updatedAt: toNullableString(value.updated_at),
   };
 };
 
 export const mapPressureInsights = (
-  value: Record<string, unknown> | null
+  value: Record<string, unknown> | null,
 ): PracticePressureInsights | null => {
   if (!value) return null;
 
@@ -324,12 +314,12 @@ export const mapPressureInsights = (
         : recommendedMode,
     pressureMessage:
       toNullableString(value.pressure_message) ??
-      'Sigue combinando practica adaptativa y simulacros para medir la transferencia real.'
+      'Sigue combinando practica adaptativa y simulacros para medir la transferencia real.',
   };
 };
 
 export const mapPressureInsightsV2 = (
-  value: Record<string, unknown> | null
+  value: Record<string, unknown> | null,
 ): PracticePressureInsightsV2 | null => {
   if (!value) return null;
 
@@ -352,6 +342,6 @@ export const mapPressureInsightsV2 = (
         : recommendedMode,
     pressureMessage:
       toNullableString(value.pressure_message) ??
-      'Todavia no hay senal suficiente para leer bien la presion de examen.'
+      'Todavia no hay senal suficiente para leer bien la presion de examen.',
   };
 };

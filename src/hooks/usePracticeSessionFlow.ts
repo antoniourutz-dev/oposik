@@ -34,7 +34,7 @@ export const usePracticeSessionFlow = ({
   setQuestionsError,
   setSyncError,
   syncPracticeAfterSession,
-  weakQuestions
+  weakQuestions,
 }: UsePracticeSessionFlowOptions) => {
   const {
     activeSession,
@@ -47,12 +47,12 @@ export const usePracticeSessionFlow = ({
     handleSimulacroTimeExpired,
     resetActiveSession,
     startSession,
-    view
+    view,
   } = usePracticeSessionLifecycle({
     isGuest,
     selectedQuestionScope,
     setSyncError,
-    syncPracticeAfterSession
+    syncPracticeAfterSession,
   });
 
   const {
@@ -65,7 +65,7 @@ export const usePracticeSessionFlow = ({
     startRandom,
     startSimulacro,
     startStandardSession,
-    startLawSession
+    startLawSession,
   } = usePracticeSessionStarters({
     guestBlocksRemaining,
     guestBlocksUsed,
@@ -76,7 +76,7 @@ export const usePracticeSessionFlow = ({
     setLoadingQuestions,
     setQuestionsError,
     startSession,
-    weakQuestions
+    weakQuestions,
   });
 
   const handleContinueAfterReview = useCallback(() => {
@@ -84,7 +84,7 @@ export const usePracticeSessionFlow = ({
       activeSession,
       guestBlocksRemaining,
       isGuest,
-      selectedQuestionScope
+      selectedQuestionScope,
     });
 
     switch (decision.type) {
@@ -105,7 +105,7 @@ export const usePracticeSessionFlow = ({
     resetActiveSession,
     selectedQuestionScope,
     startGuestSession,
-    startStandardSession
+    startStandardSession,
   ]);
 
   const startWeakReview = useCallback(() => {
@@ -137,6 +137,6 @@ export const usePracticeSessionFlow = ({
     startSimulacro,
     startStandardSession,
     startWeakReview,
-    view
+    view,
   };
 };

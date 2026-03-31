@@ -19,7 +19,7 @@ export const computeNextIntervalDays = ({
   masteryLevel,
   difficultyFactor,
   latencyFactor,
-  examFactor
+  examFactor,
 }: {
   isCorrect: boolean;
   masteryLevel: MasteryLevel;
@@ -34,18 +34,18 @@ export const computeNextIntervalDays = ({
     1: 3,
     2: 7,
     3: 14,
-    4: 21
+    4: 21,
   };
 
   return Math.max(
     1,
-    Math.round(baseIntervals[masteryLevel] * difficultyFactor * latencyFactor * examFactor)
+    Math.round(baseIntervals[masteryLevel] * difficultyFactor * latencyFactor * examFactor),
   );
 };
 
 export const computeReviewsNeededBeforeExam = ({
   daysToExam,
-  intervalDays
+  intervalDays,
 }: {
   daysToExam: number | null;
   intervalDays: number;

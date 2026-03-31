@@ -36,32 +36,32 @@ const PRECACHE_BLOCKLIST = [
   /^assets\/webVitals-.*\.js$/,
   /^assets\/react-dom-.*\.js$/,
   /^assets\/supabase-.*\.js$/,
-  /^minimal_dark_(512|1024)\.png$/
+  /^minimal_dark_(512|1024)\.png$/,
 ];
 
 self.skipWaiting();
 clientsClaim();
 cleanupOutdatedCaches();
 precacheAndRoute(
-  self.__WB_MANIFEST.filter(
-    (entry) => !PRECACHE_BLOCKLIST.some((pattern) => pattern.test(entry.url))
-  )
+  self.__WB_MANIFEST.filter((entry) => {
+    const url = typeof entry === 'string' ? entry : entry.url;
+    return !PRECACHE_BLOCKLIST.some((pattern) => pattern.test(url));
+  }),
 );
 
 registerRoute(
   ({ url, request }) => url.origin === self.location.origin && request.destination === 'script',
-  new StaleWhileRevalidate({ cacheName: 'quantia-scripts' })
+  new StaleWhileRevalidate({ cacheName: 'quantia-scripts' }),
 );
 
 registerRoute(
   ({ url, request }) => url.origin === self.location.origin && request.destination === 'style',
-  new StaleWhileRevalidate({ cacheName: 'quantia-styles' })
+  new StaleWhileRevalidate({ cacheName: 'quantia-styles' }),
 );
 
 registerRoute(
-  ({ url, request }) =>
-    url.origin === self.location.origin && request.destination === 'image',
-  new CacheFirst({ cacheName: 'quantia-images' })
+  ({ url, request }) => url.origin === self.location.origin && request.destination === 'image',
+  new CacheFirst({ cacheName: 'quantia-images' }),
 );
 
 const parseReminderPayload = (raw: string | null): ReminderNotificationPayload => {
@@ -72,7 +72,7 @@ const parseReminderPayload = (raw: string | null): ReminderNotificationPayload =
     return typeof parsed === 'object' && parsed ? parsed : {};
   } catch {
     return {
-      body: raw
+      body: raw,
     };
   }
 };
@@ -81,26 +81,25 @@ self.addEventListener('push', (event) => {
   const payload = parseReminderPayload(event.data?.text() ?? null);
   const title = payload.title?.trim() || 'Tienes preguntas pendientes';
   const body =
-    payload.body?.trim() ||
-    'Entra en Quantia y continua con tu siguiente bloque de practica.';
+    payload.body?.trim() || 'Entra en Quantia y continua con tu siguiente bloque de practica.';
   const url =
     typeof payload.data?.url === 'string' && payload.data.url
       ? payload.data.url
       : payload.url || DEFAULT_NOTIFICATION_URL;
 
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      tag: payload.tag || 'quantia-practice-reminder',
-      renotify: false,
-      icon: payload.icon || DEFAULT_NOTIFICATION_ICON,
-      badge: payload.badge || DEFAULT_NOTIFICATION_BADGE,
-      data: {
-        ...(payload.data ?? {}),
-        url
-      }
-    })
-  );
+  const notificationOptions: NotificationOptions & { renotify?: boolean } = {
+    body,
+    tag: payload.tag || 'quantia-practice-reminder',
+    renotify: false,
+    icon: payload.icon || DEFAULT_NOTIFICATION_ICON,
+    badge: payload.badge || DEFAULT_NOTIFICATION_BADGE,
+    data: {
+      ...(payload.data ?? {}),
+      url,
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, notificationOptions));
 });
 
 self.addEventListener('notificationclick', (event) => {
@@ -121,6 +120,6 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       return self.clients.openWindow(destination);
-    })
+    }),
   );
 });

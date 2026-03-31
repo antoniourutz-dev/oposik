@@ -62,7 +62,7 @@ export const getErrorTypeLabel = (errorType: ErrorType | null | undefined) => {
 export const inferTrapTags = ({
   statement,
   correctOptionText,
-  selectedOptionText
+  selectedOptionText,
 }: {
   statement: string;
   correctOptionText: string;
@@ -91,13 +91,16 @@ export const inferTrapTags = ({
 
   if (
     /\b(consejo|director|ministro|departamento|autoridad|comision|tribunal|organo|gerencia)\b/.test(
-      combined
+      combined,
     )
   ) {
     tags.add('ORGANO');
   }
 
-  if (/\b(ley|decreto|real decreto|orden|norma|articulo)\b/.test(combined) && /\d+\/\d+/.test(combined)) {
+  if (
+    /\b(ley|decreto|real decreto|orden|norma|articulo)\b/.test(combined) &&
+    /\d+\/\d+/.test(combined)
+  ) {
     tags.add('NORMA');
   }
 
@@ -127,7 +130,7 @@ export const computeErrorPenalty = (errorType: ErrorType | null | undefined) => 
 export const resolveDominantErrorType = ({
   previousDominantErrorType,
   currentErrorType,
-  isCorrect
+  isCorrect,
 }: {
   previousDominantErrorType: ErrorType | null;
   currentErrorType: ErrorType | null | undefined;
@@ -142,7 +145,7 @@ export const inferAttemptErrorType = ({
   selectedOptionText,
   correctOptionText,
   responseTimeMs,
-  isCorrect
+  isCorrect,
 }: {
   statement: string;
   selectedOptionText: string | null;
@@ -155,7 +158,7 @@ export const inferAttemptErrorType = ({
   const tags = inferTrapTags({
     statement,
     correctOptionText,
-    selectedOptionText
+    selectedOptionText,
   });
   const similarity = selectedOptionText
     ? optionSimilarity(selectedOptionText, correctOptionText)

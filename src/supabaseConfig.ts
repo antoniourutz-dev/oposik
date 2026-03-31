@@ -3,7 +3,7 @@ const supabaseAnonKeyEnv = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 export const missingSupabaseEnvVars = [
   !supabaseUrlEnv ? 'VITE_SUPABASE_URL' : null,
-  !supabaseAnonKeyEnv ? 'VITE_SUPABASE_ANON_KEY' : null
+  !supabaseAnonKeyEnv ? 'VITE_SUPABASE_ANON_KEY' : null,
 ].filter((value): value is string => Boolean(value));
 
 export const supabaseConfigError =

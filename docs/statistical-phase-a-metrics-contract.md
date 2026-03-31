@@ -584,7 +584,7 @@ Incluye:
    - `get_pressure_dashboard_v2`
 3. En `Stats`, sustituir:
    - `readiness` hero unico
-   por:
+     por:
    - `Preparacion examen`
    - `Retencion vista`
    - `Cobertura`

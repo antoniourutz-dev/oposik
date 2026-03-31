@@ -1,23 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Session } from '@supabase/supabase-js';
-import type { PracticeQuestionScopeFilter } from '../practiceTypes';
+import { useCallback, useMemo, useState } from 'react';
 import type { AccountIdentity } from '../services/accountApi';
-import type { MainTab } from '../components/BottomDock';
+import { buildProvisionalAccountIdentity } from '../services/accountApi';
 import { buildPracticeCoachPlan } from '../domain/learningEngine';
 import { PRACTICE_BATCH_SIZE } from '../practiceConfig';
+import { GUEST_MAX_BLOCKS, persistGuestBlocksUsed, readGuestBlocksUsed } from './practiceAppStorage';
 import {
-  clearSupabaseAuthStorage,
-  getSafeSupabaseSession,
-  hasLocalAuthToken,
-  supabase
-} from '../supabaseClient';
-import {
-  GUEST_MAX_BLOCKS,
-  persistGuestBlocksUsed,
-  persistQuestionScope,
-  readGuestBlocksUsed,
-  readQuestionScope
-} from './practiceAppStorage';
+  computeGuestBlocksRemaining,
+  computeRecommendedBatchNumber,
+  computeRecommendedBatchStartIndex,
+  computeTopBarSubtitle,
+  computeTotalBatches,
+} from './practiceApp/practiceAppDerived';
+import { usePracticeAuthSessionState } from './practiceApp/usePracticeAuthSessionState';
+import { usePracticeAuthSubscription } from './practiceApp/usePracticeAuthSubscription';
+import { usePracticeShellNavigation } from './practiceApp/usePracticeShellNavigation';
+import { usePracticeQuestionScope } from './practiceApp/usePracticeQuestionScope';
+import { usePracticeShellTransitions } from './practiceApp/usePracticeShellTransitions';
+import { usePracticeStartRecommended } from './practiceApp/usePracticeStartRecommended';
 import { usePracticeDataController } from './usePracticeDataController';
 import { usePracticeSessionFlow } from './usePracticeSessionFlow';
 
@@ -26,17 +25,21 @@ const GUEST_IDENTITY: AccountIdentity = {
   current_username: 'Invitado',
   is_admin: false,
   player_mode: 'generic',
-  previous_usernames: []
+  previous_usernames: [],
 };
 
+/**
+ * Fachada de composición: datos (React Query), flujo de sesión de práctica, estado de shell de UI,
+ * suscripción Supabase (`usePracticeAuthSubscription`), acciones de auth (`usePracticeAuthActions`) y
+ * preferencia de ámbito de preguntas (`usePracticeQuestionScope`).
+ * La API pública se mantiene estable para PracticeAppShell y pantallas lazy.
+ */
 export const usePracticeApp = () => {
-  const [authReady, setAuthReady] = useState(() => !hasLocalAuthToken());
-  const [session, setSession] = useState<Session | null>(null);
-  const [activeTab, setActiveTab] = useState<MainTab>('home');
+  const { authReady, setAuthReady, session, setSession } = usePracticeAuthSessionState();
   const [isGuest, setIsGuest] = useState(false);
   const [guestBlocksUsed, setGuestBlocksUsed] = useState(readGuestBlocksUsed);
-  const [selectedQuestionScope, setSelectedQuestionScope] =
-    useState<PracticeQuestionScopeFilter>(readQuestionScope);
+  const { handleQuestionScopeChange, selectedQuestionScope, setSelectedQuestionScope } =
+    usePracticeQuestionScope();
 
   const {
     clearAccountContext,
@@ -62,26 +65,35 @@ export const usePracticeApp = () => {
     syncingState,
     syncError,
     weakCategories,
-    weakQuestions
+    weakQuestions,
   } = usePracticeDataController({
     authReady,
     isGuest,
     selectedQuestionScope,
-    sessionUserId: session?.user.id ?? null
+    sessionUserId: session?.user.id ?? null,
   });
 
-  const identity = isGuest ? GUEST_IDENTITY : accountIdentity;
-  const guestBlocksRemaining = Math.max(0, GUEST_MAX_BLOCKS - guestBlocksUsed);
+  const identity = useMemo(() => {
+    if (isGuest) return GUEST_IDENTITY;
+    if (accountIdentity) return accountIdentity;
+    if (session) return buildProvisionalAccountIdentity(session);
+    return null;
+  }, [isGuest, accountIdentity, session]);
+  const guestBlocksRemaining = computeGuestBlocksRemaining(guestBlocksUsed, GUEST_MAX_BLOCKS);
   const isGenericPlayer = !isGuest && identity?.player_mode === 'generic';
-  const totalBatches = Math.max(1, Math.ceil(questionsCount / PRACTICE_BATCH_SIZE));
-  const recommendedBatchStartIndex =
-    selectedQuestionScope === 'all' &&
-    profile &&
-    profile.nextStandardBatchStartIndex < questionsCount
-      ? profile.nextStandardBatchStartIndex
-      : 0;
-  const recommendedBatchNumber =
-    Math.floor(recommendedBatchStartIndex / PRACTICE_BATCH_SIZE) + 1;
+
+  const { activeTab, setActiveTab } = usePracticeShellNavigation(isGenericPlayer);
+
+  const recommendedBatchStartIndex = computeRecommendedBatchStartIndex(
+    selectedQuestionScope,
+    profile,
+    questionsCount,
+  );
+  const totalBatches = computeTotalBatches(questionsCount, PRACTICE_BATCH_SIZE);
+  const recommendedBatchNumber = computeRecommendedBatchNumber(
+    recommendedBatchStartIndex,
+    PRACTICE_BATCH_SIZE,
+  );
 
   const coachPlan = useMemo(
     () =>
@@ -91,15 +103,9 @@ export const usePracticeApp = () => {
         examTarget,
         recommendedBatchNumber,
         totalBatches,
-        batchSize: PRACTICE_BATCH_SIZE
+        batchSize: PRACTICE_BATCH_SIZE,
       }),
-    [
-      examTarget,
-      learningDashboard,
-      pressureInsights,
-      recommendedBatchNumber,
-      totalBatches
-    ]
+    [examTarget, learningDashboard, pressureInsights, recommendedBatchNumber, totalBatches],
   );
 
   const handleGuestBlockConsumed = useCallback((nextBlockNumber: number) => {
@@ -129,7 +135,7 @@ export const usePracticeApp = () => {
     startStandardSession,
     startLawSession,
     startWeakReview,
-    view
+    view,
   } = usePracticeSessionFlow({
     guestBlocksRemaining,
     guestBlocksUsed,
@@ -142,154 +148,45 @@ export const usePracticeApp = () => {
     setQuestionsError,
     setSyncError,
     syncPracticeAfterSession,
-    weakQuestions
+    weakQuestions,
   });
 
-  const topBarSubtitle =
-    view === 'review'
-      ? 'Revision'
-      : activeTab === 'home'
-        ? 'Inicio'
-        : activeTab === 'stats'
-          ? 'Estadisticas'
-          : activeTab === 'study'
-            ? 'Estudio'
-            : 'Perfil';
+  const topBarSubtitle = useMemo(() => computeTopBarSubtitle(view, activeTab), [view, activeTab]);
 
-  useEffect(() => {
-    let active = true;
-
-    const initAuth = async () => {
-      try {
-        const currentSession = await getSafeSupabaseSession();
-        if (!active) return;
-        setSession(currentSession);
-
-        if (!currentSession) {
-          clearAccountContext();
-        }
-      } catch (error) {
-        if (!active) return;
-        setSyncError(
-          error instanceof Error ? error.message : 'No se ha podido validar la sesion.'
-        );
-      } finally {
-        if (active) {
-          setAuthReady(true);
-        }
-      }
-    };
-
-    void initAuth();
-
-    const {
-      data: { subscription }
-    } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (!active) return;
-
-      setSession(nextSession);
-
-      if (event === 'SIGNED_OUT') {
-        resetActiveSession();
-        setIsGuest(false);
-        clearAccountContext();
-        setSyncError(null);
-        setQuestionsError(null);
-        setLoadingQuestions(false);
-        setAuthReady(true);
-        return;
-      }
-
-      if (event === 'SIGNED_IN' && nextSession) {
-        resetActiveSession();
-        setIsGuest(false);
-        setQuestionsError(null);
-        setSyncError(null);
-        setAuthReady(true);
-        return;
-      }
-
-      setAuthReady(true);
-    });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, [
-    clearAccountContext,
-    resetActiveSession,
-    setLoadingQuestions,
-    setQuestionsError,
-    setSyncError
-  ]);
-
-  useEffect(() => {
-    if (isGenericPlayer && activeTab === 'stats') {
-      setActiveTab('home');
-    }
-  }, [activeTab, isGenericPlayer]);
-
-  useEffect(() => {
-    persistQuestionScope(selectedQuestionScope);
-  }, [selectedQuestionScope]);
-
-  const handleSignedIn = useCallback(() => {
-    setIsGuest(false);
-    setAuthReady(false);
-    setLoadingQuestions(true);
-  }, [setLoadingQuestions]);
-
-  const handleEnterGuest = useCallback(() => {
-    setSession(null);
-    clearAccountContext();
-    resetActiveSession();
-    setIsGuest(true);
-    setQuestionsError(null);
-    setSyncError(null);
-    setLoadingQuestions(false);
-    setActiveTab('home');
-    setSelectedQuestionScope('all');
-  }, [
-    clearAccountContext,
-    resetActiveSession,
-    setLoadingQuestions,
-    setQuestionsError,
-    setSyncError
-  ]);
-
-  const handleSignOut = useCallback(async () => {
-    if (isGuest) {
-      setIsGuest(false);
-      setSession(null);
-      clearAccountContext();
-      resetActiveSession();
-      setLoadingQuestions(false);
-      setSyncError(null);
-      setQuestionsError(null);
-      setActiveTab('home');
-      return;
-    }
-
-    await supabase.auth.signOut();
-    clearSupabaseAuthStorage();
-    setSession(null);
-    clearAccountContext();
-    resetActiveSession();
-  }, [
+  const transitions = usePracticeShellTransitions({
     clearAccountContext,
     isGuest,
     resetActiveSession,
+    setActiveTab,
+    setAuthReady,
+    setIsGuest,
     setLoadingQuestions,
     setQuestionsError,
-    setSyncError
-  ]);
+    setSelectedQuestionScope,
+    setSession,
+    setSyncError,
+  });
+  const { handleEnterGuest, handleSignOut, handleSignedIn } = transitions;
 
-  const handleQuestionScopeChange = useCallback((questionScope: PracticeQuestionScopeFilter) => {
-    setSelectedQuestionScope((currentScope) =>
-      currentScope === questionScope ? currentScope : questionScope
-    );
-  }, []);
+  usePracticeAuthSubscription({
+    clearAccountContext,
+    onAuthSignedIn: transitions.handleAuthSignedIn,
+    onAuthSignedOut: transitions.handleAuthSignedOut,
+    setAuthReady,
+    setSyncError,
+    setSession,
+  });
+
+  const startRecommended = usePracticeStartRecommended({
+    coachPlan,
+    recommendedBatchStartIndex,
+    selectedQuestionScope,
+    startAntiTrap,
+    startMixed,
+    startRandom,
+    startSimulacro,
+    startStandardSession,
+  });
 
   return {
     activeSession,
@@ -338,24 +235,7 @@ export const usePracticeApp = () => {
     startGenericRecommended,
     startMixed,
     startRandom,
-    startRecommended: () => {
-      switch (coachPlan.mode) {
-        case 'mixed':
-          startMixed();
-          return;
-        case 'random':
-          startRandom();
-          return;
-        case 'anti_trap':
-          startAntiTrap();
-          return;
-        case 'simulacro':
-          startSimulacro();
-          return;
-        default:
-          void startStandardSession(recommendedBatchStartIndex, selectedQuestionScope);
-      }
-    },
+    startRecommended,
     startWeakReview,
     syncingState,
     syncError,
@@ -365,6 +245,6 @@ export const usePracticeApp = () => {
     weakCategories,
     weakQuestions,
     onStartLawTraining: startLawSession,
-    setActiveTab
+    setActiveTab,
   };
 };

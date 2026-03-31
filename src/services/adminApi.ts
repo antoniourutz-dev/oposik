@@ -1,4 +1,5 @@
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
+import type { PracticeMode } from '../practiceTypes';
 import { getSafeSupabaseSession, supabase } from '../supabaseClient';
 import { supabaseAnonKey, supabaseUrl } from '../supabaseConfig';
 import {
@@ -6,7 +7,7 @@ import {
   mapAccountApiError,
   normalizeAccountPlayerMode,
   normalizeUsername,
-  validateUsername
+  validateUsername,
 } from './accountApi';
 import type { AccountPlayerMode } from './accountApi';
 
@@ -133,9 +134,7 @@ const toNumber = (value: unknown) => {
 
 const toStringArray = (value: unknown) => {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((entry) => String(entry ?? '').trim())
-    .filter(Boolean);
+  return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
 };
 
 const toNullableString = (value: unknown) => {
@@ -157,9 +156,9 @@ const invokeAdminUserManagement = async <T>(payload: Record<string, unknown>) =>
       headers: {
         'Content-Type': 'application/json',
         apikey: supabaseAnonKey,
-        Authorization: `Bearer ${session.access_token}`
+        Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
   } catch {
     throw new Error('Ezin izan da administrazio zerbitzuarekin konektatu.');
@@ -193,49 +192,52 @@ const mapAdminDirectoryEntry = (value: Record<string, unknown>): AdminUserDirect
   total_correct: toNumber(value.total_correct),
   total_incorrect: toNumber(value.total_incorrect),
   accuracy: toNumber(value.accuracy),
-  last_studied_at: value.last_studied_at ? String(value.last_studied_at) : null
+  last_studied_at: value.last_studied_at ? String(value.last_studied_at) : null,
 });
 
-const mapAdminPracticeProfile = (value: Record<string, unknown>) => ({
-  user_id: String(value.user_id ?? ''),
-  curriculum: String(value.curriculum ?? 'general'),
-  next_standard_batch_start_index: toNumber(value.next_standard_batch_start_index),
-  total_answered: toNumber(value.total_answered),
-  total_correct: toNumber(value.total_correct),
-  total_incorrect: toNumber(value.total_incorrect),
-  total_sessions: toNumber(value.total_sessions),
-  accuracy: toNumber(value.accuracy),
-  last_studied_at: toNullableString(value.last_studied_at)
-}) satisfies AdminUserPracticeProfile;
+const mapAdminPracticeProfile = (value: Record<string, unknown>) =>
+  ({
+    user_id: String(value.user_id ?? ''),
+    curriculum: String(value.curriculum ?? 'general'),
+    next_standard_batch_start_index: toNumber(value.next_standard_batch_start_index),
+    total_answered: toNumber(value.total_answered),
+    total_correct: toNumber(value.total_correct),
+    total_incorrect: toNumber(value.total_incorrect),
+    total_sessions: toNumber(value.total_sessions),
+    accuracy: toNumber(value.accuracy),
+    last_studied_at: toNullableString(value.last_studied_at),
+  }) satisfies AdminUserPracticeProfile;
 
-const mapAdminWeakQuestion = (value: Record<string, unknown>) => ({
-  question_id: String(value.question_id ?? ''),
-  question_number: value.question_number === null || value.question_number === undefined ? null : toNumber(value.question_number),
-  statement: String(value.statement ?? ''),
-  category: toNullableString(value.category),
-  explanation: toNullableString(value.explanation),
-  editorial_explanation: toNullableString(
-    value.editorial_explanation ??
-      value.explicacion_editorial ??
-      value.editorial_summary ??
-      value.summary ??
-      value.resumen
-  ),
-  attempts: toNumber(value.attempts),
-  correct_attempts: toNumber(value.correct_attempts),
-  incorrect_attempts: toNumber(value.incorrect_attempts),
-  last_answered_at: String(value.last_answered_at ?? ''),
-  last_incorrect_at: toNullableString(value.last_incorrect_at)
-}) satisfies AdminWeakPracticeQuestion;
+const mapAdminWeakQuestion = (value: Record<string, unknown>) =>
+  ({
+    question_id: String(value.question_id ?? ''),
+    question_number:
+      value.question_number === null || value.question_number === undefined
+        ? null
+        : toNumber(value.question_number),
+    statement: String(value.statement ?? ''),
+    category: toNullableString(value.category),
+    explanation: toNullableString(value.explanation),
+    editorial_explanation: toNullableString(
+      value.editorial_explanation ??
+        value.explicacion_editorial ??
+        value.editorial_summary ??
+        value.summary ??
+        value.resumen,
+    ),
+    attempts: toNumber(value.attempts),
+    correct_attempts: toNumber(value.correct_attempts),
+    incorrect_attempts: toNumber(value.incorrect_attempts),
+    last_answered_at: String(value.last_answered_at ?? ''),
+    last_incorrect_at: toNullableString(value.last_incorrect_at),
+  }) satisfies AdminWeakPracticeQuestion;
 
 export const getAdminUsers = async (search = '', limit = 80) => {
   const normalizedSearch = normalizeUsername(search);
-  const { data, error } = await supabase
-    .schema('app')
-    .rpc('admin_list_users', {
-      p_search: normalizedSearch || null,
-      p_limit: limit
-    });
+  const { data, error } = await supabase.schema('app').rpc('admin_list_users', {
+    p_search: normalizedSearch || null,
+    p_limit: limit,
+  });
 
   if (error) {
     throw new Error(mapAccountApiError(error));
@@ -247,11 +249,9 @@ export const getAdminUsers = async (search = '', limit = 80) => {
 };
 
 export const getAdminUsernameTimeline = async (userId: string) => {
-  const { data, error } = await supabase
-    .schema('app')
-    .rpc('admin_get_username_timeline', {
-      p_user_id: userId
-    });
+  const { data, error } = await supabase.schema('app').rpc('admin_get_username_timeline', {
+    p_user_id: userId,
+  });
 
   if (error) {
     throw new Error(mapAccountApiError(error));
@@ -265,7 +265,7 @@ export const getAdminPracticeProfile = async (userId: string, curriculum = DEFAU
     .schema('app')
     .rpc('admin_get_practice_profile_for_curriculum', {
       p_user_id: userId,
-      p_curriculum: curriculum
+      p_curriculum: curriculum,
     })
     .maybeSingle();
 
@@ -279,14 +279,14 @@ export const getAdminPracticeProfile = async (userId: string, curriculum = DEFAU
 export const getAdminRecentPracticeSessions = async (
   userId: string,
   limit = 8,
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
 ) => {
   const { data, error } = await supabase
     .schema('app')
     .rpc('admin_get_recent_practice_sessions_for_curriculum', {
       p_user_id: userId,
       p_limit: limit,
-      p_curriculum: curriculum
+      p_curriculum: curriculum,
     });
 
   if (error) {
@@ -295,32 +295,31 @@ export const getAdminRecentPracticeSessions = async (
 
   return ((data ?? []) as Array<Record<string, unknown>>).map((entry) => ({
     id: String(entry.session_id ?? ''),
-    mode:
-      entry.mode === 'weakest'
-        ? 'weakest'
-        : entry.mode === 'random'
-          ? 'random'
-          : 'standard',
+    mode: (entry.mode === 'weakest'
+      ? 'weakest'
+      : entry.mode === 'random'
+        ? 'random'
+        : 'standard') as PracticeMode,
     title: String(entry.title ?? 'Sesion'),
     startedAt: String(entry.started_at ?? ''),
     finishedAt: String(entry.finished_at ?? ''),
     score: toNumber(entry.score),
     total: toNumber(entry.total),
-    questionIds: []
+    questionIds: [],
   }));
 };
 
 export const getAdminWeakPracticeQuestions = async (
   userId: string,
   limit = 5,
-  curriculum = DEFAULT_CURRICULUM
+  curriculum = DEFAULT_CURRICULUM,
 ) => {
   const { data, error } = await supabase
     .schema('app')
     .rpc('admin_get_weak_practice_questions_for_curriculum', {
       p_user_id: userId,
       p_limit: limit,
-      p_curriculum: curriculum
+      p_curriculum: curriculum,
     });
 
   if (error) {
@@ -333,7 +332,7 @@ export const getAdminWeakPracticeQuestions = async (
 export const adminChangeUsername = async (
   userId: string,
   nextUsernameInput: string,
-  reason = 'admin_panel'
+  reason = 'admin_panel',
 ) => {
   const nextUsername = normalizeUsername(nextUsernameInput);
   if (!validateUsername(nextUsername)) {
@@ -345,7 +344,7 @@ export const adminChangeUsername = async (
     userId,
     username: nextUsername,
     reason,
-    requestId: generateUUID()
+    requestId: generateUUID(),
   });
 
   return {
@@ -353,20 +352,20 @@ export const adminChangeUsername = async (
     old_username: toNullableString(result.old_username),
     new_username: String(result.new_username ?? ''),
     changed_at: String(result.changed_at ?? ''),
-    warning: toNullableString(result.warning)
+    warning: toNullableString(result.warning),
   } as AdminUsernameChangeResult;
 };
 
 export const adminCreateUser = async (
   username: string,
   password: string,
-  playerMode: AccountPlayerMode = 'advanced'
+  playerMode: AccountPlayerMode = 'advanced',
 ) => {
   const result = await invokeAdminUserManagement<AdminCreateUserResult>({
     action: 'create_user',
     username,
     password,
-    playerMode
+    playerMode,
   });
 
   return {
@@ -374,31 +373,31 @@ export const adminCreateUser = async (
     current_username: String(result.current_username ?? ''),
     auth_email: toNullableString(result.auth_email),
     created_at: toNullableString(result.created_at),
-    player_mode: normalizeAccountPlayerMode(result.player_mode)
+    player_mode: normalizeAccountPlayerMode(result.player_mode),
   } as AdminCreateUserResult;
 };
 
 export const adminDeleteUser = async (userId: string) => {
   const result = await invokeAdminUserManagement<AdminDeleteUserResult>({
     action: 'delete_user',
-    userId
+    userId,
   });
 
   return {
     user_id: String(result.user_id ?? userId),
     current_username: toNullableString(result.current_username),
-    warning: toNullableString(result.warning)
+    warning: toNullableString(result.warning),
   } as AdminDeleteUserResult;
 };
 
 export const adminResetPracticeProgress = async (
   userId: string,
-  curriculum: string | null = null
+  curriculum: string | null = null,
 ) => {
   const result = await invokeAdminUserManagement<AdminResetPracticeProgressResult>({
     action: 'reset_practice_progress',
     userId,
-    curriculum
+    curriculum,
   });
 
   return {
@@ -409,7 +408,7 @@ export const adminResetPracticeProgress = async (
     attempts_deleted: toNumber(result.attempts_deleted),
     question_stats_deleted: toNumber(result.question_stats_deleted),
     question_states_deleted: toNumber(result.question_states_deleted),
-    attempt_events_deleted: toNumber(result.attempt_events_deleted)
+    attempt_events_deleted: toNumber(result.attempt_events_deleted),
   } as AdminResetPracticeProgressResult;
 };
 
@@ -417,42 +416,36 @@ export const adminSetUserPassword = async (userId: string, password: string) => 
   const result = await invokeAdminUserManagement<AdminSetUserPasswordResult>({
     action: 'set_user_password',
     userId,
-    password
+    password,
   });
 
   return {
     user_id: String(result.user_id ?? userId),
-    current_username: toNullableString(result.current_username)
+    current_username: toNullableString(result.current_username),
   } as AdminSetUserPasswordResult;
 };
 
-export const adminSetUserPlayerMode = async (
-  userId: string,
-  playerMode: AccountPlayerMode
-) => {
+export const adminSetUserPlayerMode = async (userId: string, playerMode: AccountPlayerMode) => {
   const result = await invokeAdminUserManagement<AdminSetUserPlayerModeResult>({
     action: 'set_user_player_mode',
     userId,
-    playerMode
+    playerMode,
   });
 
   return {
     user_id: String(result.user_id ?? userId),
     current_username: toNullableString(result.current_username),
     player_mode: normalizeAccountPlayerMode(result.player_mode),
-    updated_at: toNullableString(result.updated_at)
+    updated_at: toNullableString(result.updated_at),
   } as AdminSetUserPlayerModeResult;
 };
 
-export const adminClearUserGameResults = async (
-  userId: string,
-  dayIndex: number | null = null
-) => {
+export const adminClearUserGameResults = async (userId: string, dayIndex: number | null = null) => {
   const { data, error } = await supabase
     .schema('app')
     .rpc('admin_clear_user_game_results', {
       p_user_id: userId,
-      p_day_index: typeof dayIndex === 'number' ? dayIndex : null
+      p_day_index: typeof dayIndex === 'number' ? dayIndex : null,
     })
     .maybeSingle();
 
@@ -461,19 +454,16 @@ export const adminClearUserGameResults = async (
   }
 
   return {
-    deleted_rows: toNumber((data as AdminDeleteResultsResult | null)?.deleted_rows)
+    deleted_rows: toNumber((data as AdminDeleteResultsResult | null)?.deleted_rows),
   };
 };
 
-export const adminSetChallengeStartDate = async (
-  startDate: string,
-  resetBeforeIso: string
-) => {
+export const adminSetChallengeStartDate = async (startDate: string, resetBeforeIso: string) => {
   const { data, error } = await supabase
     .schema('app')
     .rpc('admin_set_challenge_start_date', {
       p_start_date: startDate,
-      p_reset_before: resetBeforeIso
+      p_reset_before: resetBeforeIso,
     })
     .maybeSingle();
 
@@ -482,7 +472,9 @@ export const adminSetChallengeStartDate = async (
   }
 
   return {
-    saved_start_date: String((data as AdminSetChallengeStartDateResult | null)?.saved_start_date ?? startDate),
-    deleted_rows: toNumber((data as AdminSetChallengeStartDateResult | null)?.deleted_rows)
+    saved_start_date: String(
+      (data as AdminSetChallengeStartDateResult | null)?.saved_start_date ?? startDate,
+    ),
+    deleted_rows: toNumber((data as AdminSetChallengeStartDateResult | null)?.deleted_rows),
   };
 };

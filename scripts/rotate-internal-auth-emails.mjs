@@ -10,7 +10,7 @@ if (!supabaseUrl || !serviceRoleKey) {
 }
 
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { autoRefreshToken: false, persistSession: false }
+  auth: { autoRefreshToken: false, persistSession: false },
 });
 
 const makeInternalEmail = (userId) => `u_${userId.replace(/-/g, '')}@auth.korrika.invalid`;
@@ -37,7 +37,7 @@ async function main() {
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(row.user_id, {
       email: internalEmail,
       email_confirm: true,
-      user_metadata: { username: row.username }
+      user_metadata: { username: row.username },
     });
 
     if (updateError) {

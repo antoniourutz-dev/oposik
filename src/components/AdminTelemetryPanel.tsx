@@ -18,7 +18,7 @@ type AnalyzedEvent = {
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('es-ES', {
   dateStyle: 'short',
-  timeStyle: 'medium'
+  timeStyle: 'medium',
 });
 const MAX_VISIBLE_EVENTS = 24;
 const SCREEN_READY_WARN_MS = 700;
@@ -33,7 +33,7 @@ const kindLabel: Record<TelemetryEvent['kind'], string> = {
   operation: 'Operacion',
   query: 'Query',
   render: 'Render',
-  vital: 'Vital'
+  vital: 'Vital',
 };
 
 const kindClassName: Record<TelemetryEvent['kind'], string> = {
@@ -41,13 +41,13 @@ const kindClassName: Record<TelemetryEvent['kind'], string> = {
   operation: 'border-indigo-200 bg-indigo-50 text-indigo-700',
   query: 'border-rose-200 bg-rose-50 text-rose-700',
   render: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  vital: 'border-amber-200 bg-amber-50 text-amber-700'
+  vital: 'border-amber-200 bg-amber-50 text-amber-700',
 };
 
 const signalClassName: Record<TelemetrySignalLevel, string> = {
   normal: 'border-slate-200 bg-slate-50 text-slate-600',
   warning: 'border-amber-200 bg-amber-50 text-amber-700',
-  critical: 'border-rose-200 bg-rose-50 text-rose-700'
+  critical: 'border-rose-200 bg-rose-50 text-rose-700',
 };
 
 const signalSurfaceClassName: Record<TelemetrySignalLevel, string> = {
@@ -55,7 +55,7 @@ const signalSurfaceClassName: Record<TelemetrySignalLevel, string> = {
   warning:
     'border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.94))]',
   critical:
-    'border-rose-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.94))]'
+    'border-rose-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.94))]',
 };
 
 const readTelemetryBuffer = () => {
@@ -83,7 +83,11 @@ const renderMetaPreview = (event: TelemetryEvent) => {
   return entries.length > 0 ? entries.join(' | ') : 'Sin meta';
 };
 
-const resolveDurationLevel = (value: number, warningThreshold: number, criticalThreshold: number) => {
+const resolveDurationLevel = (
+  value: number,
+  warningThreshold: number,
+  criticalThreshold: number,
+): TelemetrySignalLevel => {
   if (value >= criticalThreshold) return 'critical';
   if (value >= warningThreshold) return 'warning';
   return 'normal';
@@ -94,7 +98,7 @@ const getTelemetrySignal = (event: TelemetryEvent): TelemetrySignal => {
     return {
       level: 'critical',
       label: 'Error',
-      reason: 'Evento fallido'
+      reason: 'Evento fallido',
     };
   }
 
@@ -103,7 +107,7 @@ const getTelemetrySignal = (event: TelemetryEvent): TelemetrySignal => {
       return {
         level: 'critical',
         label: 'Vital pobre',
-        reason: 'Core web vital en zona pobre'
+        reason: 'Core web vital en zona pobre',
       };
     }
 
@@ -111,7 +115,7 @@ const getTelemetrySignal = (event: TelemetryEvent): TelemetrySignal => {
       return {
         level: 'warning',
         label: 'Vital a vigilar',
-        reason: 'Core web vital mejorable'
+        reason: 'Core web vital mejorable',
       };
     }
   }
@@ -120,7 +124,7 @@ const getTelemetrySignal = (event: TelemetryEvent): TelemetrySignal => {
     return {
       level: 'normal',
       label: null,
-      reason: null
+      reason: null,
     };
   }
 
@@ -128,20 +132,16 @@ const getTelemetrySignal = (event: TelemetryEvent): TelemetrySignal => {
     const level = resolveDurationLevel(
       event.durationMs,
       SCREEN_READY_WARN_MS,
-      SCREEN_READY_CRITICAL_MS
+      SCREEN_READY_CRITICAL_MS,
     );
     return {
       level,
       label:
-        level === 'critical'
-          ? 'Pantalla critica'
-          : level === 'warning'
-            ? 'Pantalla lenta'
-            : null,
+        level === 'critical' ? 'Pantalla critica' : level === 'warning' ? 'Pantalla lenta' : null,
       reason:
         level === 'normal'
           ? null
-          : `Tiempo de pantalla lista en ${formatDuration(event.durationMs)}`
+          : `Tiempo de pantalla lista en ${formatDuration(event.durationMs)}`,
     };
   }
 
@@ -149,44 +149,30 @@ const getTelemetrySignal = (event: TelemetryEvent): TelemetrySignal => {
     const level = resolveDurationLevel(
       event.durationMs,
       RENDER_COMMIT_WARN_MS,
-      RENDER_COMMIT_CRITICAL_MS
+      RENDER_COMMIT_CRITICAL_MS,
     );
     return {
       level,
-      label:
-        level === 'critical'
-          ? 'Commit critico'
-          : level === 'warning'
-            ? 'Commit lento'
-            : null,
-      reason:
-        level === 'normal' ? null : `Commit de React en ${formatDuration(event.durationMs)}`
+      label: level === 'critical' ? 'Commit critico' : level === 'warning' ? 'Commit lento' : null,
+      reason: level === 'normal' ? null : `Commit de React en ${formatDuration(event.durationMs)}`,
     };
   }
 
   if (event.kind === 'operation') {
-    const level = resolveDurationLevel(
-      event.durationMs,
-      OPERATION_WARN_MS,
-      OPERATION_CRITICAL_MS
-    );
+    const level = resolveDurationLevel(event.durationMs, OPERATION_WARN_MS, OPERATION_CRITICAL_MS);
     return {
       level,
       label:
-        level === 'critical'
-          ? 'Operacion critica'
-          : level === 'warning'
-            ? 'Operacion lenta'
-            : null,
+        level === 'critical' ? 'Operacion critica' : level === 'warning' ? 'Operacion lenta' : null,
       reason:
-        level === 'normal' ? null : `Operacion completada en ${formatDuration(event.durationMs)}`
+        level === 'normal' ? null : `Operacion completada en ${formatDuration(event.durationMs)}`,
     };
   }
 
   return {
     level: 'normal',
     label: null,
-    reason: null
+    reason: null,
   };
 };
 
@@ -224,7 +210,7 @@ const AdminTelemetryPanel: React.FC = () => {
 
   const analyzedEvents = useMemo<AnalyzedEvent[]>(
     () => events.map((event) => ({ event, signal: getTelemetrySignal(event) })),
-    [events]
+    [events],
   );
 
   const filteredEvents = useMemo(() => {
@@ -243,7 +229,7 @@ const AdminTelemetryPanel: React.FC = () => {
         event.recordedAt,
         signal.label,
         signal.reason,
-        renderMetaPreview(event)
+        renderMetaPreview(event),
       ]
         .filter(Boolean)
         .join(' ')
@@ -255,7 +241,7 @@ const AdminTelemetryPanel: React.FC = () => {
 
   const visibleEvents = useMemo(
     () => filteredEvents.slice(0, MAX_VISIBLE_EVENTS),
-    [filteredEvents]
+    [filteredEvents],
   );
 
   const summary = useMemo(() => {
@@ -292,22 +278,20 @@ const AdminTelemetryPanel: React.FC = () => {
           count: metrics.count,
           level,
           max: metrics.max,
-          screen
+          screen,
         };
       })
       .sort((left, right) => right.avg - left.avg)
       .slice(0, 4);
 
     const activeAlerts = [
-      criticalEvents.length > 0
-        ? `${criticalEvents.length} eventos criticos en buffer`
-        : null,
+      criticalEvents.length > 0 ? `${criticalEvents.length} eventos criticos en buffer` : null,
       topSlowScreens[0] && topSlowScreens[0].level !== 'normal'
         ? `${topSlowScreens[0].screen} promedia ${formatDuration(topSlowScreens[0].avg)}`
         : null,
       latestReady && latestReady.signal.level !== 'normal'
         ? `Ultima pantalla lista: ${formatDuration(latestReady.event.durationMs)}`
-        : null
+        : null,
     ].filter(Boolean) as string[];
 
     return {
@@ -320,7 +304,7 @@ const AdminTelemetryPanel: React.FC = () => {
       screenReadyCount: screenReadyEvents.length,
       slowestReady,
       topSlowScreens,
-      totalCount: events.length
+      totalCount: events.length,
     };
   }, [analyzedEvents, events.length]);
 
@@ -330,7 +314,8 @@ const AdminTelemetryPanel: React.FC = () => {
         <div>
           <p className="text-sm font-extrabold text-slate-950">Observabilidad local</p>
           <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-            Lee el buffer de telemetria del navegador para detectar pantallas lentas y errores recientes.
+            Lee el buffer de telemetria del navegador para detectar pantallas lentas y errores
+            recientes.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -385,7 +370,10 @@ const AdminTelemetryPanel: React.FC = () => {
         }`}
       >
         <div className="flex items-center gap-2">
-          <TriangleAlert size={16} className={summary.issueCount > 0 ? 'text-amber-600' : 'text-emerald-600'} />
+          <TriangleAlert
+            size={16}
+            className={summary.issueCount > 0 ? 'text-amber-600' : 'text-emerald-600'}
+          />
           <p className="text-sm font-extrabold text-slate-950">
             {summary.criticalCount > 0
               ? 'Hay eventos criticos que revisar'
@@ -406,7 +394,8 @@ const AdminTelemetryPanel: React.FC = () => {
             ))
           ) : (
             <div className="rounded-[0.95rem] border border-white/70 bg-white/75 px-3 py-2 text-[12px] font-semibold leading-5 text-slate-700 md:col-span-3">
-              No se detectan pantallas listas lentas, commits caros ni errores recientes en el buffer actual.
+              No se detectan pantallas listas lentas, commits caros ni errores recientes en el
+              buffer actual.
             </div>
           )}
         </div>
@@ -468,7 +457,9 @@ const AdminTelemetryPanel: React.FC = () => {
           </div>
           <div className="mt-3 space-y-2.5">
             {summary.topSlowScreens.length === 0 ? (
-              <p className="text-sm font-semibold text-slate-500">Todavia no hay `screen_ready` registrados.</p>
+              <p className="text-sm font-semibold text-slate-500">
+                Todavia no hay `screen_ready` registrados.
+              </p>
             ) : (
               summary.topSlowScreens.map((entry) => (
                 <div
@@ -501,7 +492,8 @@ const AdminTelemetryPanel: React.FC = () => {
             <div>
               <p className="text-sm font-extrabold text-slate-950">Eventos recientes</p>
               <p className="mt-1 text-xs font-semibold text-slate-500">
-                Ultimos {Math.min(filteredEvents.length, MAX_VISIBLE_EVENTS)} de {filteredEvents.length} filtrados.
+                Ultimos {Math.min(filteredEvents.length, MAX_VISIBLE_EVENTS)} de{' '}
+                {filteredEvents.length} filtrados.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -535,7 +527,9 @@ const AdminTelemetryPanel: React.FC = () => {
           <div className="mt-3 space-y-2.5">
             {visibleEvents.length === 0 ? (
               <div className="rounded-[1rem] border border-dashed border-[#d7e4fb] bg-white/88 px-4 py-5 text-center">
-                <p className="text-sm font-extrabold text-slate-900">No hay eventos para esta vista</p>
+                <p className="text-sm font-extrabold text-slate-900">
+                  No hay eventos para esta vista
+                </p>
                 <p className="mt-1.5 text-xs font-semibold leading-5 text-slate-500">
                   Prueba a navegar por la app o cambia el filtro para ver mas actividad.
                 </p>

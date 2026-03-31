@@ -5,7 +5,7 @@ import type {
   PracticeAnswer,
   PracticeAnswerSubmission,
   PracticeQuestion,
-  PracticeQuestionScopeFilter
+  PracticeQuestionScopeFilter,
 } from '../practiceTypes';
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { recordPracticeSessionInCloud } from '../services/practiceCloudApi';
@@ -20,7 +20,7 @@ type UsePracticeSessionLifecycleOptions = {
 
 const buildPracticeAnswer = (
   question: PracticeQuestion,
-  submission: PracticeAnswerSubmission
+  submission: PracticeAnswerSubmission,
 ): PracticeAnswer => ({
   question,
   selectedOption: submission.selectedOption,
@@ -29,14 +29,14 @@ const buildPracticeAnswer = (
   responseTimeMs: submission.responseTimeMs,
   timeToFirstSelectionMs: submission.timeToFirstSelectionMs,
   changedAnswer: submission.changedAnswer,
-  errorTypeInferred: submission.errorTypeInferred ?? null
+  errorTypeInferred: submission.errorTypeInferred ?? null,
 });
 
 export const usePracticeSessionLifecycle = ({
   isGuest,
   selectedQuestionScope,
   setSyncError,
-  syncPracticeAfterSession
+  syncPracticeAfterSession,
 }: UsePracticeSessionLifecycleOptions) => {
   const [view, setView] = useState<PracticeView>('home');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -69,11 +69,11 @@ export const usePracticeSessionLifecycle = ({
         await syncPracticeAfterSession(selectedQuestionScope);
       } catch (error) {
         setSyncError(
-          error instanceof Error ? error.message : 'No se ha podido guardar el progreso.'
+          error instanceof Error ? error.message : 'No se ha podido guardar el progreso.',
         );
       }
     },
-    [activeSession, isGuest, selectedQuestionScope, setSyncError, syncPracticeAfterSession]
+    [activeSession, isGuest, selectedQuestionScope, setSyncError, syncPracticeAfterSession],
   );
 
   const commitSession = useCallback(
@@ -82,7 +82,7 @@ export const usePracticeSessionLifecycle = ({
       setView('review');
       void persistSession(completedAnswers);
     },
-    [persistSession]
+    [persistSession],
   );
 
   const handleAnswer = useCallback(
@@ -100,7 +100,7 @@ export const usePracticeSessionLifecycle = ({
       setAnswers(completedAnswers);
       setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
     },
-    [activeSession, answers, commitSession, currentQuestion, currentQuestionIndex]
+    [activeSession, answers, commitSession, currentQuestion, currentQuestionIndex],
   );
 
   const handleRetrySession = useCallback(() => {
@@ -126,7 +126,7 @@ export const usePracticeSessionLifecycle = ({
 
       commitSession(answers);
     },
-    [answers, commitSession, currentQuestion, resetActiveSession]
+    [answers, commitSession, currentQuestion, resetActiveSession],
   );
 
   const handleSimulacroTimeExpired = useCallback(
@@ -144,7 +144,7 @@ export const usePracticeSessionLifecycle = ({
       const nextAnswer = buildPracticeAnswer(currentQuestion, submission);
       commitSession([...answers, nextAnswer]);
     },
-    [activeSession, answers, commitSession, currentQuestion, handleEndSessionEarly]
+    [activeSession, answers, commitSession, currentQuestion, handleEndSessionEarly],
   );
 
   return {
@@ -158,6 +158,6 @@ export const usePracticeSessionLifecycle = ({
     handleSimulacroTimeExpired,
     resetActiveSession,
     startSession,
-    view
+    view,
   };
 };

@@ -33,10 +33,7 @@ const getErrorMessage = (error: unknown) => {
 
 export const isInvalidRefreshTokenError = (error: unknown) => {
   const message = getErrorMessage(error).toLowerCase();
-  return (
-    message.includes('invalid refresh token') ||
-    message.includes('refresh token not found')
-  );
+  return message.includes('invalid refresh token') || message.includes('refresh token not found');
 };
 
 export const clearSupabaseAuthStorage = () => {
@@ -46,7 +43,7 @@ export const clearSupabaseAuthStorage = () => {
     supabaseAuthStorageKey,
     `${supabaseAuthStorageKey}-code-verifier`,
     'supabase.auth.token',
-    'supabase.auth.token-code-verifier'
+    'supabase.auth.token-code-verifier',
   ];
 
   for (const key of storageKeys) {
@@ -58,7 +55,7 @@ export const clearSupabaseAuthStorage = () => {
 export const getSafeSupabaseSession = async (): Promise<Session | null> => {
   const {
     data: { session },
-    error
+    error,
   } = await supabase.auth.getSession();
 
   if (!error) {

@@ -9,7 +9,7 @@ import {
   mapPracticeCloudError,
   mapProfile,
   mapQuestionStat,
-  mapSession
+  mapSession,
 } from './practiceCloudMappers';
 
 describe('practiceCloudMappers', () => {
@@ -21,8 +21,8 @@ describe('practiceCloudMappers', () => {
     expect(
       mapPracticeCloudError({
         code: 'PGRST202',
-        message: 'Could not find the function app.get_my_practice_profile_for_curriculum'
-      })
+        message: 'Could not find the function app.get_my_practice_profile_for_curriculum',
+      }),
     ).toContain('Faltan las funciones RPC de progreso en Supabase');
   });
 
@@ -30,8 +30,8 @@ describe('practiceCloudMappers', () => {
     expect(
       mapPracticeCloudError({
         code: '42501',
-        message: 'permission denied'
-      })
+        message: 'permission denied',
+      }),
     ).toBe('La sesion ha caducado. Vuelve a iniciar sesion.');
   });
 
@@ -43,7 +43,7 @@ describe('practiceCloudMappers', () => {
       total_incorrect: '7',
       total_sessions: '3',
       next_standard_batch_start_index: '40',
-      last_studied_at: '2026-03-27T12:00:00Z'
+      last_studied_at: '2026-03-27T12:00:00Z',
     });
     const session = mapSession({
       session_id: 'session-1',
@@ -52,7 +52,7 @@ describe('practiceCloudMappers', () => {
       started_at: '2026-03-27T11:00:00Z',
       finished_at: '2026-03-27T11:10:00Z',
       score: '8',
-      total: '10'
+      total: '10',
     });
     const stat = mapQuestionStat({
       question_id: 'q-4',
@@ -65,7 +65,7 @@ describe('practiceCloudMappers', () => {
       correct_attempts: '2',
       incorrect_attempts: '4',
       last_answered_at: '2026-03-27T11:10:00Z',
-      last_incorrect_at: null
+      last_incorrect_at: null,
     });
 
     expect(profile).toMatchObject({
@@ -75,20 +75,20 @@ describe('practiceCloudMappers', () => {
       totalAnswered: 18,
       totalCorrect: 11,
       totalIncorrect: 7,
-      totalSessions: 3
+      totalSessions: 3,
     });
     expect(session).toMatchObject({
       id: 'session-1',
       mode: 'random',
       score: 8,
-      total: 10
+      total: 10,
     });
     expect(stat).toMatchObject({
       questionId: 'q-4',
       questionNumber: 12,
       editorialExplanation: 'Idea corta',
       incorrectAttempts: 4,
-      lastIncorrectAt: null
+      lastIncorrectAt: null,
     });
   });
 
@@ -100,7 +100,7 @@ describe('practiceCloudMappers', () => {
       started_at: '2026-03-27T12:00:00Z',
       finished_at: '2026-03-27T12:15:00Z',
       score: '14',
-      total: '20'
+      total: '20',
     });
     const dashboard = mapLearningDashboard({
       total_questions: '120',
@@ -126,8 +126,8 @@ describe('practiceCloudMappers', () => {
       exam_date: '2026-06-30',
       risk_breakdown: [
         { error_type: 'plazo', label: 'Plazos', count: 6 },
-        { error_type: 'negacion', label: 'Negaciones', count: 4 }
-      ]
+        { error_type: 'negacion', label: 'Negaciones', count: 4 },
+      ],
     });
 
     expect(session.mode).toBe('mixed');
@@ -136,11 +136,11 @@ describe('practiceCloudMappers', () => {
       seenQuestions: 40,
       recommendedMode: 'mixed',
       recommendedTodayCount: 26,
-      dailyReviewCapacity: 35
+      dailyReviewCapacity: 35,
     });
     expect(dashboard?.riskBreakdown).toEqual([
       { errorType: 'plazo', label: 'Plazos', count: 6 },
-      { errorType: 'negacion', label: 'Negaciones', count: 4 }
+      { errorType: 'negacion', label: 'Negaciones', count: 4 },
     ]);
   });
 
@@ -171,7 +171,7 @@ describe('practiceCloudMappers', () => {
       recommended_new_count: '10',
       recommended_today_count: '22',
       recommended_mode: 'mixed',
-      focus_message: 'Conviene consolidar antes de ampliar carga.'
+      focus_message: 'Conviene consolidar antes de ampliar carga.',
     });
 
     expect(dashboard).toMatchObject({
@@ -186,7 +186,7 @@ describe('practiceCloudMappers', () => {
       examReadinessRate: 0.4,
       examReadinessConfidenceFlag: 'medium',
       backlogOverdueCount: 12,
-      recommendedMode: 'mixed'
+      recommendedMode: 'mixed',
     });
   });
 
@@ -197,7 +197,7 @@ describe('practiceCloudMappers', () => {
       exam_date: '2026-06-30',
       daily_review_capacity: '30',
       daily_new_capacity: '8',
-      updated_at: '2026-03-27T19:00:00Z'
+      updated_at: '2026-03-27T19:00:00Z',
     });
 
     expect(examTarget).toMatchObject({
@@ -205,7 +205,7 @@ describe('practiceCloudMappers', () => {
       curriculum: 'general',
       examDate: '2026-06-30',
       dailyReviewCapacity: 30,
-      dailyNewCapacity: 8
+      dailyNewCapacity: 8,
     });
   });
 
@@ -219,7 +219,7 @@ describe('practiceCloudMappers', () => {
       baseline_fail_rate: 0.2711,
       excess_risk: 0.1301,
       sample_ok: true,
-      confidence_flag: 'medium'
+      confidence_flag: 'medium',
     });
 
     expect(categoryRisk).toMatchObject({
@@ -231,7 +231,7 @@ describe('practiceCloudMappers', () => {
       baselineFailRate: 0.2711,
       excessRisk: 0.1301,
       sampleOk: true,
-      confidenceFlag: 'medium'
+      confidenceFlag: 'medium',
     });
   });
 
@@ -245,14 +245,14 @@ describe('practiceCloudMappers', () => {
       avg_simulacro_fatigue: 0.41,
       overconfidence_rate: 0.24,
       recommended_mode: 'anti_trap',
-      pressure_message: 'Tu rendimiento cae 13 puntos bajo presion.'
+      pressure_message: 'Tu rendimiento cae 13 puntos bajo presion.',
     });
 
     expect(insights).toMatchObject({
       learningAccuracy: 0.81,
       simulacroAccuracy: 0.68,
       pressureGap: 0.13,
-      recommendedMode: 'anti_trap'
+      recommendedMode: 'anti_trap',
     });
   });
 
@@ -270,7 +270,7 @@ describe('practiceCloudMappers', () => {
       sample_ok: true,
       confidence_flag: 'high',
       recommended_mode: 'anti_trap',
-      pressure_message: 'Tu rendimiento cae 13 puntos bajo presion.'
+      pressure_message: 'Tu rendimiento cae 13 puntos bajo presion.',
     });
 
     expect(insights).toMatchObject({
@@ -281,7 +281,7 @@ describe('practiceCloudMappers', () => {
       simulacroSessionN: 2,
       sampleOk: true,
       confidenceFlag: 'high',
-      recommendedMode: 'anti_trap'
+      recommendedMode: 'anti_trap',
     });
   });
 
@@ -289,8 +289,8 @@ describe('practiceCloudMappers', () => {
     expect(
       mapPracticeCloudError({
         code: 'PGRST202',
-        message: 'Could not find the function app.get_weak_category_summary'
-      })
+        message: 'Could not find the function app.get_weak_category_summary',
+      }),
     ).toContain('Faltan las funciones RPC de progreso en Supabase');
   });
 
@@ -298,8 +298,8 @@ describe('practiceCloudMappers', () => {
     expect(
       mapPracticeCloudError({
         code: 'PGRST202',
-        message: 'Could not find the function app.get_readiness_dashboard_v2'
-      })
+        message: 'Could not find the function app.get_readiness_dashboard_v2',
+      }),
     ).toContain('Faltan las funciones RPC de progreso en Supabase');
   });
 
@@ -307,8 +307,8 @@ describe('practiceCloudMappers', () => {
     expect(
       mapPracticeCloudError({
         code: 'PGRST202',
-        message: 'Could not find the function app.get_category_risk_dashboard'
-      })
+        message: 'Could not find the function app.get_category_risk_dashboard',
+      }),
     ).toContain('Faltan las funciones RPC de progreso en Supabase');
   });
 
@@ -316,8 +316,8 @@ describe('practiceCloudMappers', () => {
     expect(
       mapPracticeCloudError({
         code: 'PGRST202',
-        message: 'Could not find the function app.get_pressure_dashboard_v2'
-      })
+        message: 'Could not find the function app.get_pressure_dashboard_v2',
+      }),
     ).toContain('Faltan las funciones RPC de progreso en Supabase');
   });
 });

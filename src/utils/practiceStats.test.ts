@@ -19,7 +19,7 @@ describe('practiceStats', () => {
         correctAttempts: 2,
         incorrectAttempts: 3,
         lastAnsweredAt: '',
-        lastIncorrectAt: null
+        lastIncorrectAt: null,
       },
       {
         questionId: 'q2',
@@ -31,7 +31,7 @@ describe('practiceStats', () => {
         correctAttempts: 1,
         incorrectAttempts: 6,
         lastAnsweredAt: '',
-        lastIncorrectAt: null
+        lastIncorrectAt: null,
       },
       {
         questionId: 'q3',
@@ -43,7 +43,7 @@ describe('practiceStats', () => {
         correctAttempts: 3,
         incorrectAttempts: 1,
         lastAnsweredAt: '',
-        lastIncorrectAt: null
+        lastIncorrectAt: null,
       },
       {
         questionId: 'q4',
@@ -55,7 +55,7 @@ describe('practiceStats', () => {
         correctAttempts: 0,
         incorrectAttempts: 2,
         lastAnsweredAt: '',
-        lastIncorrectAt: null
+        lastIncorrectAt: null,
       },
       {
         questionId: 'q5',
@@ -67,14 +67,14 @@ describe('practiceStats', () => {
         correctAttempts: 0,
         incorrectAttempts: 1,
         lastAnsweredAt: '',
-        lastIncorrectAt: null
-      }
+        lastIncorrectAt: null,
+      },
     ]);
 
     expect(result).toEqual([
       { category: 'Tema 2', incorrectAttempts: 6, attempts: 7 },
       { category: 'Tema 1', incorrectAttempts: 4, attempts: 9 },
-      { category: 'Sin grupo', incorrectAttempts: 2, attempts: 2 }
+      { category: 'Sin grupo', incorrectAttempts: 2, attempts: 2 },
     ]);
   });
 });

@@ -3,11 +3,13 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { APP_DISPLAY_NAME } from './src/appMeta';
 
 const pwaManifest = {
-  name: 'Quantia',
-  short_name: 'Quantia',
-  description: 'Practica oposiciones por bloques de 20 preguntas con estadisticas y repaso de errores.',
+  name: APP_DISPLAY_NAME,
+  short_name: APP_DISPLAY_NAME,
+  description:
+    'Practica oposiciones por bloques de 20 preguntas con estadisticas y repaso de errores.',
   start_url: '/',
   display: 'standalone' as const,
   background_color: '#f8fafc',
@@ -19,21 +21,35 @@ const pwaManifest = {
       src: '/minimal_dark_192.png',
       sizes: '192x192',
       type: 'image/png',
-      purpose: 'any'
+      purpose: 'any',
     },
     {
       src: '/minimal_dark_512.png',
       sizes: '512x512',
       type: 'image/png',
-      purpose: 'any'
-    }
-  ]
+      purpose: 'any',
+    },
+  ],
 };
 
 const devManifestPlugin = () => ({
   name: 'dev-manifest-webmanifest',
   apply: 'serve' as const,
-  configureServer(server: { middlewares: { use: (handler: (req: { url?: string }, res: { statusCode: number; setHeader: (name: string, value: string) => void; end: (body: string) => void }, next: () => void) => void) => void } }) {
+  configureServer(server: {
+    middlewares: {
+      use: (
+        handler: (
+          req: { url?: string },
+          res: {
+            statusCode: number;
+            setHeader: (name: string, value: string) => void;
+            end: (body: string) => void;
+          },
+          next: () => void,
+        ) => void,
+      ) => void;
+    };
+  }) {
     server.middlewares.use((req, res, next) => {
       if (!req.url?.startsWith('/manifest.webmanifest')) {
         next();
@@ -44,13 +60,13 @@ const devManifestPlugin = () => ({
       res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
       res.end(JSON.stringify(pwaManifest));
     });
-  }
+  },
 });
 
 export default defineConfig({
   server: {
     port: 5173,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
   },
   plugins: [
     tailwindcss(),
@@ -76,14 +92,14 @@ export default defineConfig({
           'assets/react-dom-*.js',
           'assets/supabase-*.js',
           'minimal_dark_1024.png',
-          'minimal_dark_512.png'
-        ]
+          'minimal_dark_512.png',
+        ],
       },
       manifest: pwaManifest,
       devOptions: {
-        enabled: false
-      }
-    })
+        enabled: false,
+      },
+    }),
   ],
   build: {
     target: 'es2022',
@@ -92,18 +108,21 @@ export default defineConfig({
         manualChunks: {
           'react-dom': ['react', 'react-dom', 'react-dom/client'],
           icons: ['lucide-react'],
-          supabase: ['@supabase/supabase-js']
-        }
-      }
-    }
+          supabase: ['@supabase/supabase-js'],
+        },
+      },
+    },
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
-    }
+      '@': path.resolve(__dirname, './src'),
+    },
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts']
-  }
+    include: [
+      'src/**/*.test.ts',
+      'supabase/functions/_shared/learning-engine/**/*.test.ts',
+    ],
+  },
 });

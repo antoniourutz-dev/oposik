@@ -1,20 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, BookOpenText, CheckCircle2, RotateCcw, XCircle, Target } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpenText,
+  CheckCircle2,
+  RotateCcw,
+  XCircle,
+  Target,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
   computeOverconfidenceScore,
   computeSessionFatigueScore,
   getErrorTypeLabel,
-  ErrorType
 } from '../domain/learningEngine';
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { recordQuestionExplanationOpened } from '../services/practiceCloudApi';
 import QuestionExplanation from './QuestionExplanation';
 import { PracticeAnswer, PracticeMode } from '../practiceTypes';
 import { getSessionPresentation } from '../sessionPresentation';
-import {
-  LawPerformanceCard
-} from './dashboard/shared';
+import { LawPerformanceCard } from './dashboard/shared';
 
 type ReviewFilter = 'incorrect' | 'all';
 
@@ -53,7 +58,7 @@ const getReviewClosure = ({
   sessionMode,
   fatigueScore,
   overconfidenceScore,
-  hasNextBatch
+  hasNextBatch,
 }: {
   percentage: number;
   unansweredCount: number;
@@ -97,21 +102,22 @@ const getReviewClosure = ({
           ? 'En ajuste'
           : 'Fragil';
 
-  const nextFocus = unansweredCount > 0
-    ? 'Cerrar preguntas'
-    : overconfidenceScore >= 0.4
-      ? 'Frenar medio segundo'
-      : fatigueScore >= 0.45
-        ? 'Recortar fatiga'
-        : hasNextBatch
-          ? 'Mantener el ritmo'
-          : 'Consolidar antes de seguir';
+  const nextFocus =
+    unansweredCount > 0
+      ? 'Cerrar preguntas'
+      : overconfidenceScore >= 0.4
+        ? 'Frenar medio segundo'
+        : fatigueScore >= 0.45
+          ? 'Recortar fatiga'
+          : hasNextBatch
+            ? 'Mantener el ritmo'
+            : 'Consolidar antes de seguir';
 
   return {
     outcomeHeadline,
     outcomeSummary,
     resultBand,
-    nextFocus
+    nextFocus,
   };
 };
 
@@ -124,7 +130,7 @@ const formatDuration = (value: number | null) => {
 
 const getExplanationKind = ({
   explanation,
-  editorialExplanation
+  editorialExplanation,
 }: {
   explanation: string | null;
   editorialExplanation?: string | null;
@@ -141,7 +147,7 @@ const ReviewEntryCard = React.memo(
   ({
     curriculum = DEFAULT_CURRICULUM,
     entry,
-    sessionId = null
+    sessionId = null,
   }: {
     entry: ReviewEntry;
     sessionId?: string | null;
@@ -216,35 +222,41 @@ const ReviewEntryCard = React.memo(
             </div>
           </div>
 
-            {!answer.isCorrect && answer.errorTypeInferred ? (
-              <div className="rounded-[1rem] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(254,243,199,0.72))] px-3.5 py-2.5">
-                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-700">
-                  Clave del fallo
-                </p>
-                <p className="mt-1.5 text-[13px] font-semibold leading-5 text-amber-950 sm:text-sm sm:leading-6">
-                  {getErrorTypeLabel(answer.errorTypeInferred as ErrorType) ?? 'Memoria fragil'}
-                </p>
-              </div>
-            ) : null}
+          {!answer.isCorrect && answer.errorTypeInferred ? (
+            <div className="rounded-[1rem] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(254,243,199,0.72))] px-3.5 py-2.5">
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-700">
+                Clave del fallo
+              </p>
+              <p className="mt-1.5 text-[13px] font-semibold leading-5 text-amber-950 sm:text-sm sm:leading-6">
+                {getErrorTypeLabel(answer.errorTypeInferred) ?? 'Memoria fragil'}
+              </p>
+            </div>
+          ) : null}
 
-            {answer.timeToFirstSelectionMs && (
-              <div className="flex items-center gap-4 px-1">
-                <div className="flex-1">
-                  <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Velocidad de decisión</p>
-                  <div className="mt-1.5 h-1 w-full rounded-full bg-slate-100 overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, (answer.timeToFirstSelectionMs / 15000) * 100)}%` }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
-                      className={`h-full rounded-full ${answer.responseTimeMs && (answer.timeToFirstSelectionMs / answer.responseTimeMs > 0.7) ? 'bg-indigo-400' : 'bg-sky-400'}`} 
-                    />
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-600">{Math.round(answer.timeToFirstSelectionMs / 100) / 10}s</p>
+          {answer.timeToFirstSelectionMs && (
+            <div className="flex items-center gap-4 px-1">
+              <div className="flex-1">
+                <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
+                  Velocidad de decisión
+                </p>
+                <div className="mt-1.5 h-1 w-full rounded-full bg-slate-100 overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: `${Math.min(100, (answer.timeToFirstSelectionMs / 15000) * 100)}%`,
+                    }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className={`h-full rounded-full ${answer.responseTimeMs && answer.timeToFirstSelectionMs / answer.responseTimeMs > 0.7 ? 'bg-indigo-400' : 'bg-sky-400'}`}
+                  />
                 </div>
               </div>
-            )}
+              <div className="text-right">
+                <p className="text-[10px] font-black text-slate-600">
+                  {Math.round(answer.timeToFirstSelectionMs / 100) / 10}s
+                </p>
+              </div>
+            </div>
+          )}
 
           <details
             className="rounded-[1rem] border border-white/80 bg-[linear-gradient(180deg,rgba(232,240,255,0.9),rgba(241,247,255,0.92))] px-3.5 py-2.5"
@@ -260,8 +272,8 @@ const ReviewEntryCard = React.memo(
                 surface: 'review',
                 explanationKind: getExplanationKind({
                   explanation: answer.question.explanation,
-                  editorialExplanation: answer.question.editorialExplanation
-                })
+                  editorialExplanation: answer.question.editorialExplanation,
+                }),
               }).catch(() => {});
             }}
           >
@@ -282,7 +294,7 @@ const ReviewEntryCard = React.memo(
         </div>
       </article>
     );
-  }
+  },
 );
 
 ReviewEntryCard.displayName = 'ReviewEntryCard';
@@ -305,7 +317,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   simplified = false,
   onRetryBatch,
   onContinue,
-  onBackToStart
+  onBackToStart,
 }) => {
   const totalQuestions = Math.max(sessionQuestionCount ?? answers.length, answers.length);
   const answeredCount = answers.length;
@@ -316,7 +328,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
     lastAnsweredAt,
     overconfidenceScore,
     reviewEntries,
-    score
+    score,
   } = useMemo(() => {
     const nextReviewEntries: ReviewEntry[] = [];
     const nextIncorrectEntries: ReviewEntry[] = [];
@@ -337,7 +349,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         isCorrect: answer.isCorrect,
         responseTimeMs: answer.responseTimeMs,
         errorTypeInferred: answer.errorTypeInferred,
-        changedAnswer: answer.changedAnswer
+        changedAnswer: answer.changedAnswer,
       });
       nextLastAnsweredAt = answer.answeredAt ?? nextLastAnsweredAt;
     }
@@ -349,7 +361,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
       lastAnsweredAt: nextLastAnsweredAt,
       overconfidenceScore: computeOverconfidenceScore(sessionAttempts),
       reviewEntries: nextReviewEntries,
-      score: nextScore
+      score: nextScore,
     };
   }, [answers]);
   const unansweredCount = Math.max(totalQuestions - answeredCount, 0);
@@ -362,17 +374,16 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
       : overconfidenceScore >= 0.2
         ? 'Sobreconfianza media'
         : 'Sobreconfianza baja';
-  const elapsedSeconds =
-    sessionStartedAt
-      ? Math.max(
-          0,
-          Math.round(
-            ((lastAnsweredAt ? new Date(lastAnsweredAt) : new Date()).getTime() -
-              new Date(sessionStartedAt).getTime()) /
-              1000
-          )
-        )
-      : null;
+  const elapsedSeconds = sessionStartedAt
+    ? Math.max(
+        0,
+        Math.round(
+          ((lastAnsweredAt ? new Date(lastAnsweredAt) : new Date()).getTime() -
+            new Date(sessionStartedAt).getTime()) /
+            1000,
+        ),
+      )
+    : null;
   const elapsedLabel = formatDuration(elapsedSeconds);
   const timeLimitLabel = formatDuration(timeLimitSeconds);
   const resolvedContinueLabel =
@@ -381,11 +392,11 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
     ? 'Continuar'
     : !showRetry
       ? resolvedContinueLabel
-    : sessionMode === 'simulacro'
-      ? 'Panel'
-      : resolvedContinueLabel.includes('panel')
+      : sessionMode === 'simulacro'
         ? 'Panel'
-        : 'Reiniciar';
+        : resolvedContinueLabel.includes('panel')
+          ? 'Panel'
+          : 'Reiniciar';
   const sessionPresentation = getSessionPresentation((sessionMode || 'standard') as PracticeMode);
   const primarySignalLabel =
     overconfidenceScore > fatigueScore ? overconfidenceLabel : fatigueLabel;
@@ -403,16 +414,9 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         sessionMode: (sessionMode || 'standard') as PracticeMode,
         fatigueScore,
         overconfidenceScore,
-        hasNextBatch
+        hasNextBatch,
       }),
-    [
-      fatigueScore,
-      hasNextBatch,
-      overconfidenceScore,
-      percentage,
-      sessionMode,
-      unansweredCount
-    ]
+    [fatigueScore, hasNextBatch, overconfidenceScore, percentage, sessionMode, unansweredCount],
   );
   const scoreSurfaceClass =
     percentage >= 85
@@ -444,7 +448,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
     ? 'Revisa este bloque y, si quieres, abre el siguiente.'
     : 'Revisa tus respuestas y cierra la prueba cuando termines.';
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>(
-    incorrectCount > 0 ? 'incorrect' : 'all'
+    incorrectCount > 0 ? 'incorrect' : 'all',
   );
   const [isDockVisible, setIsDockVisible] = useState(true);
   const [renderedEntryCount, setRenderedEntryCount] = useState(INITIAL_REVIEW_RENDER_COUNT);
@@ -454,17 +458,17 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const visibleEntries = useMemo(
     () => (reviewFilter === 'incorrect' ? incorrectEntries : reviewEntries),
-    [incorrectEntries, reviewEntries, reviewFilter]
+    [incorrectEntries, reviewEntries, reviewFilter],
   );
   const renderedEntries = useMemo(
     () => visibleEntries.slice(0, renderedEntryCount),
-    [renderedEntryCount, visibleEntries]
+    [renderedEntryCount, visibleEntries],
   );
   const hasMoreEntries = renderedEntryCount < visibleEntries.length;
   const remainingEntries = Math.max(visibleEntries.length - renderedEntryCount, 0);
   const loadMoreEntries = useCallback(() => {
     setRenderedEntryCount((currentCount) =>
-      Math.min(visibleEntries.length, currentCount + REVIEW_RENDER_STEP)
+      Math.min(visibleEntries.length, currentCount + REVIEW_RENDER_STEP),
     );
   }, [visibleEntries.length]);
 
@@ -521,7 +525,11 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   }, [visibleEntries.length, reviewFilter, batchNumber, totalBatches, sessionStartedAt]);
 
   useEffect(() => {
-    if (!hasMoreEntries || !loadMoreSentinelRef.current || typeof IntersectionObserver === 'undefined') {
+    if (
+      !hasMoreEntries ||
+      !loadMoreSentinelRef.current ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
       return;
     }
 
@@ -534,8 +542,8 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
       {
         root: null,
         rootMargin: '0px 0px 420px 0px',
-        threshold: 0.01
-      }
+        threshold: 0.01,
+      },
     );
 
     observer.observe(loadMoreSentinelRef.current);
@@ -546,9 +554,12 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   }, [hasMoreEntries, loadMoreEntries, renderedEntryCount]);
 
   const sessionLawBreakdown = useMemo(() => {
-    const breakdown: Record<string, { ley_referencia: string; attempts: number; correctAttempts: number }> = {};
-    
-    answers.forEach(answer => {
+    const breakdown: Record<
+      string,
+      { ley_referencia: string; attempts: number; correctAttempts: number }
+    > = {};
+
+    answers.forEach((answer) => {
       const ley = answer.question.ley_referencia || 'Otras Normas';
       if (!breakdown[ley]) {
         breakdown[ley] = { ley_referencia: ley, attempts: 0, correctAttempts: 0 };
@@ -559,10 +570,12 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
       }
     });
 
-    return Object.values(breakdown).map(item => ({
-      ...item,
-      accuracyRate: Math.round((item.correctAttempts / item.attempts) * 100)
-    })).sort((a, b) => a.accuracyRate - b.accuracyRate);
+    return Object.values(breakdown)
+      .map((item) => ({
+        ...item,
+        accuracyRate: Math.round((item.correctAttempts / item.attempts) * 100),
+      }))
+      .sort((a, b) => a.accuracyRate - b.accuracyRate);
   }, [answers]);
 
   return (
@@ -595,87 +608,116 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         {/* ⚖️ EL BLOQUE DE IMPACTO NORMATIVO */}
         {sessionLawBreakdown.length > 0 && (
           <div className="rounded-[1.4rem] overflow-hidden border border-indigo-100 bg-white p-5 shadow-sm">
-             <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                   <Target size={20} />
-                </div>
-                <div>
-                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rendimiento por norma</p>
-                   <h3 className="text-lg font-black text-slate-950 tracking-tight">Impacto Normativo</h3>
-                </div>
-             </div>
-             <div className="grid gap-3 sm:grid-cols-2">
-                {sessionLawBreakdown.map((law, idx) => (
-                  <LawPerformanceCard 
-                    key={idx} 
-                    ley_referencia={law.ley_referencia}
-                    accuracy={law.accuracyRate}
-                    attempts={law.attempts}
-                  />
-                ))}
-             </div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                <Target size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Rendimiento por norma
+                </p>
+                <h3 className="text-lg font-black text-slate-950 tracking-tight">
+                  Impacto Normativo
+                </h3>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {sessionLawBreakdown.map((law, idx) => (
+                <LawPerformanceCard
+                  key={idx}
+                  ley_referencia={law.ley_referencia}
+                  accuracy={law.accuracyRate}
+                  attempts={law.attempts}
+                />
+              ))}
+            </div>
           </div>
         )}
 
         {/* 🧠 EL BLOQUE DE DIAGNÓSTICO CONDUCTUAL */}
         <div className="rounded-[1.4rem] overflow-hidden border border-[#d7e4fb] bg-white p-5 shadow-sm">
-           <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                 <Target size={20} />
-              </div>
-              <div>
-                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Análisis conductual</p>
-                 <h3 className="text-lg font-black text-slate-950 tracking-tight">Anatomía de tu ejecución</h3>
-              </div>
-           </div>
-           
-           <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-4">
-                <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                   <div className="flex justify-between items-center mb-2">
-                      <span className="text-[11px] font-bold text-slate-500">Decisión Impulsiva</span>
-                      <span className="text-[11px] font-black text-slate-900">{answers.filter(a => a.timeToFirstSelectionMs && a.timeToFirstSelectionMs < 3000).length} q.</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(answers.filter(a => a.timeToFirstSelectionMs && a.timeToFirstSelectionMs < 3000).length / Math.max(1, answers.length)) * 100}%` }}
-                        transition={{ duration: 1, ease: "circOut" }}
-                        className="h-full bg-rose-400 rounded-full" 
-                      />
-                   </div>
-                   <p className="mt-2 text-[10px] text-slate-400 leading-relaxed font-medium">Marcadas en menos de 3s. Alto riesgo de error por literalidad.</p>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+              <Target size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Análisis conductual
+              </p>
+              <h3 className="text-lg font-black text-slate-950 tracking-tight">
+                Anatomía de tu ejecución
+              </h3>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[11px] font-bold text-slate-500">Decisión Impulsiva</span>
+                  <span className="text-[11px] font-black text-slate-900">
+                    {
+                      answers.filter(
+                        (a) => a.timeToFirstSelectionMs && a.timeToFirstSelectionMs < 3000,
+                      ).length
+                    }{' '}
+                    q.
+                  </span>
                 </div>
-                
-                <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                   <div className="flex justify-between items-center mb-2">
-                      <span className="text-[11px] font-bold text-slate-500">Duda Resuelta</span>
-                      <span className="text-[11px] font-black text-slate-900">{answers.filter(a => a.changedAnswer && a.isCorrect).length} q.</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(answers.filter(a => a.changedAnswer && a.isCorrect).length / Math.max(1, answers.length)) * 100}%` }}
-                        transition={{ duration: 1, ease: "circOut" }}
-                        className="h-full bg-emerald-400 rounded-full" 
-                      />
-                   </div>
-                   <p className="mt-2 text-[10px] text-slate-400 leading-relaxed font-medium">Cambiadas a favor del acierto. Refleja un proceso analítico lento pero eficaz.</p>
+                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: `${(answers.filter((a) => a.timeToFirstSelectionMs && a.timeToFirstSelectionMs < 3000).length / Math.max(1, answers.length)) * 100}%`,
+                    }}
+                    transition={{ duration: 1, ease: 'circOut' }}
+                    className="h-full bg-rose-400 rounded-full"
+                  />
                 </div>
+                <p className="mt-2 text-[10px] text-slate-400 leading-relaxed font-medium">
+                  Marcadas en menos de 3s. Alto riesgo de error por literalidad.
+                </p>
               </div>
-              
-              <div className="flex flex-col justify-center p-4 rounded-2xl bg-indigo-950 text-white relative overflow-hidden">
-                 <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-indigo-500/20 blur-2xl" />
-                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Resumen del Preparador</p>
-                 <p className="mt-3 text-sm font-bold leading-relaxed">
-                   "{overconfidenceScore > 0.3 
-                      ? "Hoy has pecado de exceso de confianza. Lee el enunciado completo antes de tocar la pantalla: tu nota subirá un 8% solo con eso." 
-                      : fatigueScore > 0.4
-                        ? "Tu rendimiento ha caído en picado en el último tercio. La fatiga te ha robado 3 aciertos netos."
-                        : "Sesión impecable en ritmo y consciencia. Estás en zona de dominio funcional."}"
-                 </p>
+
+              <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[11px] font-bold text-slate-500">Duda Resuelta</span>
+                  <span className="text-[11px] font-black text-slate-900">
+                    {answers.filter((a) => a.changedAnswer && a.isCorrect).length} q.
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: `${(answers.filter((a) => a.changedAnswer && a.isCorrect).length / Math.max(1, answers.length)) * 100}%`,
+                    }}
+                    transition={{ duration: 1, ease: 'circOut' }}
+                    className="h-full bg-emerald-400 rounded-full"
+                  />
+                </div>
+                <p className="mt-2 text-[10px] text-slate-400 leading-relaxed font-medium">
+                  Cambiadas a favor del acierto. Refleja un proceso analítico lento pero eficaz.
+                </p>
               </div>
-           </div>
+            </div>
+
+            <div className="flex flex-col justify-center p-4 rounded-2xl bg-indigo-950 text-white relative overflow-hidden">
+              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-indigo-500/20 blur-2xl" />
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">
+                Resumen del Preparador
+              </p>
+              <p className="mt-3 text-sm font-bold leading-relaxed">
+                "
+                {overconfidenceScore > 0.3
+                  ? 'Hoy has pecado de exceso de confianza. Lee el enunciado completo antes de tocar la pantalla: tu nota subirá un 8% solo con eso.'
+                  : fatigueScore > 0.4
+                    ? 'Tu rendimiento ha caído en picado en el último tercio. La fatiga te ha robado 3 aciertos netos.'
+                    : 'Sesión impecable en ritmo y consciencia. Estás en zona de dominio funcional.'}
+                "
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="grid gap-2.5">
@@ -688,7 +730,10 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
               </p>
               <p className="mt-2 text-[2rem] font-black leading-none tracking-[-0.04em] text-slate-950 sm:text-[2.35rem]">
                 {score}
-                <span className="text-[1rem] text-slate-400 sm:text-[1.2rem]"> / {totalQuestions}</span>
+                <span className="text-[1rem] text-slate-400 sm:text-[1.2rem]">
+                  {' '}
+                  / {totalQuestions}
+                </span>
               </p>
               <p className="mt-1 text-[12px] font-bold text-slate-500">{percentage}% de acierto</p>
             </div>
@@ -799,7 +844,9 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
 
         {renderedEntries.length === 0 ? (
           <div className="rounded-[1.25rem] border border-dashed border-[#d7e4fb] bg-white/80 px-4 py-5 text-center shadow-[0_18px_34px_-30px_rgba(141,147,242,0.14)]">
-            <p className="text-[0.98rem] font-black text-slate-900">No hay respuestas para revisar</p>
+            <p className="text-[0.98rem] font-black text-slate-900">
+              No hay respuestas para revisar
+            </p>
             <p className="mt-1.5 text-[13px] font-semibold text-slate-500">
               Completa un bloque para abrir esta lectura con detalle.
             </p>
@@ -838,11 +885,15 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
 
       <nav
         className={`fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] transition-all duration-300 sm:px-6 lg:px-8 xl:inset-y-0 xl:inset-x-auto xl:right-[max(1.25rem,calc((100vw-1480px)/2+1rem))] xl:bottom-auto xl:flex xl:items-center xl:px-0 xl:pb-0 ${
-          isDockVisible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-6 opacity-0'
+          isDockVisible
+            ? 'translate-y-0 opacity-100'
+            : 'pointer-events-none translate-y-6 opacity-0'
         }`}
       >
         <div className="mx-auto w-full max-w-[420px] rounded-[1.35rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(245,249,255,0.9))] p-1 shadow-[0_22px_60px_-34px_rgba(141,147,242,0.2)] backdrop-blur-xl xl:mx-0 xl:w-[118px] xl:max-w-none xl:rounded-[2rem] xl:p-2">
-          <div className={`grid gap-1.5 ${showRetry ? 'grid-cols-3 xl:grid-cols-1' : 'grid-cols-2 xl:grid-cols-1'}`}>
+          <div
+            className={`grid gap-1.5 ${showRetry ? 'grid-cols-3 xl:grid-cols-1' : 'grid-cols-2 xl:grid-cols-1'}`}
+          >
             <button
               type="button"
               onClick={onBackToStart}

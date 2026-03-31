@@ -1,6 +1,7 @@
 # Premium Learning Engine Implementation Plan
 
 ## Objetivo
+
 Convertir Oposik desde un flujo de practica por bloques en un sistema exam-aware que:
 
 - modele cada pregunta como una memoria dinamica
@@ -11,6 +12,7 @@ Convertir Oposik desde un flujo de practica por bloques en un sistema exam-aware
 ## Estado actual del proyecto
 
 ### Lo que ya existe
+
 - banco de preguntas y sesiones de practica
 - perfil por usuario y curriculum
 - estadisticas basicas por pregunta
@@ -18,6 +20,7 @@ Convertir Oposik desde un flujo de practica por bloques en un sistema exam-aware
 - dashboard, review y admin funcionales
 
 ### Limites actuales
+
 - no existe estado individual avanzado por pregunta
 - no hay scheduler de repaso real
 - no se modelan latencia, lapsos, exam readiness ni carga diaria
@@ -25,6 +28,7 @@ Convertir Oposik desde un flujo de practica por bloques en un sistema exam-aware
 - `practice_sessions` no distingue aprendizaje, mantenimiento ni fatiga
 
 ## Principio de arquitectura
+
 No meter logica matematica dentro del frontend.
 
 La arquitectura objetivo debe quedar partida en cuatro capas:
@@ -37,6 +41,7 @@ La arquitectura objetivo debe quedar partida en cuatro capas:
 ## Modelo de datos objetivo
 
 ### 1. `app.user_question_state`
+
 Estado vivo por usuario, pregunta y curriculum.
 
 Campos minimos:
@@ -75,6 +80,7 @@ primary key (user_id, curriculum, question_id)
 ```
 
 ### 2. `app.question_attempt_events`
+
 Evento inmutable por respuesta.
 
 ```sql
@@ -102,6 +108,7 @@ next_review_after timestamptz null
 ```
 
 ### 3. `app.practice_sessions`
+
 Extender la tabla actual, no crear otra paralela.
 
 Campos nuevos:
@@ -123,6 +130,7 @@ readiness_after numeric null
 ```
 
 ### 4. `app.exam_targets`
+
 Configuracion de examen por usuario y curriculum.
 
 ```sql
@@ -137,6 +145,7 @@ primary key (user_id, curriculum)
 ```
 
 ### 5. `app.question_editorial_meta`
+
 Metadatos premium de cada pregunta.
 
 ```sql
@@ -221,6 +230,7 @@ export interface ReadinessSnapshot {
 ## Motor de calculo
 
 ### Nuevo modulo
+
 `src/domain/learningEngine/`
 
 Archivos:
@@ -235,6 +245,7 @@ Archivos:
 - `__tests__/...`
 
 ### Reglas
+
 - funciones puras
 - sin acceso directo a Supabase
 - todos los inputs y outputs serializables
@@ -243,9 +254,11 @@ Archivos:
 ## RPCs objetivo
 
 ### 1. `app.record_question_attempt_batch`
+
 Sustituye progresivamente la logica actual de `record_practice_session`.
 
 Responsabilidades:
+
 - persistir eventos
 - actualizar `user_question_state`
 - recalcular readiness minimo
@@ -265,6 +278,7 @@ Entrada:
 ```
 
 ### 2. `app.get_daily_focus`
+
 Devuelve la prioridad del dia.
 
 Salida:
@@ -280,9 +294,11 @@ Salida:
 ```
 
 ### 3. `app.get_readiness_dashboard`
+
 Read model para home/stats.
 
 Debe devolver:
+
 - readiness actual
 - rango de confianza inicial simple
 - dominadas, fragiles, nuevas
@@ -290,34 +306,42 @@ Debe devolver:
 - backlog real y backlog recomendado hoy
 
 ### 4. `app.get_mixed_practice_batch`
+
 Selector premium por prioridad.
 
 Entrada:
+
 - curriculum
 - target size
 - exam date opcional
 - capacities del usuario
 
 Regla inicial:
+
 - 50% overdue
 - 20% fragiles
 - 20% nuevas
 - 10% mantenimiento o anti-trampas
 
 ### 5. `app.get_due_review_batch`
+
 Solo preguntas con `next_review_at <= now`.
 
 ### 6. `app.get_anti_trap_batch`
+
 Filtra por `trap_tags` y `dominant_error_type`.
 
 ### 7. `app.get_simulacro_batch`
+
 Muestra preguntas sin correccion inmediata.
 No debe reordenar con el mismo peso que una sesion de aprendizaje.
 
 ## Cambios en el frontend
 
 ### Dashboard
+
 Sustituir el resumen actual por:
+
 - readiness
 - foco del dia
 - mapa de dominio
@@ -325,6 +349,7 @@ Sustituir el resumen actual por:
 - backlog recomendado, no backlog bruto
 
 ### Modos de estudio
+
 Ampliar `PracticeMode`:
 
 ```ts
@@ -339,16 +364,21 @@ type PracticeMode =
 ```
 
 ### Quiz
+
 Guardar y enviar:
+
 - `response_time_ms`
 - `time_to_first_selection_ms`
 - `changed_answer`
 
 ### Review
+
 Separar review pedagógica de simulacro.
 
 ### Profile
+
 Nueva configuracion:
+
 - fecha de examen
 - capacidad diaria de repaso
 - capacidad diaria de nuevas
@@ -419,7 +449,7 @@ Regla inicial:
 export function updateStabilityScore(
   oldStability: number,
   isCorrect: boolean,
-  latencyFactor: number
+  latencyFactor: number,
 ): number {
   if (!isCorrect) return Math.max(1, oldStability * 0.45);
   const multiplier = latencyFactor >= 1 ? 1.8 : 1.45;
@@ -442,7 +472,7 @@ export function computeNextIntervalDays(params: {
   const base = baseByLevel[params.masteryLevel];
   return Math.max(
     1,
-    Math.round(base * params.difficultyFactor * params.latencyFactor * params.examFactor)
+    Math.round(base * params.difficultyFactor * params.latencyFactor * params.examFactor),
   );
 }
 ```
@@ -450,48 +480,58 @@ export function computeNextIntervalDays(params: {
 ## Orden correcto de implementacion
 
 ### Fase 1. Infraestructura de aprendizaje
+
 - nueva migracion con `user_question_state`, `question_attempt_events` y `exam_targets`
 - extension de `practice_sessions`
 - funciones puras con tests
 - nueva RPC `record_question_attempt_batch`
 
 Resultado esperado:
+
 - ya existe estado individual por pregunta
 - cada respuesta modifica dominio, estabilidad e intervalo
 
 ### Fase 2. Selector y dashboard inteligente
+
 - `get_daily_focus`
 - `get_readiness_dashboard`
 - `get_mixed_practice_batch`
 - adaptar home y stats
 
 Resultado esperado:
+
 - la app ya decide que conviene estudiar hoy
 
 ### Fase 3. Latencia y errores tipificados
+
 - cronometraje completo en quiz
 - inferencia inicial de errores
 - anti-trap batch
 - widgets de riesgos principales
 
 Resultado esperado:
+
 - la app deja de medir solo acierto/fallo
 
 ### Fase 4. Exam aware
+
 - fecha de examen en perfil
 - compresion de intervalos
 - projection readiness
 - backlog recomendado por capacidad diaria
 
 Resultado esperado:
+
 - la app empieza a comportarse como preparador real
 
 ### Fase 5. Simulacro y fatiga
+
 - simulacro separado
 - fatigue score
 - diferencia entre rendimiento de estudio y simulacro
 
 Resultado esperado:
+
 - entrenamiento mas realista y analitica seria
 
 ## Riesgos reales si se intenta hacer mal
@@ -503,6 +543,7 @@ Resultado esperado:
 - usar solo porcentaje bruto sin suavizado ni recencia
 
 ## Siguiente accion recomendada
+
 No empezar por UX nueva.
 
 La siguiente accion correcta en este repo es:
