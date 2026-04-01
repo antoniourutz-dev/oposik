@@ -1,11 +1,13 @@
 import type {
   ActivePracticeSession,
+  PracticeQuestionScope,
   PracticeQuestionScopeFilter,
   WeakQuestionInsight,
 } from '../practiceTypes';
 import { DEFAULT_CURRICULUM, PRACTICE_BATCH_SIZE, SIMULACRO_BATCH_SIZE } from '../practiceConfig';
 import {
   getAntiTrapPracticeBatch,
+  getFullCatalogQuestionsForScope,
   getGuestPracticeBatch,
   getLawPracticeBatch,
   getMixedPracticeBatch,
@@ -16,6 +18,7 @@ import {
 } from '../services/preguntasApi';
 import {
   buildAntiTrapPracticeSession,
+  buildCatalogReviewSession,
   buildGuestPracticeSession,
   buildLawPracticeSession,
   buildMixedPracticeSession,
@@ -223,5 +226,16 @@ export const loadLawSessionCommand = async ({
 
   return {
     session: buildLawPracticeSession(lawQuestions, law),
+  };
+};
+
+export const loadCatalogReviewSessionCommand = async ({
+  scope,
+}: {
+  scope: PracticeQuestionScope;
+}): Promise<SessionStarterCommandResult> => {
+  const questions = await getFullCatalogQuestionsForScope(scope);
+  return {
+    session: buildCatalogReviewSession({ questions, scope }),
   };
 };

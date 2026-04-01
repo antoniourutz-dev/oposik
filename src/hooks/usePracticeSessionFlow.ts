@@ -5,7 +5,7 @@ import { resolveReviewContinuation } from './practiceSessionFlowDecisions';
 import { usePracticeSessionLifecycle } from './usePracticeSessionLifecycle';
 import { usePracticeSessionStarters } from './usePracticeSessionStarters';
 
-export type PracticeView = 'home' | 'quiz' | 'review';
+export type PracticeView = 'home' | 'quiz' | 'review' | 'catalog_review';
 
 type UsePracticeSessionFlowOptions = {
   guestBlocksRemaining: number;
@@ -42,6 +42,7 @@ export const usePracticeSessionFlow = ({
     currentQuestion,
     currentQuestionIndex,
     handleAnswer,
+    handleCatalogReviewNext,
     handleEndSessionEarly,
     handleRetrySession,
     handleSimulacroTimeExpired,
@@ -69,6 +70,7 @@ export const usePracticeSessionFlow = ({
     startWeakReview,
     startStandardSession,
     startLawSession,
+    startCatalogReview,
   } = usePracticeSessionStarters({
     guestBlocksRemaining,
     guestBlocksUsed,
@@ -118,6 +120,7 @@ export const usePracticeSessionFlow = ({
     currentQuestionIndex,
     goHome: resetActiveSession,
     handleAnswer,
+    handleCatalogReviewNext,
     handleContinueAfterReview,
     handleEndSessionEarly,
     handleRetrySession,
@@ -126,6 +129,7 @@ export const usePracticeSessionFlow = ({
     resumeActiveSession,
     resetActiveSession,
     startAntiTrap,
+    startCatalogReview,
     startFromBeginning,
     startGenericRecommended,
     startGuest,

@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowRight, Check, Clock3, X } from 'lucide-react';
+import { AlertCircle, Check, Clock3, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/button';
 import { inferAttemptErrorType } from '../domain/learningEngine';
@@ -11,10 +11,10 @@ import {
   PracticeQuestionScopeFilter,
   PracticeQuestion,
 } from '../practiceTypes';
-import { getSessionPresentation } from '../sessionPresentation';
-import { getQuestionScopeLabel } from '../utils/practiceQuestionScope';
+import { getQuizFriendlyCopy } from '../sessionPresentation';
 import { useQuizTelemetry } from '../hooks/useQuizTelemetry';
 import { computeSessionFatigueScore } from '../domain/learningEngine/fatigue';
+import { StatementBody } from './StatementBody';
 
 type QuizScreenProps = {
   mode: PracticeMode;
@@ -39,15 +39,15 @@ type QuizScreenProps = {
 
 const QuizScreen: React.FC<QuizScreenProps> = ({
   mode,
-  title,
-  subtitle,
+  title: _title,
+  subtitle: _subtitle,
   feedbackMode,
   startedAt,
   timeLimitSeconds,
   question,
   questionIndex,
   totalQuestions,
-  questionScope = 'all',
+  questionScope: _questionScope = 'all',
   simplified = false,
   answers,
   onAnswer,
@@ -79,15 +79,6 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     }));
     return computeSessionFatigueScore(sessionInsights);
   }, [answers]);
-
-  const focusStatus =
-    fatigueScore < 0.3 ? 'Bien' : fatigueScore < 0.6 ? 'Bajando' : 'Cansancio';
-  const focusColor =
-    fatigueScore < 0.3
-      ? 'text-emerald-400'
-      : fatigueScore < 0.6
-        ? 'text-amber-400'
-        : 'text-rose-400';
 
   const [hasShownFatigueWarning, setHasShownFatigueWarning] = useState(false);
   const [isFatigueModalOpen, setIsFatigueModalOpen] = useState(false);
@@ -207,57 +198,10 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     () => Object.entries(question.options) as Array<[OptionKey, string]>,
     [question.options],
   );
-  const hasAnsweredCurrentQuestion = selectedKey !== null;
   const isDeferredMode = feedbackMode === 'deferred';
   const displayQuestionNumber = question.number ?? questionIndex + 1;
-  const sessionPresentation = getSessionPresentation(mode);
-  const questionScopeLabel = getQuestionScopeLabel(questionScope as 'all' | 'common' | 'specific');
-  const previewAnsweredCount = Math.min(
-    totalQuestions,
-    answers.length + (hasAnsweredCurrentQuestion ? 1 : 0),
-  );
+  const friendlyCopy = getQuizFriendlyCopy(mode);
   const isCurrentAnswerCorrect = selectedKey !== null && selectedKey === question.correctOption;
-  const feedbackState = isDeferredMode
-    ? selectedKey !== null
-      ? 'armed'
-      : 'idle'
-    : selectedKey !== null
-      ? isCurrentAnswerCorrect
-        ? 'correct'
-        : 'wrong'
-      : 'idle';
-  const feedbackSurfaceClass =
-    feedbackState === 'correct'
-      ? 'border-emerald-200/90 bg-[linear-gradient(180deg,rgba(245,253,249,0.98),rgba(236,253,245,0.94))] shadow-[0_24px_64px_-42px_rgba(16,185,129,0.28)]'
-      : feedbackState === 'wrong'
-        ? 'border-rose-200/90 bg-[linear-gradient(180deg,rgba(255,248,249,0.98),rgba(255,241,242,0.94))] shadow-[0_24px_64px_-42px_rgba(244,63,94,0.22)]'
-        : feedbackState === 'armed'
-          ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(240,247,255,0.98),rgba(237,245,255,0.96))] shadow-[0_24px_64px_-42px_rgba(141,147,242,0.22)]'
-          : 'border-[#d8e4fb] bg-[linear-gradient(180deg,rgba(239,245,255,0.98),rgba(247,250,255,0.96))] shadow-[0_22px_64px_-42px_rgba(15,23,42,0.22)]';
-  const feedbackAccentGlowClass =
-    feedbackState === 'correct'
-      ? 'from-emerald-200/35 via-transparent to-transparent'
-      : feedbackState === 'wrong'
-        ? 'from-rose-200/35 via-transparent to-transparent'
-        : feedbackState === 'armed'
-          ? 'from-sky-200/35 via-transparent to-transparent'
-          : 'from-[#8d93f2]/14 via-transparent to-transparent';
-  const feedbackPill =
-    !isDeferredMode && selectedKey !== null
-      ? isCurrentAnswerCorrect
-        ? {
-            label: 'Correcta',
-            className:
-              'border-emerald-200/90 bg-emerald-50/92 text-emerald-700 shadow-[0_12px_24px_-20px_rgba(16,185,129,0.28)]',
-            icon: <Check aria-hidden="true" size={14} strokeWidth={3} />,
-          }
-        : {
-            label: 'Fallo',
-            className:
-              'border-rose-200/90 bg-rose-50/92 text-rose-700 shadow-[0_12px_24px_-20px_rgba(244,63,94,0.24)]',
-            icon: <X aria-hidden="true" size={14} strokeWidth={3} />,
-          }
-      : null;
   const nextButtonLabel =
     questionIndex === totalQuestions - 1
       ? isDeferredMode
@@ -265,7 +209,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         : 'Ver resultados'
       : isDeferredMode
         ? 'Guardar y seguir'
-        : 'Siguiente pregunta';
+        : 'Siguiente';
 
   const formattedRemainingTime =
     remainingSeconds === null
@@ -311,31 +255,27 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   };
 
   const renderActionButton = () => (
-    <Button
-      variant="premium"
-      size="xl"
-      onClick={submitCurrentAnswer}
-      className="flex w-full items-center justify-between"
-    >
-      <span className="min-w-0 text-left truncate uppercase tracking-[0.14em]">
+    <div className="rounded-full bg-white p-1 shadow-[0_10px_28px_-12px_rgba(76,29,149,0.12),0_1px_0_rgba(255,255,255,0.9)_inset] ring-1 ring-slate-200/60">
+      <button
+        type="button"
+        onClick={submitCurrentAnswer}
+        className="brand-gradient-h flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[0.95rem] font-bold tracking-[-0.02em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_14px_36px_-18px_rgba(124,182,232,0.45)] transition-[filter,transform] duration-200 hover:brightness-[1.04] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+      >
         {nextButtonLabel}
-      </span>
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/18 bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-        <ArrowRight aria-hidden="true" size={18} />
-      </span>
-    </Button>
+      </button>
+    </div>
   );
 
   const feedbackAnnouncement =
     !isDeferredMode && selectedKey !== null
       ? isCurrentAnswerCorrect
-        ? `Respuesta correcta. Opción ${selectedKey.toUpperCase()}.`
-        : `Respuesta incorrecta. La opción correcta es la ${question.correctOption.toUpperCase()}.`
+        ? 'Correcto. Esta era la clave.'
+        : 'Aquí has fallado.'
       : '';
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-[1920px] flex-1 flex-col px-3 py-3 sm:px-6 sm:py-6 lg:px-10 lg:py-10 2xl:px-16 ${
+      className={`mx-auto flex w-full max-w-[min(100%,42rem)] flex-1 flex-col bg-gradient-to-b from-slate-100/95 via-slate-50 to-indigo-50/40 px-3 py-3 sm:px-6 sm:py-6 lg:py-8 ${
         selectedKey !== null ? 'pb-32' : 'pb-10'
       }`}
     >
@@ -343,84 +283,80 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         {feedbackAnnouncement}
       </div>
       <AnimatePresence mode="wait">
-        <div className="relative mb-3 overflow-hidden rounded-[1.5rem] border border-[#bdd3f1]/60 bg-[linear-gradient(135deg,#79b6e9_0%,#8aa6ee_56%,#8a90f4_100%)] p-3 text-white shadow-[0_24px_60px_-40px_rgba(141,147,242,0.3)] sm:mb-4 sm:rounded-[1.7rem] sm:p-5 xl:mb-5 xl:rounded-[1.95rem] xl:p-6">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/16 blur-3xl" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_42%)]" />
-            <div className="absolute right-4 top-4 h-24 w-24 rounded-full border border-white/14 xl:h-32 xl:w-32" />
-          </div>
-
-          <div className="relative grid gap-2.5 sm:gap-3">
-            <div className="flex items-start justify-between gap-3">
-              {simplified ? (
-                <div className="min-w-0">
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-sky-50/82">
-                    Practica
-                  </p>
-                  <h2 className="mt-1 text-[1.15rem] font-black tracking-[-0.03em] text-white sm:text-[1.55rem]">
-                    Pregunta {displayQuestionNumber}
-                  </h2>
-                  <p className="mt-0.5 text-[13px] font-semibold text-white/82 sm:text-[0.98rem]">
-                    {questionIndex + 1} de {totalQuestions}
-                  </p>
-                </div>
-              ) : (
-                <div className="min-w-0 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/12 px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.18em] text-sky-50/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-white/92" />
-                    {sessionPresentation.eyebrow}
+        <div className="mb-4 space-y-3 sm:mb-5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                aria-label="Salir de la sesión"
+                onClick={() => onEndSession(buildSubmission())}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-200/90 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+              >
+                <X aria-hidden="true" size={20} strokeWidth={2.5} />
+              </button>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="text-lg font-black tracking-tight text-slate-900 sm:text-xl">
+                    Práctica
                   </span>
-                  <span className="inline-flex items-center rounded-full border border-white/16 bg-white/10 px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.18em] text-white/78">
-                    {questionScopeLabel}
-                  </span>
-                  {question.category ? (
-                    <span className="inline-flex items-center rounded-full border border-white/16 bg-white/10 px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.18em] text-white/78">
-                      {question.category}
+                  {!simplified ? (
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 sm:text-[11px]">
+                      {friendlyCopy.sessionKindLabel}
                     </span>
                   ) : null}
                 </div>
-              )}
-
-              <div className="flex shrink-0 items-center gap-2">
-                {formattedRemainingTime ? (
-                  <div className="inline-flex items-center justify-center gap-2 rounded-full border border-white/22 bg-white/12 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
-                    <Clock3 aria-hidden="true" size={13} />
-                    <span aria-label={`Tiempo restante: ${formattedRemainingTime}`}>
-                      {formattedRemainingTime}
-                    </span>
-                  </div>
-                ) : null}
-                <button
-                  type="button"
-                  aria-label="Salir de la sesión"
-                  onClick={() => onEndSession(buildSubmission())}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-rose-200/55 bg-[linear-gradient(180deg,rgba(251,113,133,0.28),rgba(244,63,94,0.24))] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white shadow-[0_12px_22px_-18px_rgba(244,63,94,0.34)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(251,113,133,0.34),rgba(244,63,94,0.3))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-100/70 active:translate-y-0 active:scale-[0.98]"
-                >
-                  <X aria-hidden="true" size={13} strokeWidth={3} />
-                  Salir
-                </button>
               </div>
             </div>
-
-            {!simplified ? (
-              <div className="flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-[1.08rem] font-black tracking-[-0.03em] text-white sm:text-[1.55rem] xl:text-[1.85rem]">
-                    Pregunta {displayQuestionNumber}{' '}
-                    <span className="text-white/82">
-                      ({questionIndex + 1} de {totalQuestions})
-                    </span>
-                  </h2>
-                  <p className="mt-1 hidden max-w-[44rem] text-xs font-semibold leading-5 text-white/68 sm:block xl:text-sm xl:leading-6">
-                    {title}. {subtitle}
-                  </p>
+            <div className="flex shrink-0 items-center gap-2">
+              {formattedRemainingTime ? (
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 bg-white/90 px-2.5 py-1 text-[10px] font-bold text-slate-600 shadow-sm">
+                  <Clock3 aria-hidden="true" size={12} />
+                  <span aria-label={`Tiempo restante: ${formattedRemainingTime}`}>
+                    {formattedRemainingTime}
+                  </span>
                 </div>
-                <span className="rounded-full border border-white/16 bg-white/10 px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/86 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] sm:px-3 sm:text-[10px]">
-                  {sessionPresentation.compactLabel}
-                </span>
-              </div>
-            ) : null}
+              ) : null}
+              <button
+                type="button"
+                aria-label="Salir de la sesión"
+                onClick={() => onEndSession(buildSubmission())}
+                className="rounded-lg px-2 py-1 text-sm font-bold text-violet-600 transition hover:text-violet-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+              >
+                Salir
+              </button>
+            </div>
           </div>
+
+          <div
+            className="h-1 w-full overflow-hidden rounded-full bg-slate-200/90"
+            role="progressbar"
+            aria-valuenow={questionIndex + 1}
+            aria-valuemin={1}
+            aria-valuemax={Math.max(1, totalQuestions)}
+            aria-label={`Pregunta ${questionIndex + 1} de ${totalQuestions}`}
+          >
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-violet-600 to-violet-400 transition-[width] duration-300 ease-out"
+              style={{
+                width: `${totalQuestions > 0 ? ((questionIndex + 1) / totalQuestions) * 100 : 0}%`,
+              }}
+            />
+          </div>
+
+          {!simplified ? (
+            <div className="space-y-0.5 px-0.5 pt-1">
+              <p className="text-xs font-medium text-slate-500">{friendlyCopy.contextLine1}</p>
+              <p className="text-base font-bold text-slate-800">
+                Pregunta {displayQuestionNumber} de {totalQuestions}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-0.5 px-0.5 pt-1">
+              <p className="text-base font-bold text-slate-800">
+                Pregunta {displayQuestionNumber} de {totalQuestions}
+              </p>
+            </div>
+          )}
         </div>
 
         <motion.section
@@ -431,75 +367,40 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
           transition={{ duration: 0.35, ease: 'easeOut' }}
           className="flex flex-1 flex-col gap-6"
         >
-          {/* --- QUESTION AREA: MOBILE STICKY + DESKTOP FULL WIDTH --- */}
+          {/* --- ENUNCIADO (superficie de lectura: distinta de las tarjetas de opción) --- */}
           <div className="sticky top-1 z-30 -mx-1 px-1 pb-1 pt-2 sm:top-2 sm:pb-2 xl:static xl:z-auto xl:mx-0 xl:p-0 xl:pb-0 xl:pt-0">
             <div
-              className={`relative overflow-hidden rounded-[1.8rem] border p-5 backdrop-blur-md transition-all duration-300 sm:rounded-[2.5rem] sm:p-7 xl:min-h-[22rem] xl:p-12 ${feedbackSurfaceClass} ${
+              className={`relative isolate overflow-hidden rounded-[1.75rem] border border-violet-200/60 bg-[linear-gradient(152deg,#f5f3ff_0%,#ffffff_50%,#eef2ff_100%)] p-5 shadow-[0_22px_50px_-30px_rgba(91,33,182,0.14),0_1px_0_#ffffff_inset] ring-1 ring-violet-100/80 transition-all duration-300 sm:rounded-[2rem] sm:p-8 xl:p-10 ${
                 isDecisionVisible ? 'decision-soft-pulse' : ''
               }`}
             >
-              <div className="absolute inset-y-4 left-0 w-1.5 rounded-r-full quantia-bg-gradient opacity-85" />
-              <div className="relative z-10 mb-4 flex items-start justify-between gap-3 sm:mb-6">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600 shadow-sm sm:px-3 sm:py-1.5 sm:text-[10px]">
-                    {simplified ? 'Pregunta' : 'Enunciado del Caso'}
-                  </span>
-                </div>
-                {feedbackPill ? (
-                  <span
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-widest sm:gap-2 sm:px-4 sm:py-2 sm:text-[12px] ${feedbackPill.className}`}
-                  >
-                    {feedbackPill.icon}
-                    <span>{feedbackPill.label}</span>
-                  </span>
-                ) : null}
+              {/* Decoración solo encima del fondo opaco (sin transparencias que mezclen con el scroll de detrás) */}
+              <div className="pointer-events-none absolute -right-8 -top-12 h-40 w-40 rounded-full bg-violet-200 blur-3xl opacity-90" />
+              <div className="pointer-events-none absolute -bottom-16 -left-10 h-36 w-36 rounded-full bg-sky-100 blur-3xl opacity-80" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_100%_0%,#ddd6fe_0%,transparent_55%)] opacity-40" />
+              <div className="relative z-10 mb-4 flex items-center gap-2 sm:mb-5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-400/90">
+                  ENUNCIADO
+                </span>
+                <span
+                  className="hidden h-px flex-1 bg-gradient-to-r from-violet-200/60 to-transparent sm:block"
+                  aria-hidden="true"
+                />
               </div>
-              <h3 className="relative z-10 text-[1.18rem] font-black leading-[1.6] tracking-tight text-slate-950 sm:text-[1.8rem] sm:leading-snug xl:text-[2.6rem]">
-                {question.statement}
-              </h3>
+              <div className="relative z-10 max-w-prose text-[1.05rem] font-medium leading-[1.82] tracking-tight text-slate-700 sm:text-[1.12rem] sm:leading-[1.78]">
+                <StatementBody text={question.statement} />
+              </div>
             </div>
           </div>
 
-          {/* --- ANSWERS AREA: GRID FOR HORIZONTAL EFFICIENCY --- */}
-          <div className="grid gap-4 w-full">
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-6">
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Sesion
-                  </span>
-                  <span className="text-sm font-black text-slate-600">
-                    {previewAnsweredCount}/{totalQuestions}
-                  </span>
-                </div>
+          <div className="grid w-full gap-5">
+            {selectedKey === null ? (
+              <p className="text-center text-sm font-medium text-slate-500">
+                Piensa bien antes de responder
+              </p>
+            ) : null}
 
-                <div className="h-8 w-[1px] bg-slate-200" />
-
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Ritmo
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <motion.div
-                      aria-hidden="true"
-                      animate={{ scale: [1, 1.25, 1], opacity: [1, 0.7, 1] }}
-                      transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-                      className={`h-2.5 w-2.5 rounded-full ${fatigueScore < 0.3 ? 'bg-emerald-400' : fatigueScore < 0.6 ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.4)]' : 'bg-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.6)]'}`}
-                    />
-                    <span className={`text-[13px] font-black ${focusColor} tracking-tight`}>
-                      {focusStatus}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="hidden lg:flex items-center gap-4">
-                <div className="flex items-center gap-2 text-[11px] font-black text-slate-400">
-                  <Clock3 aria-hidden="true" size={14} /> {formattedRemainingTime ?? 'Sin límite'}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:gap-4 lg:grid-cols-2 xl:gap-5">
+            <div className="grid grid-cols-1 gap-4 sm:gap-5">
               {optionEntries.map(([key, value]) => {
                 const isCorrectOption = revealedCorrectKey === key;
                 const isWrongSelected =
@@ -563,7 +464,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                       setRevealedCorrectKey(question.correctOption);
                     }}
                     disabled={!isDeferredMode && selectedKey !== null}
-                    className={`relative flex w-full items-start gap-3 overflow-hidden rounded-[1.2rem] border px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 sm:gap-3.5 sm:px-5 sm:py-3.5 xl:rounded-[1.35rem] xl:px-6 xl:py-5 ${
+                    className={`relative flex w-full flex-col items-stretch gap-2 overflow-hidden rounded-2xl border px-4 py-3.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-200/80 sm:px-5 sm:py-4 ${
                       isDeferredMode
                         ? isDeferredSelected
                           ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(237,245,255,0.96))] shadow-[0_24px_38px_-28px_rgba(141,147,242,0.22)] ring-1 ring-sky-200'
@@ -641,7 +542,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="hidden xl:block lg:col-span-2 mt-8"
+                    className="mt-8 hidden xl:block"
                   >
                     <div className="rounded-[2.5rem] border border-white/75 bg-white/95 p-3 shadow-xl backdrop-blur">
                       {renderActionButton()}

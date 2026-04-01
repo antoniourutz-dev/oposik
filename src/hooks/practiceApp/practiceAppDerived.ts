@@ -34,6 +34,9 @@ export const computeGuestBlocksRemaining = (guestBlocksUsed: number, guestMaxBlo
   Math.max(0, guestMaxBlocks - guestBlocksUsed);
 
 export const computeTopBarSubtitle = (view: PracticeView, activeTab: MainTab): string => {
+  if (view === 'catalog_review') {
+    return 'Análisis';
+  }
   if (view === 'review') {
     return 'Revision';
   }

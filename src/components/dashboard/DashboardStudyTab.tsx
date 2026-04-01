@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowRight, Flame, Layers3, Target } from 'lucide-react';
+import { ArrowRight, BookOpen, Flame, Layers3, Target } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import QuestionScopePicker from '../QuestionScopePicker';
 import type { DashboardContentProps } from './types';
@@ -27,6 +27,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
   onStartSimulacro,
   onStartWeakReview,
   onStartLawTraining,
+  onStartCatalogReview,
   questionScope,
   questionsCount,
   weakQuestions,
@@ -152,6 +153,49 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
         <p className="mt-2 text-sm font-medium text-slate-600">
           Elige un enfoque y empieza. Sin comparar datos.
         </p>
+
+        <div className="mt-4 rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 to-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
+              <BookOpen size={18} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-violet-600">
+                Análisis del banco
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                Revisa todas las preguntas y respuestas, una a una
+              </p>
+              <p className="mt-1 text-[12px] font-medium leading-relaxed text-slate-600">
+                Sin registrar intentos. Elige el bloque del temario que quieres recorrer.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => onStartCatalogReview('common')}
+                  disabled={practiceLocked}
+                  className="rounded-xl border border-violet-200/80 bg-white px-4 py-3 text-left shadow-sm transition hover:border-violet-300 hover:bg-violet-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:pointer-events-none disabled:opacity-45"
+                >
+                  <span className="block text-[10px] font-extrabold uppercase tracking-[0.14em] text-violet-500">
+                    Temario común
+                  </span>
+                  <span className="mt-1 block text-sm font-semibold text-slate-900">Ver las ~300</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onStartCatalogReview('specific')}
+                  disabled={practiceLocked}
+                  className="rounded-xl border border-violet-200/80 bg-white px-4 py-3 text-left shadow-sm transition hover:border-violet-300 hover:bg-violet-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:pointer-events-none disabled:opacity-45"
+                >
+                  <span className="block text-[10px] font-extrabold uppercase tracking-[0.14em] text-violet-500">
+                    Temario específico
+                  </span>
+                  <span className="mt-1 block text-sm font-semibold text-slate-900">Ver las ~200</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
           <button

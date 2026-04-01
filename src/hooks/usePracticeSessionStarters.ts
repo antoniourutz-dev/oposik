@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type {
   ActivePracticeSession,
+  PracticeQuestionScope,
   PracticeQuestionScopeFilter,
   WeakQuestionInsight,
 } from '../practiceTypes';
@@ -193,6 +194,15 @@ export const usePracticeSessionStarters = ({
         },
         emptyMessage: `No se han encontrado preguntas para la ley: ${law}.`,
         fallbackErrorMessage: 'No se ha podido iniciar el entrenamiento por ley.',
+      }),
+    startCatalogReview: (scope: PracticeQuestionScope) =>
+      void executeStarter({
+        command: async () => {
+          const { loadCatalogReviewSessionCommand } = await import('./practiceSessionStarterCommands');
+          return loadCatalogReviewSessionCommand({ scope });
+        },
+        emptyMessage: 'No hay preguntas en ese ámbito para analizar.',
+        fallbackErrorMessage: 'No se ha podido cargar el análisis del banco.',
       }),
   };
 };

@@ -1,10 +1,11 @@
-import { DEFAULT_CURRICULUM } from '../practiceConfig';
+import { DEFAULT_CURRICULUM, PRACTICE_BATCH_SIZE } from '../practiceConfig';
 import { supabase } from '../supabaseClient';
 import { trackAsyncOperation } from '../telemetry/telemetryClient';
 import {
   PracticeCategoryRiskSummary,
   PracticeCatalogSummary,
   PracticeQuestion,
+  PracticeQuestionScope,
   PracticeQuestionScopeFilter,
   WeakQuestionInsight,
 } from '../practiceTypes';
@@ -318,5 +319,48 @@ export const getLawPracticeBatch = async (
       return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
     },
     { curriculum, law, batchSize },
+  );
+};
+
+const dedupeQuestionsById = (questions: PracticeQuestion[]): PracticeQuestion[] => {
+  const seen = new Set<string>();
+  const next: PracticeQuestion[] = [];
+  for (const q of questions) {
+    const id = String(q.id ?? '').trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    next.push(q);
+  }
+  return next;
+};
+
+/** Todas las preguntas del ámbito (común o específico), en orden de bloque estándar. */
+export const getFullCatalogQuestionsForScope = async (
+  scope: PracticeQuestionScope,
+  curriculum = DEFAULT_CURRICULUM,
+): Promise<PracticeQuestion[]> => {
+  return trackAsyncOperation(
+    'preguntas.getFullCatalogQuestionsForScope',
+    async () => {
+      const { totalQuestions } = await getPracticeCatalogSummary(curriculum, scope);
+      if (totalQuestions <= 0) return [];
+
+      const merged: PracticeQuestion[] = [];
+      let start = 0;
+      while (start < totalQuestions) {
+        const batch = await getStandardPracticeBatch(
+          start,
+          PRACTICE_BATCH_SIZE,
+          curriculum,
+          scope,
+        );
+        if (batch.length === 0) break;
+        merged.push(...batch);
+        start += batch.length;
+        if (batch.length < PRACTICE_BATCH_SIZE) break;
+      }
+      return dedupeQuestionsById(merged);
+    },
+    { curriculum, scope },
   );
 };

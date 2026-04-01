@@ -1,6 +1,7 @@
 import { PRACTICE_BATCH_SIZE, SIMULACRO_TIME_LIMIT_SECONDS } from '../practiceConfig';
 import {
   ActivePracticeSession,
+  PracticeQuestionScope,
   PracticeQuestionScopeFilter,
   PracticeQuestion,
   WeakQuestionInsight,
@@ -246,6 +247,36 @@ export const buildSimulacroPracticeSession = (
     batchNumber: 1,
     totalBatches: 1,
     questionScope,
+    batchStartIndex: null,
+    continueLabel: 'Volver al panel',
+    nextStandardBatchStartIndex: null,
+  };
+};
+
+export const buildCatalogReviewSession = ({
+  questions,
+  scope,
+}: {
+  questions: PracticeQuestion[];
+  scope: PracticeQuestionScope;
+}): ActivePracticeSession | null => {
+  const uniqueQuestions = dedupeQuestions(questions);
+  if (uniqueQuestions.length === 0) return null;
+
+  const scopeLabel = scope === 'common' ? 'Temario común' : 'Temario específico';
+
+  return {
+    id: buildSessionId(),
+    mode: 'catalog_review',
+    feedbackMode: 'immediate',
+    title: 'Análisis del banco',
+    subtitle: `${scopeLabel} · ${uniqueQuestions.length} preguntas`,
+    questions: uniqueQuestions,
+    startedAt: new Date().toISOString(),
+    timeLimitSeconds: null,
+    batchNumber: 1,
+    totalBatches: 1,
+    questionScope: scope,
     batchStartIndex: null,
     continueLabel: 'Volver al panel',
     nextStandardBatchStartIndex: null,

@@ -17,7 +17,9 @@ export type PracticeMode =
   | 'review'
   | 'mixed'
   | 'simulacro'
-  | 'anti_trap';
+  | 'anti_trap'
+  /** Recorrido lectura de todo el catálogo (común o específico), sin registrar intentos. */
+  | 'catalog_review';
 
 export interface PracticeQuestion {
   id: string;

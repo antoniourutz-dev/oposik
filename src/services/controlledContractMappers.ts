@@ -10,6 +10,7 @@ export const mapExternalPracticeMode = (value: unknown): PracticeMode => {
     case 'mixed':
     case 'simulacro':
     case 'anti_trap':
+    case 'catalog_review':
       return normalized as PracticeMode;
     default:
       return 'standard';

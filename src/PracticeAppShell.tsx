@@ -31,6 +31,7 @@ const GuestDashboardScreen = lazy(() => import('./components/GuestDashboardScree
 const GenericDashboardScreen = lazy(() => import('./components/GenericDashboardScreen'));
 const QuizScreen = lazy(() => import('./components/QuizScreen'));
 const PracticeReviewScreen = lazy(() => import('./components/PracticeReviewScreen'));
+const CatalogReviewScreen = lazy(() => import('./components/CatalogReviewScreen'));
 
 const PracticeAppShell: React.FC = () => {
   const {
@@ -47,6 +48,7 @@ const PracticeAppShell: React.FC = () => {
     guestMaxBlocks,
     goHome,
     handleAnswer,
+    handleCatalogReviewNext,
     handleContinueAfterReview,
     handleEnterGuest,
     handleEndSessionEarly,
@@ -82,6 +84,7 @@ const PracticeAppShell: React.FC = () => {
     startRandom,
     startRecommended,
     startWeakReview,
+    startCatalogReview,
     syncingState,
     syncError,
     topBarSubtitle,
@@ -96,16 +99,20 @@ const PracticeAppShell: React.FC = () => {
   } = usePracticeApp();
   const navigationScrollKey = view === 'home' ? `home:${activeTab}` : view;
   const contentEnterClass =
-    view === 'quiz' || view === 'review' ? 'screen-enter-fixed-safe' : 'screen-enter';
+    view === 'quiz' || view === 'review' || view === 'catalog_review'
+      ? 'screen-enter-fixed-safe'
+      : 'screen-enter';
   const topBarSection =
     view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer)
       ? undefined
       : topBarSubtitle;
+  /** Sin barra de marca en Inicio: más aire útil y contenido más arriba. */
+  const hideHomeTopBar = view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer);
   const mainTopPadding =
-    view === 'quiz'
+    view === 'quiz' || view === 'catalog_review'
       ? 'pt-4'
-      : view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer)
-        ? 'pt-[4.05rem]'
+      : hideHomeTopBar
+        ? 'pt-[max(env(safe-area-inset-top),1rem)]'
         : 'pt-[5.2rem]';
   const shellBackgroundClass =
     view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer)
@@ -129,7 +136,9 @@ const PracticeAppShell: React.FC = () => {
       isGenericPlayer,
       isGuest,
       questionCount:
-        view === 'quiz' || view === 'review' ? (activeSession?.questions.length ?? 0) : undefined,
+        view === 'quiz' || view === 'review' || view === 'catalog_review'
+          ? (activeSession?.questions.length ?? 0)
+          : undefined,
       selectedScope: selectedQuestionScope,
       sessionMode: activeSession?.mode,
       view,
@@ -177,7 +186,9 @@ const PracticeAppShell: React.FC = () => {
 
   return (
     <div className={`min-h-[100dvh] text-slate-900 ${shellBackgroundClass}`}>
-      {view !== 'quiz' && <TopBar section={topBarSection} />}
+      {view !== 'quiz' && view !== 'catalog_review' && !hideHomeTopBar ? (
+        <TopBar section={topBarSection} />
+      ) : null}
       <div className="flex min-h-[100dvh] w-full flex-col px-3 sm:px-5 lg:px-5 xl:px-6 2xl:px-8">
         <div
           className={`flex flex-1 flex-col ${showDesktopRail ? 'xl:grid xl:grid-cols-[92px_minmax(0,1fr)] xl:gap-5 2xl:grid-cols-[98px_minmax(0,1fr)] 2xl:gap-6' : ''}`}
@@ -186,11 +197,18 @@ const PracticeAppShell: React.FC = () => {
             <BottomDock
               activeTab={activeTab}
               onChangeTab={(tab) => {
-                if (view === 'quiz' || view === 'review') pauseActiveSession();
+                if (view === 'quiz' || view === 'review' || view === 'catalog_review') {
+                  pauseActiveSession();
+                }
                 setActiveTab(tab);
               }}
               variant={isGenericPlayer ? 'generic' : 'default'}
               hideOnMobile={shouldHideDockOnMobile}
+              stickyRailTopClass={
+                hideHomeTopBar
+                  ? 'xl:top-[max(env(safe-area-inset-top),0.75rem)]'
+                  : undefined
+              }
             />
           ) : null}
 
@@ -214,8 +232,11 @@ const PracticeAppShell: React.FC = () => {
                 <Alert variant="info" title="Sesión en curso">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="min-w-0">
-                      Continúa donde lo dejaste ({Math.min(activeSession.questions.length, answers.length + 1)}/
-                      {activeSession.questions.length})
+                      Continúa donde lo dejaste (
+                      {activeSession.mode === 'catalog_review'
+                        ? `${currentQuestionIndex + 1}/${activeSession.questions.length}`
+                        : `${Math.min(activeSession.questions.length, answers.length + 1)}/${activeSession.questions.length}`}
+                      )
                     </span>
                     <div className="flex items-center gap-2">
                       <button
@@ -341,9 +362,28 @@ const PracticeAppShell: React.FC = () => {
                           onReloadQuestions={() => void reloadPracticeData()}
                           onSaveExamTarget={(payload) => void handleSaveExamTarget(payload)}
                           onStartLawTraining={onStartLawTraining}
+                          onStartCatalogReview={startCatalogReview}
                           onSignOut={() => void handleSignOut()}
                         />
                       )
+                    ) : null}
+
+                    {view === 'catalog_review' && currentQuestion && activeSession ? (
+                      <div>
+                        <CatalogReviewScreen
+                          question={currentQuestion}
+                          questionIndex={currentQuestionIndex}
+                          totalQuestions={activeSession.questions.length}
+                          scope={
+                            activeSession.questionScope === 'common' ||
+                            activeSession.questionScope === 'specific'
+                              ? activeSession.questionScope
+                              : 'common'
+                          }
+                          onNext={handleCatalogReviewNext}
+                          onExit={goHome}
+                        />
+                      </div>
                     ) : null}
 
                     {view === 'quiz' && currentQuestion && activeSession ? (

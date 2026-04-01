@@ -132,19 +132,40 @@ export const usePracticeSessionLifecycle = ({
   }, []);
 
   const resumeActiveSession = useCallback(() => {
-    setView((prev) => (prev === 'review' ? 'review' : 'quiz'));
-  }, []);
+    if (!activeSession) return;
+    if (activeSession.mode === 'catalog_review') {
+      setView('catalog_review');
+      return;
+    }
+    if (answers.length >= activeSession.questions.length && answers.length > 0) {
+      setView('review');
+      return;
+    }
+    setView('quiz');
+  }, [activeSession, answers.length]);
 
   const startSession = useCallback((nextSession: ActivePracticeSession | null) => {
     if (!nextSession || nextSession.questions.length === 0) return;
     setActiveSession(nextSession);
     setCurrentQuestionIndex(0);
     setAnswers([]);
-    setView('quiz');
+    const nextView: PracticeView =
+      nextSession.mode === 'catalog_review' ? 'catalog_review' : 'quiz';
+    setView(nextView);
     clearStoredActiveSession();
-    // Escribe inmediatamente: algunos navegadores congelan antes de que corra el effect.
-    writeStoredActiveSession(buildStoredActiveSession(nextSession, [], 0, 'quiz'));
+    if (nextView === 'quiz') {
+      writeStoredActiveSession(buildStoredActiveSession(nextSession, [], 0, 'quiz'));
+    }
   }, []);
+
+  const handleCatalogReviewNext = useCallback(() => {
+    if (!activeSession || activeSession.mode !== 'catalog_review') return;
+    if (currentQuestionIndex >= activeSession.questions.length - 1) {
+      resetActiveSession();
+      return;
+    }
+    setCurrentQuestionIndex((i) => i + 1);
+  }, [activeSession, currentQuestionIndex, resetActiveSession]);
 
   const persistSession = useCallback(
     async (completedAnswers: PracticeAnswer[]) => {
@@ -179,6 +200,7 @@ export const usePracticeSessionLifecycle = ({
   const handleAnswer = useCallback(
     (submission: PracticeAnswerSubmission) => {
       if (!currentQuestion) return;
+      if (activeSession?.mode === 'catalog_review') return;
 
       const nextAnswer = buildPracticeAnswer(currentQuestion, submission);
       const completedAnswers = [...answers, nextAnswer];
@@ -266,6 +288,7 @@ export const usePracticeSessionLifecycle = ({
     currentQuestion,
     currentQuestionIndex,
     handleAnswer,
+    handleCatalogReviewNext,
     handleEndSessionEarly,
     handleRetrySession,
     handleSimulacroTimeExpired,

@@ -11,6 +11,8 @@ type BottomDockProps = {
   variant?: BottomDockVariant;
   /** Cuando hay sesión activa (quiz/review), evita que el dock móvil distraiga. */
   hideOnMobile?: boolean;
+  /** Posición sticky del rail en xl cuando no hay TopBar fijo (p. ej. Inicio sin marca). */
+  stickyRailTopClass?: string;
 };
 
 type DockItem = {
@@ -37,13 +39,14 @@ const BottomDock: React.FC<BottomDockProps> = ({
   onChangeTab,
   variant = 'default',
   hideOnMobile = false,
+  stickyRailTopClass = 'xl:top-[5.8rem]',
 }) => {
   const items = variant === 'generic' ? genericItems : defaultItems;
 
   return (
     <nav
       aria-label="Navegación principal"
-      className={`fixed inset-x-0 bottom-6 z-40 justify-center px-6 sm:px-12 xl:inset-x-auto xl:bottom-auto xl:sticky xl:top-[5.8rem] xl:z-20 xl:self-start xl:px-0 ${
+      className={`fixed inset-x-0 bottom-6 z-40 justify-center px-6 sm:px-12 xl:inset-x-auto xl:bottom-auto xl:sticky ${stickyRailTopClass} xl:z-20 xl:self-start xl:px-0 ${
         hideOnMobile ? 'hidden xl:flex' : 'flex'
       }`}
     >
