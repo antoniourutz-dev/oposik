@@ -69,7 +69,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   onAnswer,
   onEndSession,
   onTimeExpired,
-  textHighlightingEnabled = true,
+  textHighlightingEnabled = false,
 }) => {
   const [selectedKey, setSelectedKey] = useState<OptionKey | null>(null);
   const [revealedCorrectKey, setRevealedCorrectKey] = useState<OptionKey | null>(null);
@@ -298,7 +298,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
       type="button"
       onClick={submitCurrentAnswer}
       disabled={disabled}
-      className={`w-full py-[1.15rem] text-white rounded-[28px] font-black text-[1.05rem] tracking-[-0.02em] transition-[transform,filter] duration-200 hover:brightness-[1.06] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 ${primaryCtaClass}`}
+      className={`ui-button-text w-full rounded-[28px] py-[1.2rem] text-white transition-[transform,filter] duration-200 hover:brightness-[1.06] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 ${primaryCtaClass}`}
     >
       {nextButtonLabel}
     </button>
@@ -404,7 +404,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
             }`}
           >
             <div className="mb-3 space-y-1.5 border-b border-slate-200/80 pb-3">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <p className="ui-label text-slate-500">
                 {!simplified ? (
                   <>
                     {scopeLabelUpper}
@@ -417,7 +417,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
               </p>
               {!simplified && testExperience.headerContext ? (
                 <p
-                  className={`text-[0.8125rem] font-bold leading-snug tracking-[-0.02em] ${
+                  className={`ui-body-secondary font-bold ${
                     testExperience.headerContext.subdued ? 'text-slate-600' : 'text-slate-900'
                   }`}
                 >
@@ -425,7 +425,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                 </p>
               ) : null}
             </div>
-            <h2 className="text-[1.35rem] font-semibold leading-[1.4] tracking-[-0.025em] text-slate-950 sm:text-[1.5rem] sm:leading-[1.38]">
+            <h2 className="ui-heading-main text-slate-950">
               {displayQuestionNumber != null ? (
                 <span className="mr-1.5 font-bold text-slate-500">{displayQuestionNumber}.</span>
               ) : null}
@@ -528,7 +528,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                       allOptions={optionTextsForCompare}
                       optionIndex={optionIdx}
                       disabled={!statementHighlightEnabled}
-                      className={`min-w-0 flex-1 break-words hyphens-auto text-[0.98rem] font-medium leading-[1.55] sm:text-[1rem] sm:leading-[1.52] ${
+                      className={`min-w-0 flex-1 break-words hyphens-auto text-[1.02rem] font-medium leading-[1.68] tracking-[-0.012em] sm:text-[1.03rem] sm:leading-[1.66] ${
                         isCorrectOption ? 'text-emerald-900' : isWrongSelected ? 'text-rose-900' : 'text-slate-800'
                       }`}
                     />
@@ -539,7 +539,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
 
             {behavioralMicroLine ? (
               <p
-                className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-800/85"
+                className="ui-button-label text-center text-emerald-800/85"
                 aria-hidden="true"
               >
                 {behavioralMicroLine}
@@ -589,11 +589,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                   <AlertCircle aria-hidden="true" size={40} strokeWidth={1.5} />
                 </div>
 
-                <h3 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                <h3 className="text-[2rem] font-black tracking-[-0.04em] text-slate-950 sm:text-[2.2rem]">
                   Señal de <span className="text-rose-600">Fatiga</span>
                 </h3>
 
-                <p className="mt-4 text-sm font-semibold leading-relaxed text-slate-500">
+                <p className="ui-body-main mt-4 text-slate-500">
                   Llevas muchas preguntas seguidas. Un descanso ahora puede ayudarte a consolidar
                   mejor lo que has repasado.
                 </p>
@@ -601,14 +601,14 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                 <div className="mt-8 space-y-3">
                   <Button
                     onClick={() => setIsFatigueModalOpen(false)}
-                    className="w-full h-14 rounded-2xl bg-rose-600 text-lg font-bold text-white shadow-lg hover:bg-rose-700 hover:shadow-rose-600/20 active:scale-[0.98]"
+                    className="w-full h-14 rounded-2xl bg-rose-600 text-[1.02rem] font-black tracking-[-0.015em] text-white shadow-lg hover:bg-rose-700 hover:shadow-rose-600/20 active:scale-[0.98]"
                   >
                     Continuar bajo mi riesgo
                   </Button>
                   <Button
                     onClick={() => (window.location.href = '/dashboard')}
                     variant="ghost"
-                    className="w-full h-14 rounded-2xl text-base font-bold text-slate-500 hover:bg-slate-50 active:scale-[0.98]"
+                    className="w-full h-14 rounded-2xl text-[0.98rem] font-bold tracking-[-0.01em] text-slate-500 hover:bg-slate-50 active:scale-[0.98]"
                   >
                     Pausar sesión (Recomendado)
                   </Button>
@@ -616,7 +616,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
 
                 <div className="mt-6 flex items-center justify-center gap-2">
                   <span className="h-1 w-1 rounded-full bg-slate-300" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <p className="ui-label text-slate-400">
                     Protección de memoria activa
                   </p>
                   <span className="h-1 w-1 rounded-full bg-slate-300" />

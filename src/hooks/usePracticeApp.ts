@@ -3,7 +3,11 @@ import type { AccountIdentity } from '../services/accountApi';
 import { buildProvisionalAccountIdentity } from '../services/accountApi';
 import { buildPracticeCoachPlanV2Bundle, toCoachDecisionLog } from '../domain/learningEngine';
 import { PRACTICE_BATCH_SIZE } from '../practiceConfig';
-import { GUEST_MAX_BLOCKS, persistGuestBlocksUsed, readGuestBlocksUsed } from './practiceAppStorage';
+import {
+  GUEST_MAX_BLOCKS,
+  persistGuestBlocksUsed,
+  readGuestBlocksUsed,
+} from './practiceAppStorage';
 import {
   computeGuestBlocksRemaining,
   computeRecommendedBatchNumber,
@@ -124,18 +128,16 @@ export const usePracticeApp = () => {
     });
     // Compatibilidad: exponemos `planV2` (fuente de verdad) y mantenemos el alias legacy debug.
     return { coachPlan: nextCoachPlan, planV2, coachPlanV2ForDebug: planV2 };
-  },
-    [
-      examTarget,
-      learningDashboard,
-      learningDashboardV2,
-      pressureInsights,
-      pressureInsightsV2,
-      recentSessions,
-      recommendedBatchNumber,
-      totalBatches,
-    ],
-  );
+  }, [
+    examTarget,
+    learningDashboard,
+    learningDashboardV2,
+    pressureInsights,
+    pressureInsightsV2,
+    recentSessions,
+    recommendedBatchNumber,
+    totalBatches,
+  ]);
 
   const coachDecisionLog = useMemo(
     () => (debugCoachV2 ? toCoachDecisionLog(coachPlanV2ForDebug) : null),
@@ -178,6 +180,7 @@ export const usePracticeApp = () => {
     startSimulacro,
     startStandardSession,
     startLawSession,
+    startTopicSession,
     startWeakReview,
     view,
   } = usePracticeSessionFlow({
@@ -292,6 +295,7 @@ export const usePracticeApp = () => {
     weakCategories,
     weakQuestions,
     onStartLawTraining: startLawSession,
+    onStartTopicTraining: startTopicSession,
     pauseActiveSession,
     resumeActiveSession,
     setActiveTab,

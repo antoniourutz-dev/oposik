@@ -65,6 +65,7 @@ export type DashboardScreenProps = {
   onStartFromBeginning: () => void;
   onStartWeakReview: () => void;
   onStartLawTraining: (ley: string) => void;
+  onStartTopicTraining: (topic: string) => void;
   /** Recorrido pregunta a pregunta de todo el catálogo (solo común o solo específico). */
   onStartCatalogReview: (scope: 'common' | 'specific') => void;
   onReloadQuestions: () => void;

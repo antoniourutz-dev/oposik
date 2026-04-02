@@ -211,7 +211,7 @@ const ReviewEntryCard = React.memo(
     microTags = [],
     showErrorTypeLabel = false,
     isPriorityFocus = false,
-    textHighlightingEnabled = true,
+    textHighlightingEnabled = false,
   }: {
     entry: ReviewEntry;
     sessionId?: string | null;
@@ -241,34 +241,34 @@ const ReviewEntryCard = React.memo(
           <div className="flex flex-col gap-2">
             <div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.18))] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
+                <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.18))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
                   Pregunta {reviewIndex + 1}
                 </span>
                 {answer.changedAnswer && (
-                  <span className="rounded-full bg-amber-50 border border-amber-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-600 flex items-center gap-1">
+                  <span className="rounded-full bg-amber-50 border border-amber-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-amber-600 flex items-center gap-1">
                     <RotateCcw size={10} /> Indecisión
                   </span>
                 )}
                 {answer.question.category ? (
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
                     {answer.question.category}
                   </span>
                 ) : null}
                 {showErrorTypeLabel && answer.errorTypeInferred ? (
-                  <span className="rounded-full bg-white/90 border border-slate-200 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
+                  <span className="rounded-full bg-white/90 border border-slate-200 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
                     {getErrorTypeLabel(answer.errorTypeInferred) ?? 'Error'}
                   </span>
                 ) : null}
                 {microTags.map((t) => (
                   <span
                     key={t}
-                    className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-700"
+                    className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-amber-700"
                   >
                     {t}
                   </span>
                 ))}
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] ${
                     answer.isCorrect
                       ? 'bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(74,222,128,0.14))] text-emerald-700'
                       : 'bg-[linear-gradient(135deg,rgba(244,63,94,0.12),rgba(251,113,133,0.14))] text-rose-700'
@@ -278,7 +278,7 @@ const ReviewEntryCard = React.memo(
                   {answer.isCorrect ? 'Correcta' : 'Incorrecta'}
                 </span>
               </div>
-              <h3 className="mt-2 text-[0.98rem] font-extrabold leading-6 tracking-[-0.01em] text-slate-900 sm:text-[1.06rem] sm:leading-7">
+              <h3 className="mt-2 text-[1.05rem] font-extrabold leading-[1.5] tracking-[-0.02em] text-slate-900 sm:text-[1.1rem] sm:leading-[1.52]">
                 {answer.question.statement}
               </h3>
             </div>
@@ -292,19 +292,19 @@ const ReviewEntryCard = React.memo(
                   : 'border-rose-200 bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))]'
               }`}
             >
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+              <p className="ui-label text-slate-500">
                 Tu respuesta
               </p>
-              <p className="mt-1.5 text-[13px] font-semibold leading-5 text-slate-800 sm:text-sm sm:leading-6">
+              <p className="mt-1.5 text-[0.94rem] font-semibold leading-[1.58] text-slate-800 sm:text-[0.97rem] sm:leading-[1.62]">
                 {selectedKey ? `${selectedKey.toUpperCase()}) ${selectedText}` : 'Sin responder'}
               </p>
             </div>
 
             <div className="rounded-[1rem] border border-white/80 bg-[linear-gradient(180deg,rgba(236,246,255,0.9),rgba(241,247,255,0.92))] px-3.5 py-2.5">
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+              <p className="ui-label text-slate-500">
                 Respuesta correcta
               </p>
-              <p className="mt-1.5 text-[13px] font-semibold leading-5 text-slate-800 sm:text-sm sm:leading-6">
+              <p className="mt-1.5 text-[0.94rem] font-semibold leading-[1.58] text-slate-800 sm:text-[0.97rem] sm:leading-[1.62]">
                 {`${correctKey.toUpperCase()}) ${correctText}`}
               </p>
             </div>
@@ -312,10 +312,10 @@ const ReviewEntryCard = React.memo(
 
           {!answer.isCorrect && answer.errorTypeInferred ? (
             <div className="rounded-[1rem] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(254,243,199,0.72))] px-3.5 py-2.5">
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-700">
+              <p className="ui-label text-amber-700">
                 Clave del fallo
               </p>
-              <p className="mt-1.5 text-[13px] font-semibold leading-5 text-amber-950 sm:text-sm sm:leading-6">
+              <p className="mt-1.5 text-[0.94rem] font-semibold leading-[1.58] text-amber-950 sm:text-[0.97rem] sm:leading-[1.62]">
                 {getErrorTypeLabel(answer.errorTypeInferred) ?? 'Memoria fragil'}
               </p>
             </div>
@@ -324,7 +324,7 @@ const ReviewEntryCard = React.memo(
           {answer.timeToFirstSelectionMs && (
             <div className="flex items-center gap-4 px-1">
               <div className="flex-1">
-                <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
+                <p className="ui-label text-slate-400">
                   Velocidad de decisión
                 </p>
                 <div className="mt-1.5 h-1 w-full rounded-full bg-slate-100 overflow-hidden">
@@ -339,7 +339,7 @@ const ReviewEntryCard = React.memo(
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-black text-slate-600">
+                <p className="text-[11px] font-black tracking-[-0.01em] text-slate-600">
                   {Math.round(answer.timeToFirstSelectionMs / 100) / 10}s
                 </p>
               </div>
@@ -365,7 +365,7 @@ const ReviewEntryCard = React.memo(
               }).catch(() => {});
             }}
           >
-            <summary className="flex cursor-pointer list-none items-center gap-2 text-[13px] font-extrabold text-indigo-900 transition-colors hover:text-indigo-950 sm:text-sm">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-[0.94rem] font-extrabold tracking-[-0.01em] text-indigo-900 transition-colors hover:text-indigo-950">
               <BookOpenText size={16} />
               Ver explicacion
             </summary>
@@ -409,7 +409,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   onRetryBatch,
   onContinue,
   onBackToStart,
-  textHighlightingEnabled = true,
+  textHighlightingEnabled = false,
 }) => {
   const totalQuestions = Math.max(sessionQuestionCount ?? answers.length, answers.length);
   const answeredCount = answers.length;
@@ -817,11 +817,11 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           </div>
 
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-black text-slate-400 tracking-tight">
+            <span className="text-[11px] font-black text-slate-400 tracking-[-0.02em]">
               {answeredCount}/{totalQuestions}
             </span>
             {resolvedTimeLabel ? (
-              <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 bg-white/90 px-2.5 py-1 text-[10px] font-bold text-slate-600 shadow-sm">
+              <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 bg-white/90 px-2.5 py-1 text-[11px] font-bold text-slate-600 shadow-sm">
                 {resolvedTimeLabel}
               </span>
             ) : null}
@@ -834,16 +834,16 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_70%_at_0%_0%,rgba(255,255,255,0.08),transparent_45%)]" />
           <div className="relative min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.18em] text-violet-200/95">
+              <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-violet-200/95">
                 {simplified ? 'Revisión' : reviewClosure.dominantEyebrow}
               </span>
               {!simplified ? (
                 <>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-violet-100/80">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-violet-100/80">
                     {sessionPresentation.eyebrow}
                   </span>
                   <span
-                    className={`rounded-full border px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] ${
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] ${
                       percentage >= 70
                         ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100'
                         : percentage >= 55
@@ -856,18 +856,18 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                 </>
               ) : null}
             </div>
-            <h2 className="mt-4 text-[1.2rem] font-black leading-[1.12] tracking-[-0.04em] text-white sm:text-[1.45rem]">
+            <h2 className="mt-4 text-[1.36rem] font-black leading-[1.08] tracking-[-0.05em] text-white sm:text-[1.56rem]">
               {simplified ? simplifiedHeroHeadline : reviewClosure.dominantTitle}
             </h2>
-            <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-violet-200/75">
+            <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-violet-200/75">
               {title || `Bloque ${batchNumber} de ${totalBatches}`}
             </p>
             {!simplified ? (
               <>
-                <p className="mt-4 text-[0.9375rem] font-medium leading-relaxed text-violet-100/88">
+                <p className="mt-4 text-[1rem] font-medium leading-[1.64] text-violet-100/88">
                   {reviewClosure.supportingLine}
                 </p>
-                <p className="mt-4 border-t border-white/10 pt-4 text-[0.8125rem] font-semibold leading-snug text-indigo-100/90">
+                <p className="mt-4 border-t border-white/10 pt-4 text-[0.9rem] font-semibold leading-[1.54] text-indigo-100/90">
                   <span className="text-violet-200/80">Preparador · </span>
                   {sessionEndExperience.closingMessage.title}
                   <span className="font-medium text-indigo-100/75">
@@ -887,7 +887,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
               <Target size={20} />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <p className="ui-label text-slate-400">
                 Cómo se ha notado en la ejecución
               </p>
               <h3 className="text-base font-black text-slate-950 tracking-tight sm:text-lg">
@@ -920,10 +920,10 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                     className="h-full rounded-full bg-rose-400"
                   />
                 </div>
-                <p className="mt-2 text-[10px] font-medium leading-snug text-slate-500">
+                <p className="mt-2 text-[12px] font-medium leading-[1.55] text-slate-500">
                   Respuestas marcadas en menos de 3 s: más riesgo de leer de más prisa que de saber de menos.
                 </p>
-                <p className="mt-2 text-[10px] font-bold leading-snug text-rose-700/95">
+                <p className="mt-2 text-[12px] font-bold leading-[1.55] text-rose-700/95">
                   Corrección: baja la velocidad de la primera decisión; termina el enunciado antes de fijarte en
                   opciones.
                 </p>
@@ -946,20 +946,20 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                     className="h-full rounded-full bg-emerald-400"
                   />
                 </div>
-                <p className="mt-2 text-[10px] font-medium leading-snug text-slate-500">
+                <p className="mt-2 text-[12px] font-medium leading-[1.55] text-slate-500">
                   Cambiaste y acertaste: el proceso fue bueno; evita alargar demasiado cada ida y vuelta.
                 </p>
-                <p className="mt-2 text-[10px] font-bold leading-snug text-emerald-800/95">
+                <p className="mt-2 text-[12px] font-bold leading-[1.55] text-emerald-800/95">
                   Corrección: repite ese proceso sin estirarlo; valida antes de marcar si vas justo de tiempo.
                 </p>
               </div>
             </div>
 
             <div className="flex flex-col justify-center rounded-2xl border border-indigo-400/25 bg-[linear-gradient(165deg,#1e1b4b_0%,#312e81_100%)] p-4 text-white shadow-inner sm:p-5">
-              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-indigo-200/90">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-200/90">
                 Una frase del preparador
               </p>
-              <p className="mt-3 text-[0.95rem] font-bold leading-snug tracking-[-0.02em]">
+              <p className="mt-3 text-[1.02rem] font-bold leading-[1.58] tracking-[-0.018em]">
                 {overconfidenceScore > 0.3
                   ? 'Lee el enunciado entero antes de tocar opción: suele costar menos que volver a fallar por prisa.'
                   : fatigueScore > 0.4
@@ -977,7 +977,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                 <Target size={20} />
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <p className="ui-label text-slate-400">
                   Dónde ha pesado la norma
                 </p>
                 <h3 className="text-base font-black tracking-tight text-slate-950 sm:text-lg">
@@ -1003,30 +1003,30 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
             <div
               className={`rounded-[1.05rem] border px-3 py-3 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.12)] ${scoreSurfaceClass}`}
             >
-              <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+              <p className="ui-label text-slate-500">
                 Resultado (contexto)
               </p>
-              <p className="mt-1.5 text-[1.65rem] font-black leading-none tracking-[-0.04em] text-slate-950 sm:text-[1.85rem]">
+              <p className="mt-1.5 text-[1.78rem] font-black leading-none tracking-[-0.05em] text-slate-950 sm:text-[1.92rem]">
                 {score}
                 <span className="text-[0.85rem] text-slate-400 sm:text-[1rem]">
                   {' '}
                   / {totalQuestions}
                 </span>
               </p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-500">{percentage}% acierto</p>
+              <p className="mt-1 text-[12px] font-semibold text-slate-500">{percentage}% acierto</p>
             </div>
 
             <div
               className={`rounded-[1.05rem] border px-3 py-3 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.12)] ${nextStepSurfaceClass}`}
             >
-              <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+              <p className="ui-label text-slate-500">
                 {simplified ? 'Siguiente' : 'Siguiente lectura'}
               </p>
-              <p className="mt-1.5 text-[0.92rem] font-black leading-[1.12] text-slate-950 sm:text-[0.98rem]">
+              <p className="mt-1.5 text-[1rem] font-black leading-[1.2] tracking-[-0.02em] text-slate-950 sm:text-[1.04rem]">
                 {simplified ? simplifiedReviewHint : reviewExperience.summary.title}
               </p>
               {!simplified ? (
-                <p className="mt-1.5 text-[11px] font-semibold leading-snug text-slate-600 sm:text-[12px]">
+                <p className="mt-1.5 text-[12px] font-semibold leading-[1.55] text-slate-600 sm:text-[13px]">
                   {reviewExperience.summary.subtitle ??
                     sessionEndExperience.nextStep.description ??
                     reviewClosure.outcomeSummary}
@@ -1038,35 +1038,35 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           {!simplified ? (
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-3 py-2.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
-                <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                <p className="ui-label text-slate-500">
                   Cierre
                 </p>
                 <p className="mt-1.5 text-[1rem] font-black leading-none text-slate-950">
                   {answeredCount}/{totalQuestions}
                 </p>
-                <p className="mt-1 text-[10px] font-semibold text-slate-400">
+                <p className="mt-1 text-[11px] font-semibold text-slate-400">
                   {unansweredCount > 0 ? `${unansweredCount} sin responder` : 'Sin huecos'}
                 </p>
               </div>
 
               <div className="rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-3 py-2.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
-                <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                <p className="ui-label text-slate-500">
                   Senal
                 </p>
-                <p className="mt-1.5 text-[13px] font-black leading-4 text-slate-950">
+                <p className="mt-1.5 text-[0.95rem] font-black leading-[1.22] text-slate-950">
                   {primarySignalLabel}
                 </p>
-                <p className="mt-1 text-[10px] font-semibold text-slate-400">Lectura de sesion</p>
+                <p className="mt-1 text-[11px] font-semibold text-slate-400">Lectura de sesion</p>
               </div>
 
               <div className="rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-3 py-2.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
-                <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                <p className="ui-label text-slate-500">
                   Tiempo
                 </p>
                 <p className="mt-1.5 text-[1rem] font-black leading-none text-slate-950">
                   {resolvedTimeLabel ?? '--'}
                 </p>
-                <p className="mt-1 text-[10px] font-semibold text-slate-400">
+                <p className="mt-1 text-[11px] font-semibold text-slate-400">
                   {timeLimitLabel ? 'Con limite' : 'Sin crono'}
                 </p>
               </div>
@@ -1079,10 +1079,10 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         <div className="rounded-[1.25rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] px-3.5 py-3 shadow-[0_20px_46px_-34px_rgba(141,147,242,0.16)]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+              <p className="ui-label text-slate-500">
                 Revisión precisa
               </p>
-              <p className="mt-1 text-[0.95rem] font-black leading-5 text-slate-950">
+              <p className="mt-1 text-[1.02rem] font-black leading-[1.25] tracking-[-0.02em] text-slate-950">
                 {reviewFilter === 'incorrect'
                   ? 'Donde más te ha costado'
                   : 'Todas las respuestas'}
@@ -1093,7 +1093,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                 type="button"
                 onClick={() => setReviewFilter('incorrect')}
                 disabled={incorrectCount === 0}
-                className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] transition-all duration-200 ${
+                className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] transition-all duration-200 ${
                   reviewFilter === 'incorrect'
                     ? 'quantia-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
                     : 'text-slate-500 hover:bg-sky-50/80'
@@ -1104,7 +1104,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setReviewFilter('all')}
-                className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] transition-all duration-200 ${
+                className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] transition-all duration-200 ${
                   reviewFilter === 'all'
                     ? 'quantia-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
                     : 'text-slate-500 hover:bg-sky-50/80'
@@ -1114,22 +1114,22 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
               </button>
             </div>
           </div>
-          <p className="mt-2 text-[12px] font-semibold text-slate-500">
+          <p className="mt-2 text-[13px] font-semibold leading-[1.5] text-slate-500">
             {reviewFilter === 'incorrect'
               ? `${incorrectCount} fallo${incorrectCount === 1 ? '' : 's'} en orden de prioridad`
               : `${answers.length} respuesta${answers.length === 1 ? '' : 's'} resuelta${answers.length === 1 ? '' : 's'}`}
           </p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
             Mostrando {renderedEntries.length} de {visibleEntries.length}
           </p>
         </div>
 
         {renderedEntries.length === 0 ? (
           <div className="rounded-[1.25rem] border border-dashed border-[#d7e4fb] bg-white/80 px-4 py-5 text-center shadow-[0_18px_34px_-30px_rgba(141,147,242,0.14)]">
-            <p className="text-[0.98rem] font-black text-slate-900">
+            <p className="text-[1.04rem] font-black tracking-[-0.02em] text-slate-900">
               No hay respuestas para revisar
             </p>
-            <p className="mt-1.5 text-[13px] font-semibold text-slate-500">
+            <p className="mt-1.5 text-[14px] font-semibold leading-[1.55] text-slate-500">
               Completa un bloque para abrir esta lectura con detalle.
             </p>
           </div>
@@ -1173,13 +1173,13 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
             ref={loadMoreSentinelRef}
             className="flex flex-col items-center gap-2 rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] px-4 py-3.5 shadow-[0_20px_40px_-34px_rgba(141,147,242,0.16)]"
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
               Quedan {remainingEntries} por cargar
             </p>
             <button
               type="button"
               onClick={loadMoreEntries}
-              className="rounded-full border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(141,147,242,0.18))] px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-800 shadow-[0_12px_24px_-20px_rgba(141,147,242,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98]"
+              className="rounded-full border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(141,147,242,0.18))] px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-800 shadow-[0_12px_24px_-20px_rgba(141,147,242,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98]"
             >
               Cargar {Math.min(REVIEW_RENDER_STEP, remainingEntries)} mas
             </button>
@@ -1189,10 +1189,12 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
 
       {!simplified && sessionEndExperience.microRewards.length > 0 ? (
         <div className="mx-3 mt-6 rounded-[1.1rem] border border-emerald-200/55 bg-emerald-50/45 px-3.5 py-3 sm:mx-2 lg:mx-4">
-          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-emerald-900/75">Proceso reconocido</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-900/75">
+            Proceso reconocido
+          </p>
           <ul className="mt-2 space-y-1">
             {sessionEndExperience.microRewards.map((line) => (
-              <li key={line} className="text-[12px] font-semibold leading-snug text-emerald-950/90">
+              <li key={line} className="text-[13px] font-semibold leading-[1.5] text-emerald-950/90">
                 · {line}
               </li>
             ))}
@@ -1206,7 +1208,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           <button
             type="button"
             onClick={onRetryBatch}
-            className="w-full py-4 bg-white text-slate-800 rounded-[28px] font-black text-sm shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)] border border-slate-200/80 transition-[transform,filter] duration-200 hover:brightness-[1.02] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55"
+            className="ui-button-text w-full rounded-[28px] border border-slate-200/80 bg-white py-4 text-slate-800 shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)] transition-[transform,filter] duration-200 hover:brightness-[1.02] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55"
           >
             Repetir
           </button>
@@ -1215,7 +1217,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         <button
           type="button"
           onClick={handleContinueCommitted}
-          className={`w-full py-5 bg-slate-950 text-white rounded-[28px] font-black text-[1.05rem] tracking-[-0.02em] shadow-[0_20px_50px_-24px_rgba(15,23,42,0.45)] ring-1 ring-white/10 transition-[transform,filter] duration-200 hover:brightness-[1.06] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 ${
+          className={`ui-button-text w-full rounded-[28px] bg-slate-950 py-5 text-white shadow-[0_20px_50px_-24px_rgba(15,23,42,0.45)] ring-1 ring-white/10 transition-[transform,filter] duration-200 hover:brightness-[1.06] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 ${
             showRetry ? 'mt-4' : 'mt-0'
           }`}
         >
@@ -1223,7 +1225,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         </button>
 
         {!simplified ? (
-          <p className="mx-auto mt-3 max-w-md text-center text-[11px] font-medium leading-snug text-slate-500">
+          <p className="mx-auto mt-3 max-w-md text-center text-[12px] font-medium leading-[1.55] text-slate-500">
             {sessionEndExperience.nextStep.description ??
               reviewExperience.summary.subtitle ??
               reviewClosure.nextFocus}

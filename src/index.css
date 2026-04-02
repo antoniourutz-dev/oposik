@@ -93,24 +93,93 @@ body {
 }
 
 .ui-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: rgba(100, 116, 139, 0.95);
+  letter-spacing: 0.14em;
+  line-height: 1.22;
 }
 
 .ui-title {
   font-weight: 900;
-  letter-spacing: -0.04em;
-  color: #0f172a;
+  letter-spacing: -0.045em;
+  line-height: 1.06;
 }
 
 .ui-body {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.6;
-  color: rgba(71, 85, 105, 0.95);
+  line-height: 1.66;
+}
+
+.ui-label-strong {
+  font-size: clamp(0.68rem, 0.64rem + 0.2vw, 0.76rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  line-height: 1.24;
+}
+
+.ui-display-hero {
+  font-size: clamp(1.82rem, 1.54rem + 1.16vw, 2.3rem);
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+}
+
+.ui-heading-main {
+  font-size: clamp(1.42rem, 1.2rem + 0.82vw, 1.78rem);
+  font-weight: 800;
+  line-height: 1.28;
+  letter-spacing: -0.032em;
+}
+
+.ui-heading-secondary {
+  font-size: clamp(1.02rem, 0.95rem + 0.36vw, 1.18rem);
+  font-weight: 800;
+  line-height: 1.28;
+  letter-spacing: -0.02em;
+}
+
+.ui-body-main {
+  font-size: clamp(0.95rem, 0.92rem + 0.16vw, 1rem);
+  font-weight: 600;
+  line-height: 1.62;
+  letter-spacing: -0.01em;
+}
+
+.ui-body-secondary {
+  font-size: clamp(0.88rem, 0.86rem + 0.12vw, 0.94rem);
+  font-weight: 600;
+  line-height: 1.56;
+}
+
+.ui-body-reading {
+  font-size: clamp(0.98rem, 0.95rem + 0.18vw, 1.05rem);
+  font-weight: 500;
+  line-height: 1.7;
+  letter-spacing: -0.012em;
+}
+
+.ui-button-text {
+  font-size: clamp(0.98rem, 0.94rem + 0.2vw, 1.08rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.016em;
+}
+
+.ui-button-label {
+  font-size: clamp(0.72rem, 0.68rem + 0.16vw, 0.8rem);
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.ui-microcopy {
+  font-size: clamp(0.78rem, 0.76rem + 0.08vw, 0.84rem);
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 @keyframes ui-skeleton-shimmer {

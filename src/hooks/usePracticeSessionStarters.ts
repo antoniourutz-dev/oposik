@@ -195,10 +195,20 @@ export const usePracticeSessionStarters = ({
         emptyMessage: `No se han encontrado preguntas para la ley: ${law}.`,
         fallbackErrorMessage: 'No se ha podido iniciar el entrenamiento por ley.',
       }),
+    startTopicSession: (topic: string) =>
+      void executeStarter({
+        command: async () => {
+          const { loadTopicSessionCommand } = await import('./practiceSessionStarterCommands');
+          return loadTopicSessionCommand({ topic });
+        },
+        emptyMessage: `No se han encontrado preguntas para el tema: ${topic}.`,
+        fallbackErrorMessage: 'No se ha podido iniciar el entrenamiento por tema.',
+      }),
     startCatalogReview: (scope: PracticeQuestionScope) =>
       void executeStarter({
         command: async () => {
-          const { loadCatalogReviewSessionCommand } = await import('./practiceSessionStarterCommands');
+          const { loadCatalogReviewSessionCommand } =
+            await import('./practiceSessionStarterCommands');
           return loadCatalogReviewSessionCommand({ scope });
         },
         emptyMessage: 'No hay preguntas en ese ámbito para analizar.',

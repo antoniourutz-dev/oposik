@@ -11,7 +11,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <Suspense fallback={<AppLoadingSurface label="Cargando aplicación" />}>
+    <Suspense fallback={<AppLoadingSurface />}>
       <PracticeAppShell />
     </Suspense>
   );

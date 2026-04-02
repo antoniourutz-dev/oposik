@@ -172,6 +172,26 @@ describe('practiceCloudMappers', () => {
       recommended_today_count: '22',
       recommended_mode: 'mixed',
       focus_message: 'Conviene consolidar antes de ampliar carga.',
+      topic_breakdown: [
+        {
+          topic_label: 'Tema 01. Organizacion del Estado',
+          raw_scope: 'common',
+          question_count: '24',
+          consolidated_count: '8',
+          attempts: '18',
+          correct_attempts: '12',
+          accuracy_rate: 0.6667,
+        },
+        {
+          topic_label: 'Tema 03. Potestad sancionadora',
+          raw_scope: 'specific',
+          question_count: '16',
+          consolidated_count: '4',
+          attempts: '10',
+          correct_attempts: '6',
+          accuracy_rate: 0.6,
+        },
+      ],
     });
 
     expect(dashboard).toMatchObject({
@@ -188,6 +208,26 @@ describe('practiceCloudMappers', () => {
       backlogOverdueCount: 12,
       recommendedMode: 'mixed',
     });
+    expect(dashboard?.topicBreakdown).toEqual([
+      {
+        topicLabel: 'Tema 01. Organizacion del Estado',
+        scope: 'common',
+        attempts: 18,
+        questionCount: 24,
+        consolidatedCount: 8,
+        correctAttempts: 12,
+        accuracyRate: 0.6667,
+      },
+      {
+        topicLabel: 'Tema 03. Potestad sancionadora',
+        scope: 'specific',
+        attempts: 10,
+        questionCount: 16,
+        consolidatedCount: 4,
+        correctAttempts: 6,
+        accuracyRate: 0.6,
+      },
+    ]);
   });
 
   it('convierte el objetivo de examen al contrato de frontend', () => {

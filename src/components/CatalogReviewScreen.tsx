@@ -23,7 +23,7 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
   scope,
   onNext,
   onExit,
-  textHighlightingEnabled = true,
+  textHighlightingEnabled = false,
 }) => {
   const optionEntries = Object.entries(question.options) as Array<[OptionKey, string]>;
   const isLast = questionIndex >= totalQuestions - 1;
@@ -84,7 +84,7 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
           <div className="pointer-events-none absolute -bottom-16 -left-10 h-36 w-36 rounded-full bg-sky-100 blur-3xl opacity-80" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_100%_0%,#ddd6fe_0%,transparent_55%)] opacity-40" />
           <div className="relative z-10 mb-4 flex items-center gap-2 sm:mb-5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-400/90">
+            <span className="ui-label text-violet-400/90">
               ENUNCIADO
             </span>
             <span
@@ -92,7 +92,7 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
               aria-hidden="true"
             />
           </div>
-          <div className="relative z-10 max-w-prose text-[1.05rem] font-medium leading-[1.82] tracking-tight text-slate-700 sm:text-[1.12rem] sm:leading-[1.78] xl:max-w-none xl:text-[1.08rem] xl:leading-[1.88] 2xl:text-[1.12rem] 2xl:leading-[1.9]">
+          <div className="relative z-10 max-w-prose text-[1.08rem] font-medium leading-[1.88] tracking-[-0.012em] text-slate-700 sm:text-[1.14rem] sm:leading-[1.82] xl:max-w-none xl:text-[1.1rem] xl:leading-[1.9] 2xl:text-[1.14rem] 2xl:leading-[1.92]">
             <StatementBody text={question.statement} highlightEnabled={textHighlightingEnabled} />
           </div>
         </div>
@@ -126,7 +126,7 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
                     {key.toUpperCase()}
                   </span>
                   <span
-                    className={`min-w-0 flex-1 pt-0.5 text-[1.02rem] font-semibold leading-relaxed sm:text-[1.06rem] xl:text-[1.04rem] ${
+                    className={`min-w-0 flex-1 pt-0.5 text-[1.04rem] font-semibold leading-[1.68] tracking-[-0.012em] sm:text-[1.08rem] xl:text-[1.06rem] ${
                       isCorrect ? 'text-emerald-950' : 'text-slate-800'
                     }`}
                   >
@@ -145,7 +145,7 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
         <button
           type="button"
           onClick={isLast ? onExit : onNext}
-          className="w-full py-5 bg-slate-900 text-white rounded-[28px] font-black text-lg shadow-xl transition-[transform,filter] duration-200 hover:brightness-[1.05] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55"
+          className="ui-button-text w-full rounded-[28px] bg-slate-900 py-5 text-white shadow-xl transition-[transform,filter] duration-200 hover:brightness-[1.05] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55"
         >
           {isLast ? 'Finalizar' : 'Siguiente'}
         </button>

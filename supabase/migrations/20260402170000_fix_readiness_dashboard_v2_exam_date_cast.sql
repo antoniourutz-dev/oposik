@@ -1,5 +1,6 @@
 begin;
 
+drop function if exists app.get_readiness_dashboard_v2(text);
 drop function if exists app.get_readiness_dashboard_v2(text, uuid);
 
 create or replace function app.get_readiness_dashboard_v2(
@@ -33,7 +34,8 @@ returns table (
   recommended_today_count integer,
   recommended_mode text,
   focus_message text,
-  law_breakdown jsonb
+  law_breakdown jsonb,
+  topic_breakdown jsonb
 )
 language plpgsql
 security definer
@@ -61,13 +63,18 @@ begin
         coalesce(et.exam_date::date - timezone('utc', now())::date, 0)
       )::integer as days_to_exam
     from app.exam_targets et
-    where et.user_id = v_user_id and et.curriculum = v_curriculum
+    where et.user_id = v_user_id
+      and et.curriculum = v_curriculum
     limit 1
   ),
   catalog as (
     select count(*)::integer as total_questions
     from public.preguntas p
     where coalesce(to_jsonb(p)->>'id', '') <> ''
+      and (
+        to_jsonb(p)->>'curriculum' is null
+        or to_jsonb(p)->>'curriculum' = v_curriculum
+      )
   ),
   state_metrics as (
     select
@@ -99,15 +106,22 @@ begin
   law_breakdown_data as (
     select
       to_jsonb(p)->>'ley_referencia' as ley_referencia,
-      min(coalesce(
-        to_jsonb(p)->>'grupo',
-        to_jsonb(p)->>'question_scope',
-        to_jsonb(p)->>'scope',
-        to_jsonb(p)->>'temario_tipo',
-        to_jsonb(p)->>'tipo_temario'
-      )) as raw_scope,
+      min(
+        coalesce(
+          to_jsonb(p)->>'grupo',
+          to_jsonb(p)->>'question_scope',
+          to_jsonb(p)->>'scope',
+          to_jsonb(p)->>'temario_tipo',
+          to_jsonb(p)->>'tipo_temario'
+        )
+      ) as raw_scope,
       count(distinct coalesce(to_jsonb(p)->>'id', ''))::integer as question_count,
-      count(*) filter (where qs.mastery_level >= 3)::integer as consolidated_count,
+      count(
+        distinct case
+          when qs.mastery_level >= 3 then coalesce(to_jsonb(p)->>'id', '')
+          else null
+        end
+      )::integer as consolidated_count,
       coalesce(sum(qs.attempts), 0)::integer as attempts,
       coalesce(sum(qs.correct_attempts), 0)::integer as correct_attempts,
       case
@@ -124,8 +138,52 @@ begin
       and qs.user_id = v_user_id
       and qs.curriculum = v_curriculum
     where coalesce(to_jsonb(p)->>'id', '') <> ''
+      and (
+        to_jsonb(p)->>'curriculum' is null
+        or to_jsonb(p)->>'curriculum' = v_curriculum
+      )
       and coalesce(to_jsonb(p)->>'ley_referencia', '') <> ''
     group by 1
+  ),
+  topic_breakdown_data as (
+    select
+      btrim(to_jsonb(p)->>'temario_pregunta') as topic_label,
+      coalesce(
+        to_jsonb(p)->>'grupo',
+        to_jsonb(p)->>'question_scope',
+        to_jsonb(p)->>'scope',
+        to_jsonb(p)->>'temario_tipo',
+        to_jsonb(p)->>'tipo_temario'
+      ) as raw_scope,
+      count(distinct coalesce(to_jsonb(p)->>'id', ''))::integer as question_count,
+      count(
+        distinct case
+          when qs.mastery_level >= 3 then coalesce(to_jsonb(p)->>'id', '')
+          else null
+        end
+      )::integer as consolidated_count,
+      coalesce(sum(qs.attempts), 0)::integer as attempts,
+      coalesce(sum(qs.correct_attempts), 0)::integer as correct_attempts,
+      case
+        when coalesce(sum(qs.attempts), 0) = 0 then 0::numeric
+        else round(
+          coalesce(sum(qs.correct_attempts), 0)::numeric /
+          coalesce(sum(qs.attempts), 1)::numeric,
+          4
+        )
+      end as accuracy_rate
+    from public.preguntas p
+    left join app.user_question_state qs
+      on qs.question_id = coalesce(to_jsonb(p)->>'id', '')
+      and qs.user_id = v_user_id
+      and qs.curriculum = v_curriculum
+    where coalesce(to_jsonb(p)->>'id', '') <> ''
+      and (
+        to_jsonb(p)->>'curriculum' is null
+        or to_jsonb(p)->>'curriculum' = v_curriculum
+      )
+      and coalesce(btrim(to_jsonb(p)->>'temario_pregunta'), '') <> ''
+    group by 1, 2
   ),
   composed as (
     select
@@ -182,20 +240,8 @@ begin
     composed.coverage_rate_value,
     composed.observed_accuracy_rate_value,
     composed.observed_accuracy_n,
-    round(
-      app.wilson_interval_low(
-        composed.observed_accuracy_successes,
-        composed.observed_accuracy_n
-      ),
-      4
-    ) as observed_accuracy_ci_low,
-    round(
-      app.wilson_interval_high(
-        composed.observed_accuracy_successes,
-        composed.observed_accuracy_n
-      ),
-      4
-    ) as observed_accuracy_ci_high,
+    round(app.wilson_interval_low(composed.observed_accuracy_successes, composed.observed_accuracy_n), 4) as observed_accuracy_ci_low,
+    round(app.wilson_interval_high(composed.observed_accuracy_successes, composed.observed_accuracy_n), 4) as observed_accuracy_ci_high,
     composed.observed_accuracy_n >= 30 as observed_accuracy_sample_ok,
     composed.retention_seen_rate_value,
     composed.seen_questions as retention_seen_n,
@@ -231,10 +277,8 @@ begin
     composed.solid_count,
     composed.mastered_count,
     case
-      when composed.overdue_count > 0
-        then least(composed.daily_review_capacity, composed.overdue_count)
-      when composed.fragile_count > 0
-        then least(composed.daily_review_capacity, composed.fragile_count)
+      when composed.overdue_count > 0 then least(composed.daily_review_capacity, composed.overdue_count)
+      when composed.fragile_count > 0 then least(composed.daily_review_capacity, composed.fragile_count)
       else 0
     end as recommended_review_count,
     case
@@ -243,10 +287,8 @@ begin
     end as recommended_new_count,
     (
       case
-        when composed.overdue_count > 0
-          then least(composed.daily_review_capacity, composed.overdue_count)
-        when composed.fragile_count > 0
-          then least(composed.daily_review_capacity, composed.fragile_count)
+        when composed.overdue_count > 0 then least(composed.daily_review_capacity, composed.overdue_count)
+        when composed.fragile_count > 0 then least(composed.daily_review_capacity, composed.fragile_count)
         else 0
       end
       +
@@ -299,7 +341,25 @@ begin
         '[]'::jsonb
       )
       from law_breakdown_data lbd
-    ) as law_breakdown
+    ) as law_breakdown,
+    (
+      select coalesce(
+        jsonb_agg(
+          jsonb_build_object(
+            'topic_label', tbd.topic_label,
+            'raw_scope', tbd.raw_scope,
+            'question_count', tbd.question_count,
+            'consolidated_count', tbd.consolidated_count,
+            'attempts', tbd.attempts,
+            'correct_attempts', tbd.correct_attempts,
+            'accuracy_rate', tbd.accuracy_rate
+          )
+          order by tbd.topic_label
+        ),
+        '[]'::jsonb
+      )
+      from topic_breakdown_data tbd
+    ) as topic_breakdown
   from composed;
 end;
 $$;

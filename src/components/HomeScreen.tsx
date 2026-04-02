@@ -140,7 +140,7 @@ export default function HomeScreen({
       {/* El header global (avatar + racha) vive en `TopBar` */}
 
       {sessionContinuityHint ? (
-        <div className="mt-4 rounded-[1.1rem] border border-violet-200/70 bg-violet-50/60 px-3.5 py-2.5 text-[11px] font-medium leading-snug text-slate-700 shadow-sm">
+        <div className="mt-4 rounded-[1.1rem] border border-violet-200/70 bg-violet-50/60 px-3.5 py-2.5 text-[12px] font-medium leading-[1.5] text-slate-700 shadow-sm">
           <span className="font-bold text-violet-900">Continuidad · </span>
           {sessionContinuityHint}
         </div>
@@ -219,16 +219,16 @@ function CoachHeroCard({
       />
 
       <div className="relative flex flex-col">
-        <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-violet-300/95">{eyebrow}</p>
+        <p className="ui-label-strong text-violet-300/95">{eyebrow}</p>
 
         <h2
           id="home-coach-hero-title"
-          className="mt-5 max-w-[17ch] text-balance text-[1.7rem] font-black leading-[1.06] tracking-[-0.048em] text-white sm:mt-6 sm:max-w-[19ch] sm:text-[1.95rem]"
+          className="ui-display-hero mt-5 max-w-[17ch] text-balance text-white sm:mt-6 sm:max-w-[19ch]"
         >
           {headline}
         </h2>
 
-        <p className="mt-6 max-w-[34ch] text-[0.875rem] font-medium leading-[1.45] text-violet-100/[0.72] sm:text-[0.9375rem] sm:leading-snug">
+        <p className="ui-body-main mt-6 max-w-[34ch] text-violet-100/[0.82]">
           {sub}
         </p>
 
@@ -237,7 +237,7 @@ function CoachHeroCard({
             type="button"
             disabled={disabled}
             onClick={onCta}
-            className="relative w-full overflow-hidden rounded-[1.25rem] bg-white py-[1.2rem] text-center text-[1.08rem] font-black tracking-[-0.03em] text-[#1e1b4b] shadow-[0_16px_48px_-10px_rgba(0,0,0,0.55),inset_0_2px_0_rgba(255,255,255,0.95)] ring-[3px] ring-white/30 transition-[transform,box-shadow,filter] duration-200 ease-out hover:brightness-[1.04] hover:ring-white/55 active:scale-[0.982] disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-[3px] focus-visible:ring-offset-[#1e153f] sm:rounded-[1.4rem] sm:py-[1.28rem] sm:text-[1.14rem]"
+            className="ui-button-text relative w-full overflow-hidden rounded-[1.25rem] bg-white py-[1.24rem] text-center text-[#1e1b4b] shadow-[0_16px_48px_-10px_rgba(0,0,0,0.55),inset_0_2px_0_rgba(255,255,255,0.95)] ring-[3px] ring-white/30 transition-[transform,box-shadow,filter] duration-200 ease-out hover:brightness-[1.04] hover:ring-white/55 active:scale-[0.982] disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-[3px] focus-visible:ring-offset-[#1e153f] sm:rounded-[1.4rem] sm:py-[1.28rem]"
           >
             <span className="relative z-[1]">{ctaLabel}</span>
           </button>
@@ -262,8 +262,8 @@ function SessionProgressCard({
 }) {
   return (
     <section className="rounded-[1.25rem] border border-slate-200/60 bg-slate-50/80 p-4 shadow-sm sm:p-5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Continuar sesión</p>
-      <p className="mt-2 text-[1.1rem] font-bold leading-snug tracking-[-0.03em] text-slate-950">
+      <p className="ui-label text-slate-500">Continuar sesión</p>
+      <p className="ui-heading-secondary mt-2 text-slate-950">
         {`Te quedan ${remainingQuestions} preguntas`}
       </p>
       <div className="mt-3.5 h-2.5 w-full overflow-hidden rounded-full bg-slate-200/80 ring-1 ring-slate-900/[0.04]">
@@ -277,7 +277,7 @@ function SessionProgressCard({
         type="button"
         disabled={disabled}
         onClick={onCta}
-        className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-full border border-slate-200/90 bg-white px-5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-800 transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
+        className="ui-button-label mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-full border border-slate-200/90 bg-white px-5 text-slate-800 transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
       >
         {ctaLabel}
       </button>
@@ -301,14 +301,14 @@ function SecondaryOptionCard({
   return (
     <section className="rounded-[1rem] border border-dashed border-slate-200/80 bg-transparent px-0.5 py-0.5">
       <div className="rounded-[0.9rem] border border-slate-100/95 bg-white/65 px-3 py-2.5 sm:px-3.5 sm:py-2.5">
-        <p className="text-[8px] font-semibold uppercase tracking-[0.2em] text-slate-400/95">Plan B</p>
-        <p className="mt-1 text-[0.9rem] font-semibold leading-tight tracking-[-0.02em] text-slate-800">{title}</p>
-        <p className="mt-0.5 text-[12px] font-medium leading-snug text-slate-500">{summary}</p>
+        <p className="ui-label text-slate-400/95">Plan B</p>
+        <p className="ui-heading-secondary mt-1 text-slate-800">{title}</p>
+        <p className="ui-body-secondary mt-1 text-slate-500">{summary}</p>
         <button
           type="button"
           disabled={disabled}
           onClick={onCta}
-          className="mt-2 inline-flex min-h-[34px] w-full items-center justify-center rounded-full border border-slate-200/85 bg-slate-50/95 px-3 text-[9px] font-bold uppercase tracking-[0.13em] text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/35"
+          className="ui-button-label mt-2 inline-flex min-h-[36px] w-full items-center justify-center rounded-full border border-slate-200/85 bg-slate-50/95 px-3 text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/35"
         >
           {cta}
         </button>

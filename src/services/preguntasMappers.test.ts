@@ -28,6 +28,8 @@ describe('preguntasMappers', () => {
       },
       correctOption: 'b',
       category: 'geografia',
+      ley_referencia: null,
+      topicLabel: null,
       questionScope: null,
       explanation: 'Paris es la capital de Francia.',
       editorialExplanation: 'La clave es simple: Paris es la capital de Francia.',

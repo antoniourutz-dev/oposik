@@ -71,7 +71,7 @@ describe('parseSyncPracticeSessionPayload', () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.curriculum).toBe('general');
+      expect(result.value.curriculum).toBe('osakidetza_admin');
       expect(result.value.session.id).toBe('s1');
       expect(result.value.attempts).toHaveLength(1);
       expect(result.value.attempts[0].question_id).toBe('q1');
@@ -79,4 +79,3 @@ describe('parseSyncPracticeSessionPayload', () => {
     }
   });
 });
-

@@ -4,7 +4,7 @@ import { HighlightedText } from './HighlightedText';
 /** Resalta `**términos**` manualmente; si no hay marcadores, aplica resaltado inteligente (dominio legal ES). */
 export function StatementBody({
   text,
-  highlightEnabled = true,
+  highlightEnabled = false,
 }: {
   text: string;
   /** Si es false, desactiva el resaltado inteligente (texto plano). */

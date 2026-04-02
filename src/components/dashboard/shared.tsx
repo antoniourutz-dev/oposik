@@ -70,11 +70,11 @@ export const SectionCard: React.FC<
     <div className="relative z-10">
       {title ? (
         <div className="mb-6">
-          <p className="text-[1.15rem] font-black tracking-[-0.04em] text-slate-950 sm:text-2xl">
+          <p className="text-[1.22rem] font-black leading-[1.08] tracking-[-0.045em] text-slate-950 sm:text-2xl">
             {title}
           </p>
           {hint ? (
-            <p className="mt-1.5 text-[14px] font-semibold leading-relaxed text-slate-400">
+            <p className="mt-1.5 text-[15px] font-semibold leading-[1.62] text-slate-400">
               {hint}
             </p>
           ) : null}
@@ -156,7 +156,7 @@ export const LawPerformanceCard: React.FC<{
               {ley_referencia}
             </p>
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-3">
+          <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
             {questionCount !== undefined && (
               <span className="text-slate-800 font-black">{questionCount} preg. &bull; </span>
             )}
@@ -228,7 +228,7 @@ export const NormativeRadar: React.FC<{
             {icon}
           </div>
           <h4 className="text-lg font-black text-slate-900 tracking-tight">{title}</h4>
-          <span className="ml-auto rounded-full bg-white/60 px-3 py-1 text-[10px] font-black tracking-widest text-slate-500">
+          <span className="ml-auto rounded-full bg-white/60 px-3 py-1 text-[11px] font-black tracking-[0.12em] text-slate-500">
             {list.length}
           </span>
         </div>
@@ -283,12 +283,12 @@ export const AnalyticsMiniTile: React.FC<{
         : 'border-white/40 bg-white/40 backdrop-blur-xl shadow-slate-200/40'
     }`}
   >
-    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
-    <p className="mt-2 text-[1.75rem] font-black leading-none tracking-tight text-slate-950">
+    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">{label}</p>
+    <p className="mt-2 text-[1.82rem] font-black leading-none tracking-[-0.04em] text-slate-950">
       {value}
     </p>
     {caption ? (
-      <p className="mt-1.5 text-[11px] font-semibold leading-relaxed text-slate-400">{caption}</p>
+      <p className="mt-1.5 text-[12px] font-semibold leading-[1.55] text-slate-400">{caption}</p>
     ) : null}
   </div>
 );
@@ -338,7 +338,7 @@ export const RankedMeterRow: React.FC<{
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-extrabold text-slate-900">{label}</p>
-          <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+          <p className="mt-1 text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-400">
             {detail}
           </p>
         </div>
@@ -576,13 +576,13 @@ export const RangeMeter: React.FC<{
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <div className="rounded-[0.95rem] bg-white/78 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
             Actual
           </p>
           <p className="mt-1 text-sm font-black text-slate-950">{currentPercent}%</p>
         </div>
         <div className="rounded-[0.95rem] bg-white/78 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
             Rango
           </p>
           <p className="mt-1 text-sm font-black text-slate-950">
@@ -590,7 +590,7 @@ export const RangeMeter: React.FC<{
           </p>
         </div>
         <div className="rounded-[0.95rem] bg-white/78 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
             Proyeccion
           </p>
           <p className="mt-1 text-sm font-black text-slate-950">
@@ -614,10 +614,10 @@ export const PressureComparisonMeter: React.FC<{
   return (
     <div className="rounded-[1.18rem] border border-slate-100/85 bg-[linear-gradient(180deg,rgba(248,252,255,0.98),rgba(242,247,255,0.92))] px-3.5 py-3 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.12)] sm:px-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
           Comparativa directa
         </p>
-        <span className="rounded-full bg-white/82 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+        <span className="rounded-full bg-white/82 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
           Brecha {gapLabel}
         </span>
       </div>
@@ -653,7 +653,7 @@ export const PressureComparisonMeter: React.FC<{
             key={row.label}
             className="grid grid-cols-[4.9rem_minmax(0,1fr)_2.8rem] items-center gap-2"
           >
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-500">
               {row.label}
             </span>
             <div className="relative h-3.5 overflow-hidden rounded-full bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
@@ -680,10 +680,12 @@ export const StatsDisclosure: React.FC<
     <summary className="cursor-pointer list-none">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-extrabold tracking-[-0.02em] text-slate-950">{title}</p>
-          <p className="mt-1 text-sm leading-6 text-slate-500">{hint}</p>
+          <p className="text-[1rem] font-extrabold leading-[1.2] tracking-[-0.025em] text-slate-950">
+            {title}
+          </p>
+          <p className="mt-1 text-[0.94rem] leading-[1.6] text-slate-500">{hint}</p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-500">
           ver
           <ArrowRight size={12} />
         </span>
@@ -715,11 +717,13 @@ export const StudyActionCard: React.FC<{
   >
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500">
           {label}
         </p>
-        <p className="mt-2 text-base font-extrabold leading-5 text-slate-950">{title}</p>
-        <p className="mt-1.5 text-sm leading-5 text-slate-500">{description}</p>
+        <p className="mt-2 text-[1.04rem] font-extrabold leading-[1.24] tracking-[-0.02em] text-slate-950">
+          {title}
+        </p>
+        <p className="mt-1.5 text-[0.95rem] leading-[1.58] text-slate-500">{description}</p>
       </div>
       <span
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] ${
@@ -732,7 +736,7 @@ export const StudyActionCard: React.FC<{
       </span>
     </div>
     <div className="mt-3 flex items-center justify-between gap-3">
-      <span className="rounded-full bg-white/78 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+      <span className="rounded-full bg-white/78 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
         {meta}
       </span>
       <ArrowRight size={16} className="text-slate-500" />
@@ -748,7 +752,9 @@ export const DashboardSegmentTile: React.FC<{
   <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
     <div className="mb-1.5 flex items-center gap-2">
       <span className={`h-2 w-2 rounded-full ${dotClassName}`} />
-      <span className="text-[9px] font-bold uppercase text-slate-400">{label}</span>
+      <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+        {label}
+      </span>
     </div>
     <p className="text-xl font-black leading-none text-slate-900">{value}</p>
   </div>
@@ -756,7 +762,7 @@ export const DashboardSegmentTile: React.FC<{
 
 export const DashboardTabFallback: React.FC<{ label: string }> = ({ label }) => (
   <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 pb-20">
-    <SectionCard title={label} hint="Cargando contenido">
+    <SectionCard title={label}>
       <div className="space-y-5" role="status" aria-live="polite" aria-busy="true">
         <SkeletonText lines={4} />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -821,7 +827,7 @@ export const CircularGauge: React.FC<{
           {Math.round(value)}%
         </p>
         <div className="mt-1 flex flex-col items-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+          <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
             {label}
           </p>
           {subLabel && <p className="text-[11px] font-bold text-slate-300 mt-0.5">{subLabel}</p>}
@@ -860,7 +866,7 @@ export const DashboardMetricTile: React.FC<{
     </div>
 
     <div className="mt-4">
-      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
+      <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
       <div className="mt-1 flex items-baseline gap-2">
         <p className={`text-2xl font-black ${accent ? 'text-slate-950' : 'text-slate-900'}`}>
           {value}
@@ -868,7 +874,7 @@ export const DashboardMetricTile: React.FC<{
         {trendLabel && <span className="text-xs font-bold text-slate-400">{trendLabel}</span>}
       </div>
       {caption && (
-        <p className="mt-1 text-[11px] font-semibold text-slate-400/80 line-clamp-1">{caption}</p>
+        <p className="mt-1 text-[12px] font-semibold text-slate-400/80 line-clamp-1">{caption}</p>
       )}
     </div>
   </div>

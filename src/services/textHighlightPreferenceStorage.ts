@@ -1,14 +1,14 @@
 const KEY = 'oposikapp_text_highlight_v1';
 
-/** Por defecto el marcaje editorial está activo. */
+/** Por defecto el marcaje editorial está desactivado. */
 export function readTextHighlightPreference(): boolean {
-  if (typeof localStorage === 'undefined') return true;
+  if (typeof localStorage === 'undefined') return false;
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw === null) return true;
+    if (raw === null) return false;
     return raw === '1' || raw === 'true';
   } catch {
-    return true;
+    return false;
   }
 }
 

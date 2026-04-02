@@ -1,5 +1,6 @@
 begin;
 
+drop function if exists app.get_readiness_dashboard_v2(text);
 drop function if exists app.get_readiness_dashboard_v2(text, uuid);
 
 create or replace function app.get_readiness_dashboard_v2(
@@ -33,7 +34,8 @@ returns table (
   recommended_today_count integer,
   recommended_mode text,
   focus_message text,
-  law_breakdown jsonb
+  law_breakdown jsonb,
+  topic_breakdown jsonb
 )
 language plpgsql
 security definer
@@ -61,13 +63,18 @@ begin
         coalesce(et.exam_date::date - timezone('utc', now())::date, 0)
       )::integer as days_to_exam
     from app.exam_targets et
-    where et.user_id = v_user_id and et.curriculum = v_curriculum
+    where et.user_id = v_user_id
+      and et.curriculum = v_curriculum
     limit 1
   ),
   catalog as (
     select count(*)::integer as total_questions
     from public.preguntas p
     where coalesce(to_jsonb(p)->>'id', '') <> ''
+      and (
+        to_jsonb(p)->>'curriculum' is null
+        or to_jsonb(p)->>'curriculum' = v_curriculum
+      )
   ),
   state_metrics as (
     select
@@ -99,15 +106,17 @@ begin
   law_breakdown_data as (
     select
       to_jsonb(p)->>'ley_referencia' as ley_referencia,
-      min(coalesce(
-        to_jsonb(p)->>'grupo',
-        to_jsonb(p)->>'question_scope',
-        to_jsonb(p)->>'scope',
-        to_jsonb(p)->>'temario_tipo',
-        to_jsonb(p)->>'tipo_temario'
-      )) as raw_scope,
+      min(
+        coalesce(
+          to_jsonb(p)->>'grupo',
+          to_jsonb(p)->>'question_scope',
+          to_jsonb(p)->>'scope',
+          to_jsonb(p)->>'temario_tipo',
+          to_jsonb(p)->>'tipo_temario'
+        )
+      ) as raw_scope,
       count(distinct coalesce(to_jsonb(p)->>'id', ''))::integer as question_count,
-      count(*) filter (where qs.mastery_level >= 3)::integer as consolidated_count,
+      count(distinct case when qs.mastery_level >= 3 then coalesce(to_jsonb(p)->>'id', '') end)::integer as consolidated_count,
       coalesce(sum(qs.attempts), 0)::integer as attempts,
       coalesce(sum(qs.correct_attempts), 0)::integer as correct_attempts,
       case
@@ -124,8 +133,47 @@ begin
       and qs.user_id = v_user_id
       and qs.curriculum = v_curriculum
     where coalesce(to_jsonb(p)->>'id', '') <> ''
+      and (
+        to_jsonb(p)->>'curriculum' is null
+        or to_jsonb(p)->>'curriculum' = v_curriculum
+      )
       and coalesce(to_jsonb(p)->>'ley_referencia', '') <> ''
     group by 1
+  ),
+  topic_breakdown_data as (
+    select
+      btrim(to_jsonb(p)->>'temario_pregunta') as topic_label,
+      coalesce(
+        to_jsonb(p)->>'grupo',
+        to_jsonb(p)->>'question_scope',
+        to_jsonb(p)->>'scope',
+        to_jsonb(p)->>'temario_tipo',
+        to_jsonb(p)->>'tipo_temario'
+      ) as raw_scope,
+      count(distinct coalesce(to_jsonb(p)->>'id', ''))::integer as question_count,
+      count(distinct case when qs.mastery_level >= 3 then coalesce(to_jsonb(p)->>'id', '') end)::integer as consolidated_count,
+      coalesce(sum(qs.attempts), 0)::integer as attempts,
+      coalesce(sum(qs.correct_attempts), 0)::integer as correct_attempts,
+      case
+        when coalesce(sum(qs.attempts), 0) = 0 then 0::numeric
+        else round(
+          coalesce(sum(qs.correct_attempts), 0)::numeric /
+          coalesce(sum(qs.attempts), 1)::numeric,
+          4
+        )
+      end as accuracy_rate
+    from public.preguntas p
+    left join app.user_question_state qs
+      on qs.question_id = coalesce(to_jsonb(p)->>'id', '')
+      and qs.user_id = v_user_id
+      and qs.curriculum = v_curriculum
+    where coalesce(to_jsonb(p)->>'id', '') <> ''
+      and (
+        to_jsonb(p)->>'curriculum' is null
+        or to_jsonb(p)->>'curriculum' = v_curriculum
+      )
+      and coalesce(btrim(to_jsonb(p)->>'temario_pregunta'), '') <> ''
+    group by 1, 2
   ),
   composed as (
     select
@@ -299,11 +347,67 @@ begin
         '[]'::jsonb
       )
       from law_breakdown_data lbd
-    ) as law_breakdown
+    ) as law_breakdown,
+    (
+      select coalesce(
+        jsonb_agg(
+          jsonb_build_object(
+            'topic_label', tbd.topic_label,
+            'raw_scope', tbd.raw_scope,
+            'question_count', tbd.question_count,
+            'consolidated_count', tbd.consolidated_count,
+            'attempts', tbd.attempts,
+            'correct_attempts', tbd.correct_attempts,
+            'accuracy_rate', tbd.accuracy_rate
+          )
+          order by tbd.topic_label
+        ),
+        '[]'::jsonb
+      )
+      from topic_breakdown_data tbd
+    ) as topic_breakdown
   from composed;
 end;
 $$;
 
 grant execute on function app.get_readiness_dashboard_v2(text, uuid) to authenticated;
+
+drop function if exists app.get_topic_practice_batch(text, text, integer);
+
+create or replace function app.get_topic_practice_batch(
+  p_topic text,
+  p_curriculum text default 'general',
+  p_batch_size integer default 20
+)
+returns table (
+  payload jsonb
+)
+language plpgsql
+security definer
+set search_path = app, public, auth
+as $$
+declare
+  v_limit integer := greatest(1, least(coalesce(p_batch_size, 20), 100));
+  v_curriculum text := coalesce(nullif(trim(p_curriculum), ''), 'general');
+begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated' using errcode = '42501';
+  end if;
+
+  return query
+  select to_jsonb(p) as payload
+  from public.preguntas p
+  where coalesce(to_jsonb(p)->>'id', '') <> ''
+    and (
+      to_jsonb(p)->>'curriculum' is null
+      or to_jsonb(p)->>'curriculum' = v_curriculum
+    )
+    and btrim(coalesce(to_jsonb(p)->>'temario_pregunta', '')) = btrim(coalesce(p_topic, ''))
+  order by random()
+  limit v_limit;
+end;
+$$;
+
+grant execute on function app.get_topic_practice_batch(text, text, integer) to authenticated;
 
 commit;

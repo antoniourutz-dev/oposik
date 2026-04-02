@@ -29,6 +29,7 @@ export interface PracticeQuestion {
   correctOption: OptionKey;
   category: string | null;
   ley_referencia?: string | null;
+  topicLabel?: string | null;
   questionScope?: PracticeQuestionScope | null;
   explanation: string | null;
   editorialExplanation?: string | null;
@@ -159,6 +160,17 @@ export interface PracticeLawPerformance {
   accuracyRate: number;
 }
 
+export interface PracticeTopicPerformance {
+  topicLabel: string;
+  scope?: 'common' | 'specific' | 'unknown';
+  attempts: number;
+  questionCount?: number;
+  /** Preguntas con `mastery_level >= 3` (solid o mastered). */
+  consolidatedCount?: number;
+  correctAttempts: number;
+  accuracyRate: number;
+}
+
 export interface PracticeLearningDashboardV2 {
   totalQuestions: number;
   seenQuestions: number;
@@ -187,6 +199,7 @@ export interface PracticeLearningDashboardV2 {
   recommendedMode: PracticeMode;
   focusMessage: string;
   lawBreakdown?: PracticeLawPerformance[];
+  topicBreakdown?: PracticeTopicPerformance[];
 }
 
 export interface PracticeExamTarget {

@@ -314,3 +314,28 @@ export const buildLawPracticeSession = (
     nextStandardBatchStartIndex: null,
   };
 };
+
+export const buildTopicPracticeSession = (
+  questions: PracticeQuestion[],
+  topic: string,
+): ActivePracticeSession | null => {
+  const uniqueQuestions = dedupeQuestions(questions);
+  if (uniqueQuestions.length === 0) return null;
+
+  return {
+    id: buildSessionId(),
+    mode: 'random',
+    feedbackMode: 'immediate',
+    title: topic,
+    subtitle: `Entrenamiento monografico centrado en ${topic}.`,
+    questions: uniqueQuestions,
+    startedAt: new Date().toISOString(),
+    timeLimitSeconds: null,
+    batchNumber: 1,
+    totalBatches: 1,
+    questionScope: 'all',
+    batchStartIndex: null,
+    continueLabel: 'Volver al panel',
+    nextStandardBatchStartIndex: null,
+  };
+};

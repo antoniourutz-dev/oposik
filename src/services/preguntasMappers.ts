@@ -142,6 +142,8 @@ export const mapQuestion = (row: Record<string, unknown>): PracticeQuestion | nu
     options,
     correctOption,
     category: pickFirstText(row, ['category', 'tema', 'topic', 'subject', 'materia', 'subtema']),
+    ley_referencia: pickFirstText(row, ['ley_referencia', 'law_reference', 'ley']),
+    topicLabel: pickFirstText(row, ['temario_pregunta', 'topic_label', 'tema_label', 'tema']),
     questionScope: readQuestionScopeFromRow(row),
     explanation: pickFirstText(row, ['explicacion', 'explanation', 'justificacion']),
     editorialExplanation: pickFirstText(row, [

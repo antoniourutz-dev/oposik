@@ -262,7 +262,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
                       className="group w-full h-16 rounded-[1.4rem] bg-indigo-600 px-6 font-black uppercase tracking-[0.18em] text-white shadow-xl shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50"
                     >
                       <span className="flex items-center justify-center gap-2">
-                        {guestSubmitting ? 'Cargando Pruebas...' : 'Iniciar Tour Invitado'}
+                        Iniciar Tour Invitado
                         <ArrowRight size={18} />
                       </span>
                     </button>

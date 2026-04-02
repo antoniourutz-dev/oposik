@@ -1,55 +1,127 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ChevronRight, Shuffle, Zap } from 'lucide-react';
+import { BookOpenCheck, ChevronRight, Shuffle, Zap } from 'lucide-react';
+import type { PracticeTopicPerformance } from '../../practiceTypes';
 import type { DashboardContentProps } from './types';
 
-type ThemeCategoryId = 'common' | 'specific';
+type TopicCategoryId = 'common' | 'specific';
+
+const EXPECTED_TOPICS_BY_SCOPE: Record<TopicCategoryId, number> = {
+  common: 19,
+  specific: 12,
+};
 
 const clampPct = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 const safeDivPct = (num: number, den: number) => (den <= 0 ? 0 : clampPct((num / den) * 100));
+const normalizeTopicKey = (label: string) =>
+  label.normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
+
+const TOPIC_PREFIX_RE = /^\s*(\d{1,2})\s*\.\s*[–-]\s*/;
+
+const extractTopicOrder = (label: string) => {
+  const prefixedMatch = label.match(TOPIC_PREFIX_RE);
+  const fallbackMatch = label.match(/\btema\s*(\d{1,2})\b/i) ?? label.match(/\b(\d{1,2})\b/);
+  const match = prefixedMatch ?? fallbackMatch;
+  if (!match) return Number.POSITIVE_INFINITY;
+  return Number.parseInt(match[1] ?? '', 10) || Number.POSITIVE_INFINITY;
+};
+
+const stripTopicPrefix = (label: string) =>
+  label.replace(TOPIC_PREFIX_RE, '').replace(/\s+/g, ' ').trim();
+
+const sortTopics = (topics: PracticeTopicPerformance[]) =>
+  [...topics].sort((a, b) => {
+    const orderA = extractTopicOrder(a.topicLabel);
+    const orderB = extractTopicOrder(b.topicLabel);
+    if (orderA !== orderB) return orderA - orderB;
+    return a.topicLabel.localeCompare(b.topicLabel, 'es', { sensitivity: 'base' });
+  });
+
+const dedupeTopics = (topics: PracticeTopicPerformance[]) => {
+  const byKey = new Map<string, PracticeTopicPerformance>();
+
+  for (const topic of topics) {
+    const topicLabel = topic.topicLabel.trim();
+    if (!topicLabel) continue;
+
+    const topicOrder = extractTopicOrder(topicLabel);
+    const key =
+      Number.isFinite(topicOrder) && topicOrder !== Number.POSITIVE_INFINITY
+        ? `topic-number:${topicOrder}`
+        : `topic-label:${normalizeTopicKey(topicLabel)}`;
+    const current = byKey.get(key);
+
+    if (!current) {
+      byKey.set(key, { ...topic, topicLabel });
+      continue;
+    }
+
+    const currentQuestionCount = current.questionCount ?? 0;
+    const nextQuestionCount = topic.questionCount ?? 0;
+    const shouldReplaceLabel =
+      nextQuestionCount > currentQuestionCount ||
+      (nextQuestionCount === currentQuestionCount && topicLabel.length > current.topicLabel.length);
+
+    byKey.set(key, {
+      ...current,
+      topicLabel: shouldReplaceLabel ? topicLabel : current.topicLabel,
+      scope: current.scope === 'unknown' ? topic.scope : current.scope,
+      attempts: current.attempts + topic.attempts,
+      questionCount: (current.questionCount ?? 0) + (topic.questionCount ?? 0),
+      consolidatedCount: (current.consolidatedCount ?? 0) + (topic.consolidatedCount ?? 0),
+      correctAttempts: current.correctAttempts + topic.correctAttempts,
+      accuracyRate:
+        current.attempts + topic.attempts <= 0
+          ? 0
+          : Number(
+              (
+                (current.correctAttempts + topic.correctAttempts) /
+                (current.attempts + topic.attempts)
+              ).toFixed(4),
+            ),
+    });
+  }
+
+  return [...byKey.values()];
+};
 
 const DashboardStudyTab: React.FC<DashboardContentProps> = ({
   catalogLoading = false,
   learningDashboardV2,
   onStartCatalogReview,
-  onStartLawTraining,
+  onStartTopicTraining,
   questionsCount,
 }) => {
   const reduceMotion = useReducedMotion();
   const practiceLocked = catalogLoading || questionsCount === 0;
+  const [expandedCategory, setExpandedCategory] = useState<TopicCategoryId | null>(null);
 
-  // En el concepto Lumina, el temario entra compactado (sin desplegar).
-  const [expandedCategory, setExpandedCategory] = useState<ThemeCategoryId | null>(null);
-
-  const lawBreakdown = useMemo(
-    () => learningDashboardV2?.lawBreakdown ?? [],
-    [learningDashboardV2?.lawBreakdown],
+  const topicBreakdown = useMemo(
+    () => learningDashboardV2?.topicBreakdown ?? [],
+    [learningDashboardV2?.topicBreakdown],
   );
 
   const topicsByScope = useMemo(() => {
-    const commonAll = lawBreakdown.filter((l) => l.scope === 'common');
-    const specificAll = lawBreakdown.filter((l) => l.scope === 'specific');
+    const commonAll = sortTopics(
+      dedupeTopics(topicBreakdown.filter((topic) => topic.scope === 'common')),
+    ).slice(0, EXPECTED_TOPICS_BY_SCOPE.common);
+    const specificAll = sortTopics(
+      dedupeTopics(topicBreakdown.filter((topic) => topic.scope === 'specific')),
+    ).slice(0, EXPECTED_TOPICS_BY_SCOPE.specific);
 
-    const sortByWorstFirst = (a: (typeof commonAll)[number], b: (typeof commonAll)[number]) =>
-      (a.accuracyRate ?? 0) - (b.accuracyRate ?? 0);
+    const sumQuestions = (list: PracticeTopicPerformance[]) =>
+      list.reduce((acc, topic) => acc + (topic.questionCount ?? 0), 0);
 
-    // Listado: mostramos top por legibilidad (igual que antes).
-    const commonTopics = [...commonAll].sort(sortByWorstFirst).slice(0, 12);
-    const specificTopics = [...specificAll].sort(sortByWorstFirst).slice(0, 12);
+    const sumConsolidated = (list: PracticeTopicPerformance[]) =>
+      list.reduce((acc, topic) => acc + (topic.consolidatedCount ?? 0), 0);
 
-    const sumQuestions = (list: Array<(typeof commonAll)[number]>) =>
-      list.reduce((acc, l) => acc + (l.questionCount ?? 0), 0);
-
-    const sumConsolidated = (list: Array<(typeof commonAll)[number]>) =>
-      list.reduce((acc, l) => acc + (l.consolidatedCount ?? 0), 0);
-
-    // Totales/progreso: usamos TODO (no el top 12),
-    // para que el contador refleje el scope real (~500) y no un subconjunto.
     return {
       common: {
         id: 'common' as const,
-        title: 'TEMARIO COMÚN',
-        topics: commonTopics,
+        title: 'TEMARIO COMUN',
+        shortTitle: 'Comun',
+        topics: commonAll,
+        expectedTopicCount: EXPECTED_TOPICS_BY_SCOPE.common,
         totalQuestions: sumQuestions(commonAll),
         consolidatedQuestions: sumConsolidated(commonAll),
         progressPct: safeDivPct(sumConsolidated(commonAll), sumQuestions(commonAll)),
@@ -57,18 +129,21 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
       },
       specific: {
         id: 'specific' as const,
-        title: 'TEMARIO ESPECÍFICO',
-        topics: specificTopics,
+        title: 'TEMARIO ESPECIFICO',
+        shortTitle: 'Especifico',
+        topics: specificAll,
+        expectedTopicCount: EXPECTED_TOPICS_BY_SCOPE.specific,
         totalQuestions: sumQuestions(specificAll),
         consolidatedQuestions: sumConsolidated(specificAll),
         progressPct: safeDivPct(sumConsolidated(specificAll), sumQuestions(specificAll)),
         gradient: 'from-emerald-500 to-teal-600',
       },
     };
-  }, [lawBreakdown]);
+  }, [topicBreakdown]);
 
-  const totalQuestionsAll = topicsByScope.common.totalQuestions + topicsByScope.specific.totalQuestions;
-
+  const totalQuestionsAll =
+    topicsByScope.common.totalQuestions + topicsByScope.specific.totalQuestions;
+  const totalTopicsAll = EXPECTED_TOPICS_BY_SCOPE.common + EXPECTED_TOPICS_BY_SCOPE.specific;
   const categories = [topicsByScope.common, topicsByScope.specific];
 
   return (
@@ -78,10 +153,14 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className="space-y-6 pb-14"
     >
-      <div className="flex items-center justify-between px-2 mb-2">
-        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Tu Temario</h3>
-        <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-100 shadow-sm">
-          <span className="text-xs font-bold text-slate-600">{totalQuestionsAll} Preguntas totales</span>
+      <div className="mb-2 flex items-center justify-between gap-3 px-2">
+        <div>
+          <h3 className="text-[1.9rem] font-black tracking-[-0.04em] text-slate-900">Tu temario</h3>
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-slate-100 bg-white px-3 py-1.5 shadow-sm">
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-500">
+            {totalQuestionsAll} preguntas
+          </span>
         </div>
       </div>
 
@@ -94,40 +173,51 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
               <motion.button
                 type="button"
                 onClick={() => setExpandedCategory(isExpanded ? null : cat.id)}
-                className={`w-full p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] text-left relative overflow-hidden shadow-xl transition-all duration-500 bg-gradient-to-br ${cat.gradient} ${
-                  isExpanded ? 'ring-4 ring-slate-900/10 ring-offset-4 scale-[1.02]' : 'hover:scale-[1.01]'
+                className={`relative w-full overflow-hidden rounded-[32px] bg-gradient-to-br p-6 text-left shadow-xl transition-all duration-500 sm:rounded-[40px] sm:p-8 ${cat.gradient} ${
+                  isExpanded
+                    ? 'scale-[1.02] ring-4 ring-slate-900/10 ring-offset-4'
+                    : 'hover:scale-[1.01]'
                 }`}
               >
-                <div className="absolute top-0 right-0 p-6 opacity-10">
-                  <Zap className="w-20 h-20 text-white" />
+                <div className="absolute right-0 top-0 p-6 opacity-10">
+                  <BookOpenCheck className="h-20 w-20 text-white" />
                 </div>
 
-                <div className="relative z-10 flex justify-between items-center">
+                <div className="relative z-10 flex items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <h4 className="text-white/80 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em]">
-                      {cat.totalQuestions} Preguntas · {cat.progressPct}% consolidadas
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.16em] text-white/78 sm:text-[11px]">
+                      {cat.expectedTopicCount} temas · {cat.totalQuestions} preguntas
                     </h4>
-                    <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">{cat.title}</h3>
+                    <h3 className="text-[1.45rem] font-black tracking-[-0.035em] text-white sm:text-[1.75rem]">
+                      {cat.title}
+                    </h3>
+                    <p className="max-w-[28ch] text-[0.96rem] font-semibold leading-[1.45] text-white/84">
+                      {cat.consolidatedQuestions} preguntas consolidadas dentro de{' '}
+                      {cat.shortTitle.toLowerCase()}.
+                    </p>
                   </div>
-                  <div className="bg-white/20 backdrop-blur-md p-2 rounded-2xl border border-white/20">
+
+                  <div className="rounded-2xl border border-white/20 bg-white/20 p-2 backdrop-blur-md">
                     <ChevronRight
-                      className={`w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform duration-300 ${
+                      className={`h-5 w-5 text-white transition-transform duration-300 sm:h-6 sm:w-6 ${
                         isExpanded ? 'rotate-90' : ''
                       }`}
                     />
                   </div>
                 </div>
 
-                <div className="mt-6 sm:mt-8 relative z-10">
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-white text-xs sm:text-sm font-bold">Consolidación</span>
-                    <span className="text-lg sm:text-xl font-black text-white">{cat.progressPct}%</span>
+                <div className="relative z-10 mt-6 sm:mt-8">
+                  <div className="mb-2 flex items-end justify-between">
+                    <span className="text-xs font-bold text-white sm:text-sm">Consolidacion</span>
+                    <span className="text-lg font-black text-white sm:text-xl">
+                      {cat.progressPct}%
+                    </span>
                   </div>
-                  <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                  <div className="h-2 overflow-hidden rounded-full bg-white/20">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${cat.progressPct}%` }}
-                      className="h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                      className="h-full rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]"
                       transition={{ duration: 0.9, ease: 'easeOut' }}
                     />
                   </div>
@@ -135,13 +225,13 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
               </motion.button>
 
               <AnimatePresence>
-                {isExpanded && (
+                {isExpanded ? (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.35, ease: 'circOut' }}
-                    className="overflow-hidden space-y-3 px-1"
+                    className="space-y-3 overflow-hidden px-1"
                   >
                     <motion.button
                       initial={{ opacity: 0, y: -10 }}
@@ -149,67 +239,78 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                       type="button"
                       onClick={() => onStartCatalogReview(cat.id)}
                       disabled={practiceLocked}
-                      className="w-full py-4 bg-slate-100 text-slate-900 font-black rounded-2xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors disabled:opacity-45 disabled:pointer-events-none"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-100 py-4 text-xs font-black uppercase tracking-[0.16em] text-slate-900 transition-colors hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-45"
                     >
-                      <Shuffle className="w-4 h-4" />
+                      <Shuffle className="h-4 w-4" />
                       Estudiar todo el bloque
                     </motion.button>
 
                     {cat.topics.length === 0 ? (
-                      <div className="w-full rounded-[24px] border border-slate-100 bg-white p-5 text-slate-500 font-semibold text-sm">
-                        No hay temas disponibles para este bloque todavía.
+                      <div className="w-full rounded-[24px] border border-slate-100 bg-white p-5 text-sm font-semibold text-slate-500">
+                        No hay temas disponibles para este bloque todavia.
                       </div>
                     ) : null}
 
                     {cat.topics.map((topic, idx) => {
-                      const id = idx + 1;
-                      const progress = safeDivPct(topic.consolidatedCount ?? 0, topic.questionCount ?? 0);
+                      const topicNumber = extractTopicOrder(topic.topicLabel);
+                      const displayTopicLabel = stripTopicPrefix(topic.topicLabel);
+                      const progress = safeDivPct(
+                        topic.consolidatedCount ?? 0,
+                        topic.questionCount ?? 0,
+                      );
                       const hasProgress = progress > 0;
 
                       return (
                         <motion.button
-                          key={`${cat.id}:${topic.ley_referencia}:${id}`}
+                          key={`${cat.id}:${topic.topicLabel}`}
                           initial={reduceMotion ? false : { x: -20, opacity: 0 }}
                           animate={{ x: 0, opacity: 1 }}
-                          transition={{ delay: idx * 0.03 }}
+                          transition={{ delay: idx * 0.025 }}
                           type="button"
-                          onClick={() => onStartLawTraining(topic.ley_referencia)}
+                          onClick={() => onStartTopicTraining(topic.topicLabel)}
                           disabled={practiceLocked}
-                          className="w-full max-w-full bg-white rounded-[24px] border border-slate-100 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow group text-left disabled:opacity-45 disabled:pointer-events-none min-h-[84px] px-4 py-4 sm:min-h-[92px] sm:px-5 sm:py-5"
-                          aria-label={`Empezar test del tema: ${topic.ley_referencia}`}
+                          className="group flex min-h-[88px] w-full max-w-full items-center gap-4 rounded-[24px] border border-slate-100 bg-white px-4 py-4 text-left shadow-sm transition-shadow hover:shadow-md disabled:pointer-events-none disabled:opacity-45 sm:min-h-[94px] sm:px-5 sm:py-5"
+                          aria-label={`Empezar test del tema: ${displayTopicLabel}`}
                         >
-                          <div className="h-12 w-12 shrink-0 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-violet-50 group-hover:text-violet-600 transition-colors">
-                            <span className="text-sm font-black tabular-nums">{id}</span>
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-sm font-black tabular-nums text-slate-500 transition-colors group-hover:bg-violet-50 group-hover:text-violet-700">
+                            {Number.isFinite(topicNumber) &&
+                            topicNumber !== Number.POSITIVE_INFINITY
+                              ? String(topicNumber).padStart(2, '0')
+                              : '--'}
                           </div>
 
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <h5 className="text-sm font-bold text-slate-800 mb-2 truncate">
-                              {topic.ley_referencia}
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <h5 className="truncate text-[0.98rem] font-black tracking-[-0.02em] text-slate-800">
+                              {displayTopicLabel}
                             </h5>
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="mt-2 flex items-center gap-3">
+                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                                 <motion.div
                                   initial={reduceMotion ? false : { width: 0 }}
                                   animate={{ width: `${progress}%` }}
-                                  className={`h-full rounded-full ${hasProgress ? 'bg-violet-500' : 'bg-slate-200'}`}
+                                  className={`h-full rounded-full ${
+                                    hasProgress ? 'bg-violet-500' : 'bg-slate-200'
+                                  }`}
                                   transition={{ duration: 0.8, ease: 'easeOut' }}
                                 />
                               </div>
-                              <span className="text-[10px] font-black text-slate-400 w-8">{progress}%</span>
+                              <span className="w-8 text-[10px] font-black text-slate-400">
+                                {progress}%
+                              </span>
                             </div>
-                            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 truncate">
-                              {(topic.consolidatedCount ?? 0)}/{topic.questionCount ?? 0} consolidadas
+                            <p className="mt-2 truncate text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                              {topic.consolidatedCount ?? 0}/{topic.questionCount ?? 0} consolidadas
                             </p>
                           </div>
 
-                          <div className="h-11 w-11 shrink-0 bg-slate-900 text-white rounded-xl shadow-lg shadow-slate-200 flex items-center justify-center">
-                            <Zap className="w-4 h-4 fill-white" />
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-200">
+                            <Zap className="h-4 w-4 fill-white" />
                           </div>
                         </motion.button>
                       );
                     })}
                   </motion.div>
-                )}
+                ) : null}
               </AnimatePresence>
             </div>
           );
@@ -220,4 +321,3 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
 };
 
 export default DashboardStudyTab;
-

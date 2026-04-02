@@ -37,7 +37,7 @@ const QuestionExplanation: React.FC<QuestionExplanationProps> = ({
   explanation,
   editorialExplanation = null,
   emptyLabel = 'Sin explicacion disponible.',
-  highlightEnabled = true,
+  highlightEnabled = false,
 }) => {
   const presentation = buildExplanationPresentation(explanation);
   const normalizedEditorial = editorialExplanation?.trim() || null;
@@ -50,44 +50,40 @@ const QuestionExplanation: React.FC<QuestionExplanationProps> = ({
 
   if (!lead) {
     return (
-      <p className="text-[13px] leading-5.5 text-slate-600 sm:text-sm sm:leading-6">{emptyLabel}</p>
+      <p className="ui-body-secondary leading-[1.62] text-slate-600">{emptyLabel}</p>
     );
   }
 
   return (
-    <div className="space-y-2.5">
-      <p className="text-[13px] font-medium leading-5.5 text-slate-700 sm:text-sm sm:leading-6">
+    <div className="space-y-3">
+      <p className="ui-body-reading text-slate-700">
         <HighlightedText text={lead} contentRole="explanation" disabled={!highlightEnabled} />
       </p>
 
       {(presentation?.blocks ?? []).map((block) => (
         <div
           key={`${block.tone}-${block.title}`}
-          className={`rounded-[0.95rem] border px-3 py-2.5 ${toneClasses[block.tone].panel}`}
+          className={`rounded-[0.95rem] border px-3.5 py-3 ${toneClasses[block.tone].panel}`}
         >
-          <p
-            className={`text-[9px] font-extrabold uppercase tracking-[0.14em] ${toneClasses[block.tone].label}`}
-          >
+          <p className={`ui-label ${toneClasses[block.tone].label}`}>
             {block.title}
           </p>
-          <p
-            className={`mt-1.5 text-[13px] font-medium leading-5.5 sm:text-sm sm:leading-6 ${toneClasses[block.tone].text}`}
-          >
-            <HighlightedText text={block.text} contentRole="explanation" />
+          <p className={`ui-body-reading mt-2 ${toneClasses[block.tone].text}`}>
+            <HighlightedText
+              text={block.text}
+              contentRole="explanation"
+              disabled={!highlightEnabled}
+            />
           </p>
         </div>
       ))}
 
       {shouldShowFallbackSupport ? (
-        <div className={`rounded-[0.95rem] border px-3 py-2.5 ${toneClasses.detail.panel}`}>
-          <p
-            className={`text-[9px] font-extrabold uppercase tracking-[0.14em] ${toneClasses.detail.label}`}
-          >
+        <div className={`rounded-[0.95rem] border px-3.5 py-3 ${toneClasses.detail.panel}`}>
+          <p className={`ui-label ${toneClasses.detail.label}`}>
             Apoyo completo
           </p>
-          <p
-            className={`mt-1.5 text-[13px] font-medium leading-5.5 sm:text-sm sm:leading-6 ${toneClasses.detail.text}`}
-          >
+          <p className={`ui-body-reading mt-2 ${toneClasses.detail.text}`}>
             <HighlightedText
               text={explanation ?? ''}
               contentRole="explanation"

@@ -67,11 +67,7 @@ const GuestDashboardScreen: React.FC<GuestDashboardScreenProps> = ({
                     {isLocked ? 'Siguiente paso' : 'Abrir ahora'}
                   </span>
                   <span className="mt-1 block text-[1rem] font-black leading-none">
-                    {loading
-                      ? 'Preparando bloque...'
-                      : isLocked
-                        ? 'Volver al acceso'
-                        : `Bloque ${nextBlockNumber}`}
+                    {isLocked ? 'Volver al acceso' : `Bloque ${nextBlockNumber}`}
                   </span>
                 </span>
                 <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/28 bg-white/12">

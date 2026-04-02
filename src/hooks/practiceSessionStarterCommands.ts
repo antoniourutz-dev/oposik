@@ -14,6 +14,7 @@ import {
   getRandomPracticeBatch,
   getSimulacroPracticeBatch,
   getStandardPracticeBatch,
+  getTopicPracticeBatch,
   getWeakPracticeInsights,
 } from '../services/preguntasApi';
 import {
@@ -25,6 +26,7 @@ import {
   buildRandomPracticeSession,
   buildSimulacroPracticeSession,
   buildStandardPracticeSession,
+  buildTopicPracticeSession,
   buildWeakestPracticeSession,
 } from '../services/practiceSessionFactory';
 import { GUEST_MAX_BLOCKS } from './practiceAppStorage';
@@ -226,6 +228,22 @@ export const loadLawSessionCommand = async ({
 
   return {
     session: buildLawPracticeSession(lawQuestions, law),
+  };
+};
+
+export const loadTopicSessionCommand = async ({
+  topic,
+}: {
+  topic: string;
+}): Promise<SessionStarterCommandResult> => {
+  const topicQuestions = await getTopicPracticeBatch(
+    topic,
+    PRACTICE_BATCH_SIZE,
+    DEFAULT_CURRICULUM,
+  );
+
+  return {
+    session: buildTopicPracticeSession(topicQuestions, topic),
   };
 };
 

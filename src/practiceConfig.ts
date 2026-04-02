@@ -1,4 +1,4 @@
-export const DEFAULT_CURRICULUM = 'general';
+export const DEFAULT_CURRICULUM = 'osakidetza_admin';
 /** Límite duro para RPC/HTTP de catálogo y cuenta (evita carga infinita si la red o PostgREST cuelgan). */
 export const PRACTICE_REMOTE_RPC_TIMEOUT_MS = 25_000;
 export const PRACTICE_BATCH_SIZE = 20;

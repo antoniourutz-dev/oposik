@@ -322,6 +322,30 @@ export const getLawPracticeBatch = async (
   );
 };
 
+export const getTopicPracticeBatch = async (
+  topic: string,
+  batchSize: number,
+  curriculum = DEFAULT_CURRICULUM,
+) => {
+  return trackAsyncOperation(
+    'preguntas.getTopicPracticeBatch',
+    async () => {
+      const { data, error } = await supabase.schema('app').rpc('get_topic_practice_batch', {
+        p_topic: topic,
+        p_curriculum: curriculum,
+        p_batch_size: batchSize,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return mapQuestionPayloadRows((data ?? []) as Array<Record<string, unknown>>);
+    },
+    { curriculum, topic, batchSize },
+  );
+};
+
 const dedupeQuestionsById = (questions: PracticeQuestion[]): PracticeQuestion[] => {
   const seen = new Set<string>();
   const next: PracticeQuestion[] = [];
@@ -348,12 +372,7 @@ export const getFullCatalogQuestionsForScope = async (
       const merged: PracticeQuestion[] = [];
       let start = 0;
       while (start < totalQuestions) {
-        const batch = await getStandardPracticeBatch(
-          start,
-          PRACTICE_BATCH_SIZE,
-          curriculum,
-          scope,
-        );
+        const batch = await getStandardPracticeBatch(start, PRACTICE_BATCH_SIZE, curriculum, scope);
         if (batch.length === 0) break;
         merged.push(...batch);
         start += batch.length;

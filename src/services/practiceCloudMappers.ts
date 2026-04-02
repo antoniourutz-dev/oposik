@@ -226,6 +226,7 @@ export const mapLearningDashboardV2 = (
   if (!value) return null;
 
   const rawLawBreakdown = Array.isArray(value.law_breakdown) ? value.law_breakdown : [];
+  const rawTopicBreakdown = Array.isArray(value.topic_breakdown) ? value.topic_breakdown : [];
 
   return {
     totalQuestions: toNumber(value.total_questions),
@@ -265,6 +266,24 @@ export const mapLearningDashboardV2 = (
       correctAttempts: toNumber(law.correct_attempts),
       accuracyRate: toNumber(law.accuracy_rate),
     })),
+    topicBreakdown: rawTopicBreakdown.flatMap((topic: any) => {
+      const topicLabel = toNullableString(
+        topic.topic_label ?? topic.temario_pregunta ?? topic.label,
+      );
+      if (!topicLabel) return [];
+
+      return [
+        {
+          topicLabel,
+          scope: normalizeQuestionScope(topic.raw_scope) ?? 'unknown',
+          attempts: toNumber(topic.attempts),
+          questionCount: toNumber(topic.question_count),
+          consolidatedCount: toNumber(topic.consolidated_count),
+          correctAttempts: toNumber(topic.correct_attempts),
+          accuracyRate: toNumber(topic.accuracy_rate),
+        },
+      ];
+    }),
   };
 };
 

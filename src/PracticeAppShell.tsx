@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useLayoutEffect, useMemo } from 'react';
-import { AppLoadingSurface, CatalogSyncBanner } from './components/ui/app-loading-surface';
+import { AppLoadingSurface } from './components/ui/app-loading-surface';
 const DatabaseSVG: React.FC<{ className?: string }> = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -86,13 +86,12 @@ const PracticeAppShell: React.FC = () => {
     startRecommended,
     startWeakReview,
     startCatalogReview,
-    syncingState,
-    syncError,
     totalBatches,
     view,
     weakCategories,
     weakQuestions,
     onStartLawTraining,
+    onStartTopicTraining,
     setActiveTab,
     resumeActiveSession,
     textHighlightingEnabled,
@@ -183,12 +182,12 @@ const PracticeAppShell: React.FC = () => {
   }, [navigationScrollKey]);
 
   if (!authReady) {
-    return <AppLoadingSurface label="Preparando acceso" />;
+    return <AppLoadingSurface />;
   }
 
   if (!session && !isGuest) {
     return (
-      <Suspense fallback={<AppLoadingSurface label="Cargando acceso" />}>
+      <Suspense fallback={<AppLoadingSurface />}>
         <AuthScreen
           onSignedIn={handleSignedIn}
           onEnterGuest={handleEnterGuest}
@@ -202,10 +201,7 @@ const PracticeAppShell: React.FC = () => {
   return (
     <div className={`min-h-[100dvh] text-slate-900 ${shellBackgroundClass}`}>
       {view !== 'quiz' && view !== 'catalog_review' && view !== 'review' ? (
-        <TopBar
-          userName={identity?.current_username ?? 'Alumno'}
-          streakDays={streakDays}
-        />
+        <TopBar userName={identity?.current_username ?? 'Alumno'} streakDays={streakDays} />
       ) : null}
       <div className="flex min-h-[100dvh] w-full flex-col px-3 sm:px-5 lg:px-5 xl:px-6 2xl:px-8">
         <div
@@ -225,18 +221,6 @@ const PracticeAppShell: React.FC = () => {
           <main
             className={`flex flex-1 flex-col px-1 pb-8 ${mainTopPadding} sm:px-2 lg:px-2 xl:px-0 ${view === 'home' ? 'pb-28 xl:pb-12' : ''}`}
           >
-            {syncError && view === 'home' ? (
-              <div className="mx-auto mb-4 w-full max-w-4xl">
-                <Alert variant="warning" title="Sincronización pendiente">
-                  {syncError}
-                </Alert>
-              </div>
-            ) : null}
-
-            {view === 'home' && !isGuest ? (
-              <CatalogSyncBanner syncingAccount={syncingState} loadingCatalog={loadingQuestions} />
-            ) : null}
-
             {view === 'home' && activeSession && !isGuest ? (
               <div className="mx-auto mb-4 w-full max-w-4xl">
                 <Alert variant="info" title="Sesión en curso">
@@ -277,7 +261,8 @@ const PracticeAppShell: React.FC = () => {
                   <p className="mt-3 ui-body">{questionsError}</p>
                   <div className="mt-5">
                     <Alert variant="error" title="Detalle">
-                      Reintenta en unos segundos. Si persiste, revisa tu conexión o vuelve a abrir la app.
+                      Reintenta en unos segundos. Si persiste, revisa tu conexión o vuelve a abrir
+                      la app.
                     </Alert>
                   </div>
                 </div>
@@ -290,14 +275,14 @@ const PracticeAppShell: React.FC = () => {
                   <DatabaseSVG className="h-12 w-12 text-slate-400" />
                   <h2 className="mt-5 text-2xl ui-title">No hay preguntas visibles todavía</h2>
                   <p className="mt-3 ui-body">
-                    El catálogo de práctica no ha devuelto preguntas visibles. Revisa la tabla `preguntas` y sus
-                    políticas de acceso.
+                    Aún no hay preguntas disponibles. Prueba de nuevo en unos minutos o comprueba tu
+                    conexión.
                   </p>
                 </div>
               </div>
             ) : null}
 
-            <Suspense fallback={<AppLoadingSurface label="Cargando módulo" />}>
+            <Suspense fallback={<AppLoadingSurface />}>
               {!questionsError && (isGuest || loadingQuestions || questionsCount > 0) ? (
                 <div key={navigationScrollKey} className={contentEnterClass}>
                   <ScreenTelemetryBoundary
@@ -374,6 +359,7 @@ const PracticeAppShell: React.FC = () => {
                           onReloadQuestions={() => void reloadPracticeData()}
                           onSaveExamTarget={(payload) => void handleSaveExamTarget(payload)}
                           onStartLawTraining={onStartLawTraining}
+                          onStartTopicTraining={onStartTopicTraining}
                           onStartCatalogReview={startCatalogReview}
                           onSignOut={() => void handleSignOut()}
                           textHighlightingEnabled={textHighlightingEnabled}
