@@ -1,10 +1,13 @@
 import React from 'react';
 import { buildExplanationPresentation } from '../utils/explanationPresentation';
+import { HighlightedText } from './HighlightedText';
 
 type QuestionExplanationProps = {
   explanation: string | null;
   editorialExplanation?: string | null;
   emptyLabel?: string;
+  /** Si es false, desactiva el resaltado en el texto de la explicación. */
+  highlightEnabled?: boolean;
 };
 
 const toneClasses = {
@@ -34,6 +37,7 @@ const QuestionExplanation: React.FC<QuestionExplanationProps> = ({
   explanation,
   editorialExplanation = null,
   emptyLabel = 'Sin explicacion disponible.',
+  highlightEnabled = true,
 }) => {
   const presentation = buildExplanationPresentation(explanation);
   const normalizedEditorial = editorialExplanation?.trim() || null;
@@ -53,7 +57,7 @@ const QuestionExplanation: React.FC<QuestionExplanationProps> = ({
   return (
     <div className="space-y-2.5">
       <p className="text-[13px] font-medium leading-5.5 text-slate-700 sm:text-sm sm:leading-6">
-        {lead}
+        <HighlightedText text={lead} contentRole="explanation" disabled={!highlightEnabled} />
       </p>
 
       {(presentation?.blocks ?? []).map((block) => (
@@ -69,7 +73,7 @@ const QuestionExplanation: React.FC<QuestionExplanationProps> = ({
           <p
             className={`mt-1.5 text-[13px] font-medium leading-5.5 sm:text-sm sm:leading-6 ${toneClasses[block.tone].text}`}
           >
-            {block.text}
+            <HighlightedText text={block.text} contentRole="explanation" />
           </p>
         </div>
       ))}
@@ -84,7 +88,11 @@ const QuestionExplanation: React.FC<QuestionExplanationProps> = ({
           <p
             className={`mt-1.5 text-[13px] font-medium leading-5.5 sm:text-sm sm:leading-6 ${toneClasses.detail.text}`}
           >
-            {explanation}
+            <HighlightedText
+              text={explanation ?? ''}
+              contentRole="explanation"
+              disabled={!highlightEnabled}
+            />
           </p>
         </div>
       ) : null}

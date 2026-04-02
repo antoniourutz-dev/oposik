@@ -1,293 +1,221 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowRight, BookOpen, Flame, Layers3, Target } from 'lucide-react';
-import { motion, useReducedMotion } from 'framer-motion';
-import QuestionScopePicker from '../QuestionScopePicker';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ChevronRight, Shuffle, Zap } from 'lucide-react';
 import type { DashboardContentProps } from './types';
-import { toCoachTwoLineMessage } from '../../domain/learningEngine';
 
-/**
- * STUDY → ACCIÓN
- * Responde: “¿cómo quiero estudiar?”
- * Mantiene simplicidad radical sin convertirse en dashboard:
- * - CTA recomendado arriba
- * - modos rápidos (Mixto/Aleatorio/Falladas)
- * - explorar (más opciones) sin métricas ni bloques analíticos
- */
+type ThemeCategoryId = 'common' | 'specific';
+
+const clampPct = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+const safeDivPct = (num: number, den: number) => (den <= 0 ? 0 : clampPct((num / den) * 100));
+
 const DashboardStudyTab: React.FC<DashboardContentProps> = ({
-  batchSize,
   catalogLoading = false,
-  coachPlan,
   learningDashboardV2,
-  onQuestionScopeChange,
-  onStartAntiTrap,
-  onStartFromBeginning,
-  onStartMixed,
-  onStartRandom,
-  onStartRecommended,
-  onStartSimulacro,
-  onStartWeakReview,
-  onStartLawTraining,
   onStartCatalogReview,
-  questionScope,
+  onStartLawTraining,
   questionsCount,
-  weakQuestions,
 }) => {
   const reduceMotion = useReducedMotion();
   const practiceLocked = catalogLoading || questionsCount === 0;
 
-  const coach = toCoachTwoLineMessage({
-    mode: coachPlan.mode,
-    tone: coachPlan.tone,
-    focusMessage: learningDashboardV2?.focusMessage ?? null,
-    reasons: coachPlan.reasons,
-    summary: coachPlan.summary,
-  });
+  // En el concepto Lumina, el temario entra compactado (sin desplegar).
+  const [expandedCategory, setExpandedCategory] = useState<ThemeCategoryId | null>(null);
 
-  const availableLaws = useMemo(() => {
-    const list = learningDashboardV2?.lawBreakdown ?? [];
-    return list
-      .map((l) => String(l.ley_referencia ?? '').trim())
-      .filter(Boolean)
-      .slice(0, 12);
-  }, [learningDashboardV2?.lawBreakdown]);
-  const [selectedLaw, setSelectedLaw] = useState<string>(() => availableLaws[0] ?? '');
+  const lawBreakdown = useMemo(
+    () => learningDashboardV2?.lawBreakdown ?? [],
+    [learningDashboardV2?.lawBreakdown],
+  );
 
-  const handleStartLaw = () => {
-    const law = selectedLaw.trim();
-    if (!law) return;
-    onStartLawTraining(law);
-  };
+  const topicsByScope = useMemo(() => {
+    const commonAll = lawBreakdown.filter((l) => l.scope === 'common');
+    const specificAll = lawBreakdown.filter((l) => l.scope === 'specific');
 
-  const handleScrollToTemario = () => {
-    const node = document.getElementById('study-temario');
-    node?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+    const sortByWorstFirst = (a: (typeof commonAll)[number], b: (typeof commonAll)[number]) =>
+      (a.accuracyRate ?? 0) - (b.accuracyRate ?? 0);
+
+    // Listado: mostramos top por legibilidad (igual que antes).
+    const commonTopics = [...commonAll].sort(sortByWorstFirst).slice(0, 12);
+    const specificTopics = [...specificAll].sort(sortByWorstFirst).slice(0, 12);
+
+    const sumQuestions = (list: Array<(typeof commonAll)[number]>) =>
+      list.reduce((acc, l) => acc + (l.questionCount ?? 0), 0);
+
+    const sumConsolidated = (list: Array<(typeof commonAll)[number]>) =>
+      list.reduce((acc, l) => acc + (l.consolidatedCount ?? 0), 0);
+
+    // Totales/progreso: usamos TODO (no el top 12),
+    // para que el contador refleje el scope real (~500) y no un subconjunto.
+    return {
+      common: {
+        id: 'common' as const,
+        title: 'TEMARIO COMÚN',
+        topics: commonTopics,
+        totalQuestions: sumQuestions(commonAll),
+        consolidatedQuestions: sumConsolidated(commonAll),
+        progressPct: safeDivPct(sumConsolidated(commonAll), sumQuestions(commonAll)),
+        gradient: 'from-violet-500 to-indigo-600',
+      },
+      specific: {
+        id: 'specific' as const,
+        title: 'TEMARIO ESPECÍFICO',
+        topics: specificTopics,
+        totalQuestions: sumQuestions(specificAll),
+        consolidatedQuestions: sumConsolidated(specificAll),
+        progressPct: safeDivPct(sumConsolidated(specificAll), sumQuestions(specificAll)),
+        gradient: 'from-emerald-500 to-teal-600',
+      },
+    };
+  }, [lawBreakdown]);
+
+  const totalQuestionsAll = topicsByScope.common.totalQuestions + topicsByScope.specific.totalQuestions;
+
+  const categories = [topicsByScope.common, topicsByScope.specific];
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-5 pb-12 xl:max-w-6xl xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] xl:items-start xl:gap-6">
-      <div id="study-temario" className="xl:col-span-2">
-        <QuestionScopePicker value={questionScope} onChange={onQuestionScopeChange} label="Temario" />
-      </div>
-
-      <motion.section
-        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-        className="rounded-2xl border border-slate-200/90 bg-white/95 p-5 shadow-[0_14px_36px_-28px_rgba(15,23,42,0.1)] xl:sticky xl:top-[6.1rem]"
-        aria-label="Entrenar"
-      >
-        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-          Entrenar
-        </p>
-        <h2 className="mt-2 text-[1.15rem] font-semibold leading-snug tracking-[-0.02em] text-slate-900 sm:text-[1.25rem]">
-          {coach.line1}
-        </h2>
-        <p className="mt-2 text-sm font-medium leading-relaxed text-slate-600">{coach.line2}</p>
-
-        <button
-          type="button"
-          onClick={onStartRecommended}
-          disabled={practiceLocked}
-          aria-busy={catalogLoading}
-          className="mt-4 flex w-full items-center justify-between rounded-2xl border border-slate-200/90 bg-[linear-gradient(180deg,rgba(15,23,42,1),rgba(15,23,42,0.96))] px-5 py-4 text-left text-white shadow-[0_18px_40px_-28px_rgba(15,23,42,0.42)] transition-colors hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 disabled:pointer-events-none disabled:opacity-45"
-        >
-          <span className="min-w-0">
-            <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/60">
-              Empezar recomendado
-            </span>
-            <span className="mt-1 block text-base font-semibold text-white">
-              {coachPlan.primaryActionLabel}
-            </span>
-          </span>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10">
-            <ArrowRight size={18} aria-hidden />
-          </span>
-        </button>
-      </motion.section>
-
-      <div className="grid gap-2.5 sm:grid-cols-3 xl:col-span-1" aria-label="Modos rápidos">
-        <button
-          type="button"
-          onClick={onStartMixed}
-          disabled={practiceLocked}
-          className="rounded-2xl border border-slate-200/90 bg-white/92 px-4 py-4 text-left shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 disabled:pointer-events-none disabled:opacity-45"
-        >
-          <span className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
-            <Target size={14} aria-hidden /> Mixto
-          </span>
-          <span className="mt-2 block text-sm font-semibold text-slate-900">Mezclar y consolidar</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onStartRandom}
-          disabled={practiceLocked}
-          className="rounded-2xl border border-slate-200/90 bg-white/92 px-4 py-4 text-left shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 disabled:pointer-events-none disabled:opacity-45"
-        >
-          <span className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
-            <Layers3 size={14} aria-hidden /> Aleatorio
-          </span>
-          <span className="mt-2 block text-sm font-semibold text-slate-900">{batchSize} mezcladas</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onStartWeakReview}
-          disabled={practiceLocked || weakQuestions.length === 0}
-          className="rounded-2xl border border-slate-200/90 bg-white/92 px-4 py-4 text-left shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 disabled:pointer-events-none disabled:opacity-45"
-        >
-          <span className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
-            <Flame size={14} aria-hidden /> Falladas
-          </span>
-          <span className="mt-2 block text-sm font-semibold text-slate-900">
-            {weakQuestions.length > 0 ? 'Repaso corto' : 'Sin pendientes'}
-          </span>
-        </button>
-      </div>
-
-      <section
-        className="rounded-2xl border border-slate-200/90 bg-white/92 p-5 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.08)]"
-        aria-label="Explorar"
-      >
-        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">Explorar</p>
-        <p className="mt-2 text-sm font-medium text-slate-600">
-          Elige un enfoque y empieza. Sin comparar datos.
-        </p>
-
-        <div className="mt-4 rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 to-white p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
-              <BookOpen size={18} aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-violet-600">
-                Análisis del banco
-              </p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">
-                Revisa todas las preguntas y respuestas, una a una
-              </p>
-              <p className="mt-1 text-[12px] font-medium leading-relaxed text-slate-600">
-                Sin registrar intentos. Elige el bloque del temario que quieres recorrer.
-              </p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => onStartCatalogReview('common')}
-                  disabled={practiceLocked}
-                  className="rounded-xl border border-violet-200/80 bg-white px-4 py-3 text-left shadow-sm transition hover:border-violet-300 hover:bg-violet-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:pointer-events-none disabled:opacity-45"
-                >
-                  <span className="block text-[10px] font-extrabold uppercase tracking-[0.14em] text-violet-500">
-                    Temario común
-                  </span>
-                  <span className="mt-1 block text-sm font-semibold text-slate-900">Ver las ~300</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onStartCatalogReview('specific')}
-                  disabled={practiceLocked}
-                  className="rounded-xl border border-violet-200/80 bg-white px-4 py-3 text-left shadow-sm transition hover:border-violet-300 hover:bg-violet-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:pointer-events-none disabled:opacity-45"
-                >
-                  <span className="block text-[10px] font-extrabold uppercase tracking-[0.14em] text-violet-500">
-                    Temario específico
-                  </span>
-                  <span className="mt-1 block text-sm font-semibold text-slate-900">Ver las ~200</span>
-                </button>
-              </div>
-            </div>
-          </div>
+    <motion.div
+      initial={reduceMotion ? false : { opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="space-y-6 pb-14"
+    >
+      <div className="flex items-center justify-between px-2 mb-2">
+        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Tu Temario</h3>
+        <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-100 shadow-sm">
+          <span className="text-xs font-bold text-slate-600">{totalQuestionsAll} Preguntas totales</span>
         </div>
+      </div>
 
-        <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={handleScrollToTemario}
-            className="rounded-2xl border border-slate-200/90 bg-white/92 px-4 py-4 text-left shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75"
-          >
-            <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Por tema</span>
-            <span className="mt-2 block text-sm font-semibold text-slate-900">Cambiar temario</span>
-            <span className="mt-1 block text-[12px] font-medium text-slate-500">Selecciona el ámbito arriba.</span>
-          </button>
+      <div className="space-y-4">
+        {categories.map((cat) => {
+          const isExpanded = expandedCategory === cat.id;
 
-          <button
-            type="button"
-            onClick={onStartFromBeginning}
-            disabled={practiceLocked}
-            className="rounded-2xl border border-slate-200/90 bg-white/92 px-4 py-4 text-left shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 disabled:pointer-events-none disabled:opacity-45"
-          >
-            <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Secuencial</span>
-            <span className="mt-2 block text-sm font-semibold text-slate-900">Bloque 1</span>
-            <span className="mt-1 block text-[12px] font-medium text-slate-500">Volver a la base.</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onStartSimulacro}
-            disabled={practiceLocked}
-            className="rounded-2xl border border-slate-200/90 bg-white/92 px-4 py-4 text-left shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 disabled:pointer-events-none disabled:opacity-45"
-          >
-            <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Examen</span>
-            <span className="mt-2 block text-sm font-semibold text-slate-900">Simulacro</span>
-            <span className="mt-1 block text-[12px] font-medium text-slate-500">Sin feedback inmediato.</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onStartAntiTrap}
-            disabled={practiceLocked}
-            className="rounded-2xl border border-slate-200/90 bg-white/92 px-4 py-4 text-left shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 disabled:pointer-events-none disabled:opacity-45"
-          >
-            <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Lectura</span>
-            <span className="mt-2 block text-sm font-semibold text-slate-900">Anti-trampas</span>
-            <span className="mt-1 block text-[12px] font-medium text-slate-500">Plazos, excepciones, negaciones.</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onStartWeakReview}
-            disabled={practiceLocked || weakQuestions.length === 0}
-            className="rounded-2xl border border-slate-200/90 bg-white/92 px-4 py-4 text-left shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 disabled:pointer-events-none disabled:opacity-45"
-          >
-            <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Repaso</span>
-            <span className="mt-2 block text-sm font-semibold text-slate-900">Pendientes</span>
-            <span className="mt-1 block text-[12px] font-medium text-slate-500">Atacar fallos recurrentes.</span>
-          </button>
-
-          <div className="rounded-2xl border border-slate-200/90 bg-white/92 px-4 py-4 shadow-sm">
-            <span className="block text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Por ley</span>
-            <span className="mt-2 block text-sm font-semibold text-slate-900">Entrenar por ley</span>
-            <span className="mt-1 block text-[12px] font-medium text-slate-500">Elige una ley y empieza.</span>
-
-            <div className="mt-3 grid gap-2">
-              <select
-                value={selectedLaw}
-                onChange={(e) => setSelectedLaw(e.target.value)}
-                disabled={practiceLocked || availableLaws.length === 0}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#bfd2f6] focus:ring-2 focus:ring-sky-100 disabled:opacity-60"
-                aria-label="Ley"
-              >
-                {availableLaws.length === 0 ? (
-                  <option value="">Sin leyes disponibles</option>
-                ) : (
-                  availableLaws.map((law) => (
-                    <option key={law} value={law}>
-                      {law}
-                    </option>
-                  ))
-                )}
-              </select>
-              <button
+          return (
+            <div key={cat.id} className="space-y-3">
+              <motion.button
                 type="button"
-                onClick={handleStartLaw}
-                disabled={practiceLocked || !selectedLaw}
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/75 disabled:pointer-events-none disabled:opacity-45"
+                onClick={() => setExpandedCategory(isExpanded ? null : cat.id)}
+                className={`w-full p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] text-left relative overflow-hidden shadow-xl transition-all duration-500 bg-gradient-to-br ${cat.gradient} ${
+                  isExpanded ? 'ring-4 ring-slate-900/10 ring-offset-4 scale-[1.02]' : 'hover:scale-[1.01]'
+                }`}
               >
-                Empezar por ley
-              </button>
+                <div className="absolute top-0 right-0 p-6 opacity-10">
+                  <Zap className="w-20 h-20 text-white" />
+                </div>
+
+                <div className="relative z-10 flex justify-between items-center">
+                  <div className="space-y-1">
+                    <h4 className="text-white/80 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em]">
+                      {cat.totalQuestions} Preguntas · {cat.progressPct}% consolidadas
+                    </h4>
+                    <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">{cat.title}</h3>
+                  </div>
+                  <div className="bg-white/20 backdrop-blur-md p-2 rounded-2xl border border-white/20">
+                    <ChevronRight
+                      className={`w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform duration-300 ${
+                        isExpanded ? 'rotate-90' : ''
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6 sm:mt-8 relative z-10">
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-white text-xs sm:text-sm font-bold">Consolidación</span>
+                    <span className="text-lg sm:text-xl font-black text-white">{cat.progressPct}%</span>
+                  </div>
+                  <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${cat.progressPct}%` }}
+                      className="h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                      transition={{ duration: 0.9, ease: 'easeOut' }}
+                    />
+                  </div>
+                </div>
+              </motion.button>
+
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: 'circOut' }}
+                    className="overflow-hidden space-y-3 px-1"
+                  >
+                    <motion.button
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      type="button"
+                      onClick={() => onStartCatalogReview(cat.id)}
+                      disabled={practiceLocked}
+                      className="w-full py-4 bg-slate-100 text-slate-900 font-black rounded-2xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors disabled:opacity-45 disabled:pointer-events-none"
+                    >
+                      <Shuffle className="w-4 h-4" />
+                      Estudiar todo el bloque
+                    </motion.button>
+
+                    {cat.topics.length === 0 ? (
+                      <div className="w-full rounded-[24px] border border-slate-100 bg-white p-5 text-slate-500 font-semibold text-sm">
+                        No hay temas disponibles para este bloque todavía.
+                      </div>
+                    ) : null}
+
+                    {cat.topics.map((topic, idx) => {
+                      const id = idx + 1;
+                      const progress = safeDivPct(topic.consolidatedCount ?? 0, topic.questionCount ?? 0);
+                      const hasProgress = progress > 0;
+
+                      return (
+                        <motion.button
+                          key={`${cat.id}:${topic.ley_referencia}:${id}`}
+                          initial={reduceMotion ? false : { x: -20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: idx * 0.03 }}
+                          type="button"
+                          onClick={() => onStartLawTraining(topic.ley_referencia)}
+                          disabled={practiceLocked}
+                          className="w-full max-w-full bg-white rounded-[24px] border border-slate-100 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow group text-left disabled:opacity-45 disabled:pointer-events-none min-h-[84px] px-4 py-4 sm:min-h-[92px] sm:px-5 sm:py-5"
+                          aria-label={`Empezar test del tema: ${topic.ley_referencia}`}
+                        >
+                          <div className="h-12 w-12 shrink-0 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-violet-50 group-hover:text-violet-600 transition-colors">
+                            <span className="text-sm font-black tabular-nums">{id}</span>
+                          </div>
+
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <h5 className="text-sm font-bold text-slate-800 mb-2 truncate">
+                              {topic.ley_referencia}
+                            </h5>
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={reduceMotion ? false : { width: 0 }}
+                                  animate={{ width: `${progress}%` }}
+                                  className={`h-full rounded-full ${hasProgress ? 'bg-violet-500' : 'bg-slate-200'}`}
+                                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                                />
+                              </div>
+                              <span className="text-[10px] font-black text-slate-400 w-8">{progress}%</span>
+                            </div>
+                            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 truncate">
+                              {(topic.consolidatedCount ?? 0)}/{topic.questionCount ?? 0} consolidadas
+                            </p>
+                          </div>
+
+                          <div className="h-11 w-11 shrink-0 bg-slate-900 text-white rounded-xl shadow-lg shadow-slate-200 flex items-center justify-center">
+                            <Zap className="w-4 h-4 fill-white" />
+                          </div>
+                        </motion.button>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
-        </div>
-      </section>
-    </div>
+          );
+        })}
+      </div>
+    </motion.div>
   );
 };
 

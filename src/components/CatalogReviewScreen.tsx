@@ -1,5 +1,5 @@
 import React, { useLayoutEffect } from 'react';
-import { X } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import type { OptionKey, PracticeQuestion, PracticeQuestionScope } from '../practiceTypes';
 import { StatementBody } from './StatementBody';
 
@@ -10,6 +10,7 @@ export type CatalogReviewScreenProps = {
   scope: PracticeQuestionScope;
   onNext: () => void;
   onExit: () => void;
+  textHighlightingEnabled?: boolean;
 };
 
 const scopeHeadline = (scope: PracticeQuestionScope) =>
@@ -22,6 +23,7 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
   scope,
   onNext,
   onExit,
+  textHighlightingEnabled = true,
 }) => {
   const optionEntries = Object.entries(question.options) as Array<[OptionKey, string]>;
   const isLast = questionIndex >= totalQuestions - 1;
@@ -34,62 +36,44 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
 
   return (
     <div
-      className="mx-auto flex w-full max-w-full flex-1 flex-col bg-gradient-to-b from-slate-100/95 via-slate-50 to-indigo-50/40 px-3 py-3 pb-32 sm:px-6 sm:py-6 lg:px-8 lg:py-8 xl:px-10 xl:pb-10 2xl:px-14 2xl:pb-12"
+      className="mx-auto flex w-full max-w-full flex-1 flex-col bg-gradient-to-b from-slate-100/95 via-slate-50 to-indigo-50/40 px-3 py-3 pb-24 sm:px-6 sm:py-6 lg:px-8 lg:py-8 xl:px-10 xl:pb-8 2xl:px-14 2xl:pb-10"
     >
       <div className="mx-auto w-full max-w-[1600px]">
-      <div className="mb-4 space-y-3 sm:mb-5">
+      <div className="mb-4 sm:mb-5">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              aria-label="Salir"
-              onClick={onExit}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-200/90 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
-            >
-              <X aria-hidden="true" size={20} strokeWidth={2.5} />
-            </button>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="text-lg font-black tracking-tight text-slate-900 sm:text-xl">
-                  Análisis
-                </span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 sm:text-[11px]">
-                  {scopeHeadline(scope)}
-                </span>
-              </div>
-            </div>
-          </div>
           <button
             type="button"
             aria-label="Salir"
             onClick={onExit}
-            className="rounded-lg px-2 py-1 text-sm font-bold text-violet-600 transition hover:text-violet-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-slate-600 shadow-sm border border-slate-200/70 transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
           >
-            Salir
+            <RotateCcw aria-hidden="true" size={20} strokeWidth={2.5} />
           </button>
-        </div>
 
-        <div
-          className="h-1 w-full overflow-hidden rounded-full bg-slate-200/90"
-          role="progressbar"
-          aria-valuenow={questionIndex + 1}
-          aria-valuemin={1}
-          aria-valuemax={Math.max(1, totalQuestions)}
-          aria-label={`Pregunta ${questionIndex + 1} de ${totalQuestions}`}
-        >
           <div
-            className="h-full rounded-full bg-gradient-to-r from-violet-600 to-violet-400 transition-[width] duration-300 ease-out"
-            style={{
-              width: `${totalQuestions > 0 ? ((questionIndex + 1) / totalQuestions) * 100 : 0}%`,
-            }}
-          />
-        </div>
+            className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden"
+            role="progressbar"
+            aria-valuenow={questionIndex + 1}
+            aria-valuemin={1}
+            aria-valuemax={Math.max(1, totalQuestions)}
+            aria-label={`Pregunta ${questionIndex + 1} de ${totalQuestions}`}
+          >
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-violet-600 to-violet-400 transition-[width] duration-300 ease-out"
+              style={{
+                width: `${totalQuestions > 0 ? ((questionIndex + 1) / totalQuestions) * 100 : 0}%`,
+              }}
+            />
+          </div>
 
-        <div className="space-y-0.5 px-0.5 pt-1">
-          <p className="text-xs font-medium text-slate-500">Lectura del banco completo</p>
-          <p className="text-base font-bold text-slate-800">
-            Pregunta {question.number ?? questionIndex + 1} de {totalQuestions}
-          </p>
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-[10px] font-black text-slate-400 tracking-tight">
+              {scopeHeadline(scope)}
+            </span>
+            <span className="text-[10px] font-black text-slate-400 tracking-tight">
+              {questionIndex + 1}/{totalQuestions}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -109,7 +93,7 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
             />
           </div>
           <div className="relative z-10 max-w-prose text-[1.05rem] font-medium leading-[1.82] tracking-tight text-slate-700 sm:text-[1.12rem] sm:leading-[1.78] xl:max-w-none xl:text-[1.08rem] xl:leading-[1.88] 2xl:text-[1.12rem] 2xl:leading-[1.9]">
-            <StatementBody text={question.statement} />
+            <StatementBody text={question.statement} highlightEnabled={textHighlightingEnabled} />
           </div>
         </div>
       </div>
@@ -156,45 +140,15 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
       </div>
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 xl:hidden">
-        <div className="mx-auto w-full max-w-[1600px] bg-[linear-gradient(180deg,rgba(248,250,252,0)_0%,rgba(248,250,252,0.95)_38%,rgba(248,250,252,1)_100%)] px-3 pb-4 pt-8 sm:px-6 sm:pb-6 xl:px-10">
-          <div className="pointer-events-auto">
-            <div className="rounded-[2rem] border border-white/80 bg-white/95 p-2 shadow-[0_32px_80px_-24px_rgba(15,23,42,0.35)] backdrop-blur-md sm:p-3">
-              <div className="rounded-full bg-white p-1 shadow-[0_10px_28px_-12px_rgba(76,29,149,0.12),0_1px_0_rgba(255,255,255,0.9)_inset] ring-1 ring-slate-200/60">
-                <button
-                  type="button"
-                  onClick={isLast ? onExit : onNext}
-                  className="brand-gradient-h flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[0.95rem] font-bold tracking-[-0.02em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_14px_36px_-18px_rgba(124,182,232,0.45)] transition-[filter,transform] duration-200 hover:brightness-[1.04] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                >
-                  {isLast ? 'Finalizar' : 'Siguiente'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-8 hidden w-full xl:mt-10 xl:grid xl:grid-cols-12 xl:gap-x-10 xl:gap-y-0 2xl:mt-12 2xl:gap-x-12">
-        <div className="hidden xl:col-span-5 2xl:col-span-5" aria-hidden="true" />
-        <div className="xl:col-span-7 xl:flex xl:justify-end 2xl:col-span-7">
-        <div className="w-full max-w-full xl:max-w-md 2xl:max-w-lg">
-          <div className="rounded-[2.5rem] border border-white/75 bg-white/95 p-3 shadow-xl backdrop-blur">
-            <div className="rounded-full bg-white p-1 shadow-[0_10px_28px_-12px_rgba(76,29,149,0.12)] ring-1 ring-slate-200/60">
-              <button
-                type="button"
-                onClick={isLast ? onExit : onNext}
-                className="brand-gradient-h flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[0.95rem] font-bold tracking-[-0.02em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_14px_36px_-18px_rgba(124,182,232,0.45)] transition-[filter,transform] duration-200 hover:brightness-[1.04] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-              >
-                {isLast ? 'Finalizar' : 'Siguiente'}
-              </button>
-            </div>
-          </div>
-        </div>
-        </div>
-      </div>
-
-      <div className="xl:hidden" aria-hidden="true">
-        <div className="h-14" />
+      {/* CTA inline (opción B): dentro del scroll, sin fixed */}
+      <div className="mt-10 px-1">
+        <button
+          type="button"
+          onClick={isLast ? onExit : onNext}
+          className="w-full py-5 bg-slate-900 text-white rounded-[28px] font-black text-lg shadow-xl transition-[transform,filter] duration-200 hover:brightness-[1.05] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55"
+        >
+          {isLast ? 'Finalizar' : 'Siguiente'}
+        </button>
       </div>
       </div>
     </div>

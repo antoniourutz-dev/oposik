@@ -153,6 +153,8 @@ export interface PracticeLawPerformance {
   scope?: 'common' | 'specific' | 'unknown';
   attempts: number;
   questionCount?: number;
+  /** Preguntas con `mastery_level >= 3` (solid o mastered). */
+  consolidatedCount?: number;
   correctAttempts: number;
   accuracyRate: number;
 }

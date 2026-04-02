@@ -1,8 +1,12 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import HomeScreen from './HomeScreen';
 import type { DashboardScreenProps } from './dashboard/types';
 import { DashboardTabFallback } from './dashboard/shared';
-import { toCoachTwoLineMessage } from '../domain/learningEngine';
+import { buildHomeAdapterOutput } from '../adapters/surfaces/homeAdapter';
+import { buildCoachTwoLineMessageV2 } from '../domain/coachCopyV2';
+import { readSessionContinuityLineForHome } from '../services/sessionContinuityStorage';
+import { buildHomeCoachDecisionTelemetryEvent } from '../adapters/telemetry/buildHomeCoachDecisionTelemetryEvent';
+import { dispatchCoachTelemetry } from '../adapters/telemetry/dispatchCoachTelemetry';
 
 const DashboardStatsTab = lazy(() => import('./dashboard/DashboardStatsTab'));
 const DashboardStudyTab = lazy(() => import('./dashboard/DashboardStudyTab'));
@@ -10,10 +14,17 @@ const DashboardProfileTab = lazy(() => import('./dashboard/DashboardProfileTab')
 
 /**
  * Home = activación, no dashboard.
- * Tres bloques: acción (hero) → dirección (coach breve) → ejecución (modos).
+ * Jerarquía: coach (hero) → sesión pausada → una alternativa discreta.
  * Métricas y gráficos no entran aquí; ver `docs/quantia-home-product.md`.
  */
 const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
+  const [sessionContinuityHint, setSessionContinuityHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (props.activeTab !== 'home') return;
+    setSessionContinuityHint(readSessionContinuityLineForHome());
+  }, [props.activeTab]);
+
   const {
     activeTab,
     coachPlan,
@@ -21,6 +32,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
     identity,
     learningDashboardV2,
     learningDashboard,
+    planV2,
     onResumePracticeSession,
     onStartRandom,
     onStartRecommended,
@@ -28,14 +40,95 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
     onStartWeakReview,
     questionsCount,
     recentSessions,
-    recommendedBatchNumber,
+    streakDays,
     weakCategories,
+    pressureInsightsV2,
+    questionScope,
   } = props;
 
   /** Solo sin banco: si el catálogo recarga, no bloquear (antes los clics no hacían nada). */
   const practiceLocked = questionsCount === 0;
 
-  if (activeTab === 'home') {
+  const hasPausedSession =
+    homePausedSession != null &&
+    homePausedSession.totalQuestions > 0 &&
+    homePausedSession.currentQuestionIndex < homePausedSession.totalQuestions;
+
+  const homeExperience = useMemo(
+    () =>
+      activeTab === 'home'
+        ? buildHomeAdapterOutput({
+            planV2,
+            coachPlan,
+            learningDashboardV2,
+            pressureInsightsV2,
+            recentSessions,
+            homePausedSession,
+            streakDays,
+            weakCategories,
+          })
+        : null,
+    [
+      activeTab,
+      planV2,
+      coachPlan,
+      learningDashboardV2,
+      pressureInsightsV2,
+      recentSessions,
+      homePausedSession,
+      streakDays,
+      weakCategories,
+    ],
+  );
+
+  const lastHomeDecisionSigRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (activeTab !== 'home' || !homeExperience) return;
+
+    const decisionEvent = buildHomeCoachDecisionTelemetryEvent({
+      planV2,
+      dominantState: homeExperience.dominantState,
+      visibleCta: homeExperience.hero.cta,
+      learningDashboardV2,
+      pressureInsightsV2,
+      sessionPaused: hasPausedSession,
+      questionScope,
+    });
+
+    const sig = [
+      decisionEvent.dominantState,
+      decisionEvent.primaryAction,
+      decisionEvent.visibleCta ?? '',
+      decisionEvent.tone,
+      decisionEvent.intensity.toFixed(3),
+      decisionEvent.urgency,
+      decisionEvent.confidence,
+      decisionEvent.decisionMeta.grayZoneTriggered,
+      decisionEvent.decisionMeta.backlogPresent,
+      decisionEvent.decisionMeta.pressurePresent,
+      decisionEvent.decisionMeta.sessionPaused,
+      decisionEvent.decisionMeta.simulacro,
+      decisionEvent.decisionMeta.questionScope ?? '',
+      planV2.intensity,
+      planV2.duration,
+      planV2.reasons.join('\u001e'),
+    ].join('|');
+
+    if (lastHomeDecisionSigRef.current === sig) return;
+    lastHomeDecisionSigRef.current = sig;
+    dispatchCoachTelemetry(decisionEvent);
+  }, [
+    activeTab,
+    homeExperience,
+    planV2,
+    learningDashboardV2,
+    pressureInsightsV2,
+    hasPausedSession,
+    questionScope,
+  ]);
+
+  if (activeTab === 'home' && homeExperience) {
     const mistakesPending = learningDashboardV2?.backlogOverdueCount ?? learningDashboard?.overdueCount ?? 0;
     const weakTopicsCount = weakCategories?.length ?? 0;
     const lastAccuracy =
@@ -54,45 +147,29 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
             ? 'down'
             : 'stable';
 
-    const hasPausedSession =
-      homePausedSession != null &&
-      homePausedSession.totalQuestions > 0 &&
-      homePausedSession.currentQuestionIndex < homePausedSession.totalQuestions;
-
     const remainingQuestions = hasPausedSession
       ? Math.max(0, homePausedSession.totalQuestions - homePausedSession.currentQuestionIndex)
       : 0;
 
     const sessionProgress =
-      hasPausedSession && homePausedSession!.totalQuestions > 0
-        ? Math.round((homePausedSession!.currentQuestionIndex / homePausedSession!.totalQuestions) * 100)
+      hasPausedSession && homePausedSession.totalQuestions > 0
+        ? Math.round((homePausedSession.currentQuestionIndex / homePausedSession.totalQuestions) * 100)
         : 0;
 
-    const coachMessage = toCoachTwoLineMessage({
-      mode: coachPlan.mode,
-      tone: coachPlan.tone,
-      focusMessage: learningDashboardV2?.focusMessage,
-      reasons: coachPlan.reasons,
-      summary: coachPlan.summary,
+    const coachMessage = buildCoachTwoLineMessageV2({
+      planV2,
+      dominantState: homeExperience.dominantState,
     });
 
-    const coachCtaLabel =
-      coachPlan.mode === 'standard'
-        ? `Abrir bloque ${recommendedBatchNumber}`
-        : coachPlan.mode === 'simulacro'
-          ? 'Lanzar simulacro'
-          : coachPlan.mode === 'anti_trap'
-            ? 'Entrenar anti-trampas'
-            : coachPlan.mode === 'random'
-              ? 'Abrir sesión aleatoria'
-              : 'Iniciar sesión';
+    // En el concepto Lumina el CTA del hero es consistente.
+    const coachCtaLabel = homeExperience.hero.cta;
 
     return (
       <div className="pb-10">
         <HomeScreen
           state={{
             name: identity?.current_username ?? 'Alumno',
-            streakDays: 0,
+            streakDays,
             hasActiveSession: hasPausedSession,
             remainingQuestions,
             sessionProgress,
@@ -100,13 +177,34 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
             weakTopicsCount,
             recentAccuracyTrend,
           }}
+          sessionContinuityHint={sessionContinuityHint}
           practiceLocked={practiceLocked}
           coachMessage={coachMessage}
           coachCtaLabel={coachCtaLabel}
           onCoachCta={() => {
             if (practiceLocked) return;
-            onStartRecommended();
+            switch (homeExperience.dominantState) {
+              case 'pressure':
+                onStartSimulacro();
+                return;
+              case 'errors':
+                onStartWeakReview();
+                return;
+              default:
+                onStartRecommended();
+            }
           }}
+          pausedSessionCtaLabel={homeExperience.pausedSessionCard?.cta ?? 'Continuar sesión'}
+          secondaryOption={
+            homeExperience.secondaryOption
+              ? {
+                  mode: homeExperience.secondaryOption.mode,
+                  title: homeExperience.secondaryOption.title,
+                  summary: homeExperience.secondaryOption.summary,
+                  cta: homeExperience.secondaryOption.cta,
+                }
+              : null
+          }
           onResumePracticeSession={() => {
             if (practiceLocked) return;
             onResumePracticeSession?.();

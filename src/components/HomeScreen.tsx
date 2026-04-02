@@ -1,6 +1,67 @@
-import React, { useMemo } from 'react';
-import { ArrowRight, Flame, HelpCircle, History, Shuffle, Sparkles, Timer } from 'lucide-react';
+import React from 'react';
 import type { CoachTwoLineMessage } from '../domain/learningEngine';
+
+/**
+ * Presentación del hero: solo reordena / recorta el copy ya emitido por `buildCoachTwoLineMessageV2`
+ * (claves = pares exactos line1+line2). Sin adapters ni motor.
+ */
+type CoachHeroPresentation = {
+  eyebrow: string;
+  headline: string;
+  sub: string;
+};
+
+function coachHeroPresentation(message: CoachTwoLineMessage | null): CoachHeroPresentation {
+  const l1 = message?.line1?.trim() ?? '';
+  const l2 = message?.line2?.trim() ?? '';
+  const key = `${l1}\n${l2}`;
+
+  const fallback: CoachHeroPresentation = {
+    eyebrow: 'Recomendación principal',
+    headline: l1 || 'Tienes preguntas vencidas',
+    sub: l2 || 'Hoy va mejor mezclar y consolidar tus conocimientos.',
+  };
+
+  const byExactPair: Record<string, CoachHeroPresentation> = {
+    'Tienes preguntas vencidas\nHoy va mejor consolidar antes de seguir.': {
+      eyebrow: 'Antes de seguir',
+      headline: 'Consolidar antes de seguir',
+      sub: 'Tienes preguntas vencidas.',
+    },
+    'Estás repitiendo errores\nCorrige el patrón antes de avanzar.': {
+      eyebrow: 'Antes de avanzar',
+      headline: 'Corrige el patrón',
+      sub: 'Estás repitiendo errores.',
+    },
+    'Hoy toca entrenar examen\nTu nivel cae cuando sube la presión.': {
+      eyebrow: 'Tu nivel cae',
+      headline: 'Entrenar examen',
+      sub: 'Cuando sube la presión.',
+    },
+    'Vuelve a entrar fácil\nUna sesión corta hoy ya cambia la dinámica.': {
+      eyebrow: 'Sesión corta',
+      headline: 'Vuelve a entrar fácil',
+      sub: 'Una sesión corta hoy ya cambia la dinámica.',
+    },
+    'Estás listo para subir\nTu base aguanta; hoy puedes exigir más.': {
+      eyebrow: 'Tu base aguanta',
+      headline: 'Estás listo para subir',
+      sub: 'Hoy puedes exigir más.',
+    },
+    'Hoy toca afinar\nVamos a lo seguro para fijar lo importante.': {
+      eyebrow: 'Fijar lo importante',
+      headline: 'Hoy toca afinar',
+      sub: 'Vamos a lo seguro para fijar lo importante.',
+    },
+    'Hoy toca afinar\nVamos a lo seguro para generar señal.': {
+      eyebrow: 'Generar señal',
+      headline: 'Hoy toca afinar',
+      sub: 'Vamos a lo seguro para generar señal.',
+    },
+  };
+
+  return byExactPair[key] ?? fallback;
+}
 
 export type HomeModeId = 'mistakes' | 'random' | 'weak' | 'simulacro';
 
@@ -44,9 +105,19 @@ type HomeScreenProps = {
 
   /** Card secundaria (sesión en curso): continuar/terminar. */
   onResumePracticeSession?: () => void;
+  pausedSessionCtaLabel?: string;
 
-  /** Grid de modos (referencia visual 2×2). */
-  modesSectionLabel?: string;
+  /** Una sola alternativa secundaria (misma ruta que antes: `onSelectMode`). */
+  secondaryOption?: {
+    mode: HomeModeId;
+    title: string;
+    summary: string;
+    cta: string;
+  } | null;
+
+  /** Continuidad desde la última sesión cerrada (local, ~48h). */
+  sessionContinuityHint?: string | null;
+
   onSelectMode?: (mode: HomeModeId) => void;
 };
 
@@ -57,22 +128,25 @@ export default function HomeScreen({
   coachCtaLabel = 'Empezar ahora',
   onCoachCta = () => {},
   onResumePracticeSession,
-  modesSectionLabel = 'Si no, prueba esto',
+  pausedSessionCtaLabel = 'Continuar sesión',
+  secondaryOption = null,
+  sessionContinuityHint = null,
   onSelectMode = () => {},
 }: HomeScreenProps) {
   const interactiveDisabled = practiceLocked;
 
-  const modeHighlight = useMemo((): HomeModeId => {
-    if (state.mistakesPending > 0) return 'mistakes';
-    if (state.weakTopicsCount > 0) return 'weak';
-    return 'random';
-  }, [state.mistakesPending, state.weakTopicsCount]);
-
   return (
     <div className="mx-auto w-full max-w-lg px-4 pb-24 pt-6 sm:max-w-xl sm:px-6">
-      <Header name={state.name} streakDays={state.streakDays} />
+      {/* El header global (avatar + racha) vive en `TopBar` */}
 
-      <div className="mt-7">
+      {sessionContinuityHint ? (
+        <div className="mt-4 rounded-[1.1rem] border border-violet-200/70 bg-violet-50/60 px-3.5 py-2.5 text-[11px] font-medium leading-snug text-slate-700 shadow-sm">
+          <span className="font-bold text-violet-900">Continuidad · </span>
+          {sessionContinuityHint}
+        </div>
+      ) : null}
+
+      <div className={sessionContinuityHint ? 'mt-4' : 'mt-5'}>
         <CoachHeroCard
           message={coachMessage}
           ctaLabel={coachCtaLabel}
@@ -85,10 +159,11 @@ export default function HomeScreen({
       </div>
 
       {state.hasActiveSession ? (
-        <div className="mt-5">
+        <div className="mt-4">
           <SessionProgressCard
             remainingQuestions={state.remainingQuestions}
             progress={state.sessionProgress}
+            ctaLabel={pausedSessionCtaLabel}
             disabled={interactiveDisabled}
             onCta={() => {
               if (interactiveDisabled) return;
@@ -98,46 +173,21 @@ export default function HomeScreen({
         </div>
       ) : null}
 
-      <div className="mt-8">
-        <h2 className="text-[15px] font-extrabold tracking-[-0.02em] text-slate-900">{modesSectionLabel}</h2>
+      {secondaryOption ? (
         <div className="mt-4">
-          <ModesGrid
-            mistakesPending={state.mistakesPending}
-            weakTopicsCount={state.weakTopicsCount}
-            highlightId={modeHighlight}
+          <SecondaryOptionCard
+            title={secondaryOption.title}
+            summary={secondaryOption.summary}
+            cta={secondaryOption.cta}
             disabled={interactiveDisabled}
-            onSelectMode={onSelectMode}
+            onCta={() => {
+              if (interactiveDisabled) return;
+              onSelectMode(secondaryOption.mode);
+            }}
           />
         </div>
-      </div>
+      ) : null}
     </div>
-  );
-}
-
-function initialsFromName(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return `${parts[0]![0] ?? ''}${parts[parts.length - 1]![0] ?? ''}`.toUpperCase();
-}
-
-function Header({ name, streakDays }: { name: string; streakDays: number }) {
-  return (
-    <header className="flex items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-3.5">
-        <span
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-violet-500 to-indigo-600 text-[13px] font-bold tracking-tight text-white shadow-[0_10px_28px_-10px_rgba(91,33,182,0.55)] ring-2 ring-white/90"
-          aria-hidden="true"
-        >
-          {initialsFromName(name)}
-        </span>
-        <p className="truncate text-[1.05rem] font-bold leading-tight tracking-[-0.03em] text-slate-950">{`Hola, ${name}`}</p>
-      </div>
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200/70 bg-gradient-to-b from-amber-50 to-orange-50/90 px-3.5 py-2 text-[12px] font-semibold tabular-nums tracking-tight text-amber-950 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_8px_20px_-12px_rgba(217,119,6,0.35)]">
-        <Flame size={15} className="text-orange-500" strokeWidth={2.25} aria-hidden="true" />
-        {streakDays} días
-      </span>
-    </header>
   );
 }
 
@@ -152,32 +202,44 @@ function CoachHeroCard({
   disabled: boolean;
   onCta: () => void;
 }) {
-  const line1 = message?.line1?.trim() || 'Hoy toca una decisión clara.';
-  const line2 = message?.line2?.trim() || 'Haz una sesión corta y con intención.';
+  const { eyebrow, headline, sub } = coachHeroPresentation(message);
 
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(152deg,#3b0764_0%,#5b21b6_38%,#7c3aed_68%,#a78bfa_100%)] p-7 text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset,0_28px_64px_-28px_rgba(76,29,149,0.55),0_48px_100px_-48px_rgba(49,46,129,0.35)] sm:p-8">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_90%_-20%,rgba(255,255,255,0.18),transparent_50%),radial-gradient(ellipse_80%_60%_at_0%_100%,rgba(255,255,255,0.08),transparent_45%)]" />
-      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/5 blur-3xl" />
-      <div className="relative">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/95 shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] backdrop-blur-sm">
-          <Sparkles size={13} className="text-amber-200/95" aria-hidden="true" />
-          Hoy toca esto
-        </span>
+    <section
+      aria-labelledby="home-coach-hero-title"
+      className="relative isolate overflow-hidden rounded-[2rem] border border-white/[0.12] bg-[linear-gradient(158deg,#160b35_0%,#251c5c_38%,#312e81_72%,#3730a3_100%)] px-7 pb-10 pt-10 text-white shadow-[0_48px_100px_-36px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] sm:rounded-[2.25rem] sm:px-10 sm:pb-11 sm:pt-11"
+    >
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(125%_85%_at_12%_-15%,rgba(255,255,255,0.16),transparent_50%)]"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(85%_55%_at_100%_105%,rgba(0,0,0,0.35),transparent_52%)]"
+        aria-hidden="true"
+      />
 
-        <h1 className="mt-5 text-[1.65rem] font-bold leading-[1.12] tracking-[-0.045em] text-white drop-shadow-sm sm:text-[1.85rem]">
-          {line1}
-        </h1>
-        <p className="mt-3 text-[0.95rem] font-medium leading-relaxed text-white/[0.92]">{line2}</p>
+      <div className="relative flex flex-col">
+        <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-violet-300/95">{eyebrow}</p>
 
-        <div className="mt-7">
+        <h2
+          id="home-coach-hero-title"
+          className="mt-5 max-w-[17ch] text-balance text-[1.7rem] font-black leading-[1.06] tracking-[-0.048em] text-white sm:mt-6 sm:max-w-[19ch] sm:text-[1.95rem]"
+        >
+          {headline}
+        </h2>
+
+        <p className="mt-6 max-w-[34ch] text-[0.875rem] font-medium leading-[1.45] text-violet-100/[0.72] sm:text-[0.9375rem] sm:leading-snug">
+          {sub}
+        </p>
+
+        <div className="mt-10 sm:mt-11">
           <button
             type="button"
             disabled={disabled}
             onClick={onCta}
-            className="inline-flex min-h-[52px] w-full items-center justify-center rounded-full bg-gradient-to-b from-white to-slate-50 px-6 text-[0.95rem] font-bold tracking-[-0.02em] text-violet-800 shadow-[0_1px_0_rgba(255,255,255,0.95)_inset,0_14px_32px_-12px_rgba(15,23,42,0.35)] transition-[transform,box-shadow] duration-200 ease-out hover:shadow-[0_1px_0_rgba(255,255,255,1)_inset,0_18px_40px_-10px_rgba(15,23,42,0.28)] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-violet-900"
+            className="relative w-full overflow-hidden rounded-[1.25rem] bg-white py-[1.2rem] text-center text-[1.08rem] font-black tracking-[-0.03em] text-[#1e1b4b] shadow-[0_16px_48px_-10px_rgba(0,0,0,0.55),inset_0_2px_0_rgba(255,255,255,0.95)] ring-[3px] ring-white/30 transition-[transform,box-shadow,filter] duration-200 ease-out hover:brightness-[1.04] hover:ring-white/55 active:scale-[0.982] disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-[3px] focus-visible:ring-offset-[#1e153f] sm:rounded-[1.4rem] sm:py-[1.28rem] sm:text-[1.14rem]"
           >
-            {ctaLabel}
+            <span className="relative z-[1]">{ctaLabel}</span>
           </button>
         </div>
       </div>
@@ -188,16 +250,18 @@ function CoachHeroCard({
 function SessionProgressCard({
   remainingQuestions,
   progress,
+  ctaLabel,
   disabled,
   onCta,
 }: {
   remainingQuestions: number;
   progress: number;
+  ctaLabel: string;
   disabled: boolean;
   onCta: () => void;
 }) {
   return (
-    <section className="rounded-[1.35rem] border border-slate-200/70 bg-gradient-to-b from-white to-slate-50/90 p-5 shadow-[0_1px_0_rgba(15,23,42,0.04)_inset,0_16px_40px_-28px_rgba(15,23,42,0.14)] sm:p-6">
+    <section className="rounded-[1.25rem] border border-slate-200/60 bg-slate-50/80 p-4 shadow-sm sm:p-5">
       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Continuar sesión</p>
       <p className="mt-2 text-[1.1rem] font-bold leading-snug tracking-[-0.03em] text-slate-950">
         {`Te quedan ${remainingQuestions} preguntas`}
@@ -213,139 +277,42 @@ function SessionProgressCard({
         type="button"
         disabled={disabled}
         onClick={onCta}
-        className="mt-5 inline-flex min-h-[46px] w-full items-center justify-center rounded-full border border-slate-200/90 bg-white px-5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-800 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
+        className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-full border border-slate-200/90 bg-white px-5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-800 transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
       >
-        Terminar ahora
+        {ctaLabel}
       </button>
     </section>
   );
 }
 
-function ModeTile({
+function SecondaryOptionCard({
   title,
-  subtitle,
-  badge,
-  badgeVariant = 'accent',
-  highlighted,
-  icon,
+  summary,
+  cta,
   disabled,
-  onClick,
+  onCta,
 }: {
   title: string;
-  subtitle: string;
-  badge: string | null;
-  badgeVariant?: 'accent' | 'muted';
-  highlighted: boolean;
-  icon: React.ReactNode;
+  summary: string;
+  cta: string;
   disabled: boolean;
-  onClick: () => void;
+  onCta: () => void;
 }) {
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`group relative flex min-h-[132px] w-full flex-col rounded-[1.35rem] border p-[0.95rem] text-left transition-[transform,box-shadow,border-color] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45 ${
-        highlighted
-          ? 'border-violet-300/50 bg-white shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_12px_28px_-8px_rgba(91,33,182,0.12),0_24px_48px_-20px_rgba(91,33,182,0.14)] ring-1 ring-violet-500/10 hover:-translate-y-px hover:shadow-[0_1px_0_rgba(255,255,255,1)_inset,0_16px_36px_-10px_rgba(91,33,182,0.16)]'
-          : 'border-slate-200/60 bg-white/95 shadow-[0_1px_0_rgba(15,23,42,0.03)_inset,0_10px_28px_-12px_rgba(15,23,42,0.08)] hover:-translate-y-px hover:border-slate-300/70 hover:shadow-[0_1px_0_rgba(15,23,42,0.04)_inset,0_14px_36px_-12px_rgba(15,23,42,0.12)] active:translate-y-0'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
-            highlighted
-              ? 'bg-gradient-to-b from-violet-50 to-violet-100/90 text-violet-700 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset]'
-              : 'bg-slate-100/90 text-slate-700 shadow-[0_1px_0_rgba(255,255,255,0.75)_inset]'
-          }`}
+    <section className="rounded-[1rem] border border-dashed border-slate-200/80 bg-transparent px-0.5 py-0.5">
+      <div className="rounded-[0.9rem] border border-slate-100/95 bg-white/65 px-3 py-2.5 sm:px-3.5 sm:py-2.5">
+        <p className="text-[8px] font-semibold uppercase tracking-[0.2em] text-slate-400/95">Plan B</p>
+        <p className="mt-1 text-[0.9rem] font-semibold leading-tight tracking-[-0.02em] text-slate-800">{title}</p>
+        <p className="mt-0.5 text-[12px] font-medium leading-snug text-slate-500">{summary}</p>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onCta}
+          className="mt-2 inline-flex min-h-[34px] w-full items-center justify-center rounded-full border border-slate-200/85 bg-slate-50/95 px-3 text-[9px] font-bold uppercase tracking-[0.13em] text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/35"
         >
-          {icon}
-        </span>
-        {badge ? (
-          <span
-            className={`max-w-[min(100%,7.5rem)] shrink-0 truncate rounded-lg px-2 py-1 text-[8.5px] font-bold uppercase leading-none tracking-[0.12em] shadow-sm ${
-              badgeVariant === 'accent'
-                ? 'border border-violet-700/20 bg-gradient-to-b from-violet-600 to-violet-700 text-white'
-                : 'border border-slate-200/80 bg-slate-100/90 text-slate-600'
-            }`}
-          >
-            {badge}
-          </span>
-        ) : null}
+          {cta}
+        </button>
       </div>
-      <p className="mt-3.5 text-[0.95rem] font-bold leading-tight tracking-[-0.025em] text-slate-950">{title}</p>
-      <p className="mt-1.5 text-[0.78rem] font-medium leading-snug text-slate-500">{subtitle}</p>
-      <ArrowRight
-        size={14}
-        strokeWidth={2}
-        className="pointer-events-none absolute bottom-3.5 right-3.5 text-slate-300/90 opacity-80 transition-[transform,opacity] duration-200 group-hover:translate-x-0.5 group-hover:opacity-100"
-        aria-hidden="true"
-      />
-    </button>
-  );
-}
-
-function ModesGrid({
-  mistakesPending,
-  weakTopicsCount,
-  highlightId,
-  disabled,
-  onSelectMode,
-}: {
-  mistakesPending: number;
-  weakTopicsCount: number;
-  highlightId: HomeModeId;
-  disabled: boolean;
-  onSelectMode: (mode: HomeModeId) => void;
-}) {
-  const mistakesBadge = mistakesPending > 0 ? `${mistakesPending} pendientes` : null;
-  const weakBadge = weakTopicsCount > 0 ? `${weakTopicsCount} temas` : null;
-
-  return (
-    <div
-      className="rounded-[1.75rem] border border-slate-200/35 bg-gradient-to-b from-white/80 to-slate-50/40 p-3 shadow-[0_1px_0_rgba(255,255,255,0.65)_inset] backdrop-blur-[2px] sm:p-3.5"
-      aria-label="Modos de práctica"
-    >
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-      <ModeTile
-        title="Falladas"
-        subtitle="Repasa tus errores"
-        badge={mistakesBadge}
-        badgeVariant="accent"
-        highlighted={highlightId === 'mistakes'}
-        icon={<History size={20} strokeWidth={2} aria-hidden="true" />}
-        disabled={disabled}
-        onClick={() => onSelectMode('mistakes')}
-      />
-      <ModeTile
-        title="Aleatoria"
-        subtitle="Preguntas variadas"
-        badge={null}
-        highlighted={highlightId === 'random'}
-        icon={<Shuffle size={20} strokeWidth={2} aria-hidden="true" />}
-        disabled={disabled}
-        onClick={() => onSelectMode('random')}
-      />
-      <ModeTile
-        title="Zonas débiles"
-        subtitle="Refuerza tus temas flojos"
-        badge={weakBadge}
-        badgeVariant="muted"
-        highlighted={highlightId === 'weak'}
-        icon={<HelpCircle size={20} strokeWidth={2} aria-hidden="true" />}
-        disabled={disabled}
-        onClick={() => onSelectMode('weak')}
-      />
-      <ModeTile
-        title="Simulacro"
-        subtitle="Entrena bajo presión"
-        badge={null}
-        highlighted={false}
-        icon={<Timer size={20} strokeWidth={2} aria-hidden="true" />}
-        disabled={disabled}
-        onClick={() => onSelectMode('simulacro')}
-      />
-      </div>
-    </div>
+    </section>
   );
 }

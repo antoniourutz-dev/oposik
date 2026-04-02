@@ -19,6 +19,10 @@ import { usePracticeShellTransitions } from './practiceApp/usePracticeShellTrans
 import { usePracticeStartRecommended } from './practiceApp/usePracticeStartRecommended';
 import { usePracticeDataController } from './usePracticeDataController';
 import { usePracticeSessionFlow } from './usePracticeSessionFlow';
+import {
+  readTextHighlightPreference,
+  writeTextHighlightPreference,
+} from '../services/textHighlightPreferenceStorage';
 
 const GUEST_IDENTITY: AccountIdentity = {
   user_id: 'guest-preview',
@@ -42,6 +46,15 @@ export const usePracticeApp = () => {
   const [guestBlocksUsed, setGuestBlocksUsed] = useState(readGuestBlocksUsed);
   const { handleQuestionScopeChange, selectedQuestionScope, setSelectedQuestionScope } =
     usePracticeQuestionScope();
+
+  const [textHighlightingEnabled, setTextHighlightingEnabledState] = useState(
+    readTextHighlightPreference,
+  );
+
+  const setTextHighlightingEnabled = useCallback((enabled: boolean) => {
+    setTextHighlightingEnabledState(enabled);
+    writeTextHighlightPreference(enabled);
+  }, []);
 
   const {
     clearAccountContext,
@@ -97,7 +110,7 @@ export const usePracticeApp = () => {
     PRACTICE_BATCH_SIZE,
   );
 
-  const { coachPlan, coachPlanV2ForDebug } = useMemo(() => {
+  const { coachPlan, planV2, coachPlanV2ForDebug } = useMemo(() => {
     const { coachPlan: nextCoachPlan, planV2 } = buildPracticeCoachPlanV2Bundle({
       learningDashboard,
       learningDashboardV2,
@@ -109,7 +122,8 @@ export const usePracticeApp = () => {
       totalBatches,
       batchSize: PRACTICE_BATCH_SIZE,
     });
-    return { coachPlan: nextCoachPlan, coachPlanV2ForDebug: planV2 };
+    // Compatibilidad: exponemos `planV2` (fuente de verdad) y mantenemos el alias legacy debug.
+    return { coachPlan: nextCoachPlan, planV2, coachPlanV2ForDebug: planV2 };
   },
     [
       examTarget,
@@ -259,6 +273,7 @@ export const usePracticeApp = () => {
     savingExamTarget,
     session,
     coachPlan,
+    planV2,
     startSimulacro,
     startAntiTrap,
     startCatalogReview,
@@ -280,5 +295,7 @@ export const usePracticeApp = () => {
     pauseActiveSession,
     resumeActiveSession,
     setActiveTab,
+    textHighlightingEnabled,
+    setTextHighlightingEnabled,
   };
 };

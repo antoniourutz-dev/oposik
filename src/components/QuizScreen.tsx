@@ -1,9 +1,10 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Check, Clock3, X } from 'lucide-react';
+import { AlertCircle, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/button';
 import { inferAttemptErrorType } from '../domain/learningEngine';
 import {
+  ActivePracticeSession,
   OptionKey,
   PracticeAnswer,
   PracticeAnswerSubmission,
@@ -11,10 +12,17 @@ import {
   PracticeQuestionScopeFilter,
   PracticeQuestion,
 } from '../practiceTypes';
+import {
+  buildTestAdapterOutput,
+  quizFeedbackAnnouncement,
+  resolveQuizPrimaryButtonLabel,
+  type TestAdapterSurfaceContext,
+} from '../adapters/surfaces/testAdapter';
 import { getQuizFriendlyCopy } from '../sessionPresentation';
 import { useQuizTelemetry } from '../hooks/useQuizTelemetry';
 import { computeSessionFatigueScore } from '../domain/learningEngine/fatigue';
 import { StatementBody } from './StatementBody';
+import { HighlightedText } from './HighlightedText';
 
 type QuizScreenProps = {
   mode: PracticeMode;
@@ -32,9 +40,15 @@ type QuizScreenProps = {
   simplified?: boolean;
   showCompactProgress?: boolean;
   answers: PracticeAnswer[];
+  /** Sesión activa (adapter de superficie). */
+  activeSession: ActivePracticeSession;
+  /** Contexto alineado con Home/Stats para una sola narrativa dominante. */
+  surfaceContext: TestAdapterSurfaceContext;
   onAnswer: (submission: PracticeAnswerSubmission) => void;
   onEndSession: (submission: PracticeAnswerSubmission | null) => void;
   onTimeExpired: (submission: PracticeAnswerSubmission | null) => void;
+  /** Preferencia de perfil: resaltado en enunciado, opciones y explicaciones (si aplica). */
+  textHighlightingEnabled?: boolean;
 };
 
 const QuizScreen: React.FC<QuizScreenProps> = ({
@@ -50,9 +64,12 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   questionScope: _questionScope = 'all',
   simplified = false,
   answers,
+  activeSession,
+  surfaceContext,
   onAnswer,
   onEndSession,
   onTimeExpired,
+  textHighlightingEnabled = true,
 }) => {
   const [selectedKey, setSelectedKey] = useState<OptionKey | null>(null);
   const [revealedCorrectKey, setRevealedCorrectKey] = useState<OptionKey | null>(null);
@@ -61,12 +78,11 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   const [changedAnswer, setChangedAnswer] = useState(false);
   const [, setIsQuestionVisible] = useState(false);
   const [isDecisionVisible, setIsDecisionVisible] = useState(false);
-  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(timeLimitSeconds);
+  const [, setRemainingSeconds] = useState<number | null>(timeLimitSeconds);
   const questionStartedAtRef = useRef(
     typeof performance !== 'undefined' ? performance.now() : Date.now(),
   );
   const timeExpiredRef = useRef(false);
-  const actionBarRef = useRef<HTMLDivElement | null>(null);
   const optionRefs = useRef<Partial<Record<OptionKey, HTMLButtonElement | null>>>({});
   useQuizTelemetry(question.id);
 
@@ -145,8 +161,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
 
       if (highlightedOptions.length === 0) return;
 
-      const actionHeight = actionBarRef.current?.getBoundingClientRect().height ?? 92;
-      const safeBottom = window.innerHeight - actionHeight - 22;
+      // Margen para el CTA flotante fijo (~88px) + pequeño buffer.
+      const safeBottom = window.innerHeight - 104;
       const highlightedBottom = Math.max(
         ...highlightedOptions.map((node) => node.getBoundingClientRect().bottom),
       );
@@ -198,25 +214,48 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     () => Object.entries(question.options) as Array<[OptionKey, string]>,
     [question.options],
   );
-  const isDeferredMode = feedbackMode === 'deferred';
-  const displayQuestionNumber = question.number ?? questionIndex + 1;
-  const friendlyCopy = getQuizFriendlyCopy(mode);
-  const isCurrentAnswerCorrect = selectedKey !== null && selectedKey === question.correctOption;
-  const nextButtonLabel =
-    questionIndex === totalQuestions - 1
-      ? isDeferredMode
-        ? 'Finalizar simulacro'
-        : 'Ver resultados'
-      : isDeferredMode
-        ? 'Guardar y seguir'
-        : 'Siguiente';
+  const optionTextsForCompare = useMemo(
+    () => optionEntries.map(([, v]) => v),
+    [optionEntries],
+  );
 
-  const formattedRemainingTime =
-    remainingSeconds === null
-      ? null
-      : `${String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:${String(
-          remainingSeconds % 60,
-        ).padStart(2, '0')}`;
+  const testExperience = useMemo(
+    () =>
+      buildTestAdapterOutput({
+        planV2: surfaceContext.planV2,
+        activeSession,
+        answers,
+        currentQuestion: question,
+        pressureInsightsV2: surfaceContext.pressureInsightsV2,
+        selectedQuestionScope: _questionScope,
+        surfaceContext,
+      }),
+    [activeSession, answers, question, surfaceContext, _questionScope],
+  );
+
+  const statementHighlightEnabled =
+    textHighlightingEnabled && testExperience.answerUi.highlightImportantText;
+
+  const isDeferredMode = feedbackMode === 'deferred';
+  const friendlyCopy = getQuizFriendlyCopy(mode);
+  const resolvedQuestionScope = question.questionScope ?? (_questionScope !== 'all' ? _questionScope : null);
+  const scopeLabelUpper =
+    resolvedQuestionScope === 'common'
+      ? 'TEMARIO COMÚN'
+      : resolvedQuestionScope === 'specific'
+        ? 'TEMARIO ESPECÍFICO'
+        : String(friendlyCopy.contextLine1 ?? 'TEMARIO').toUpperCase();
+  const displayQuestionNumber = question.number ?? null;
+  const isCurrentAnswerCorrect = selectedKey !== null && selectedKey === question.correctOption;
+  const nextButtonLabel = useMemo(
+    () =>
+      resolveQuizPrimaryButtonLabel(testExperience, {
+        questionIndex,
+        totalQuestions,
+        feedbackMode,
+      }),
+    [feedbackMode, questionIndex, testExperience, totalQuestions],
+  );
 
   const buildSubmission = (): PracticeAnswerSubmission | null => {
     if (!selectedKey) return null;
@@ -254,81 +293,83 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     onAnswer(submission);
   };
 
-  const renderActionButton = () => (
-    <div className="rounded-full bg-white p-1 shadow-[0_10px_28px_-12px_rgba(76,29,149,0.12),0_1px_0_rgba(255,255,255,0.9)_inset] ring-1 ring-slate-200/60">
-      <button
-        type="button"
-        onClick={submitCurrentAnswer}
-        className="brand-gradient-h flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[0.95rem] font-bold tracking-[-0.02em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_14px_36px_-18px_rgba(124,182,232,0.45)] transition-[filter,transform] duration-200 hover:brightness-[1.04] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-      >
-        {nextButtonLabel}
-      </button>
-    </div>
+  const renderActionButton = (disabled: boolean) => (
+    <button
+      type="button"
+      onClick={submitCurrentAnswer}
+      disabled={disabled}
+      className={`w-full py-[1.15rem] text-white rounded-[28px] font-black text-[1.05rem] tracking-[-0.02em] transition-[transform,filter] duration-200 hover:brightness-[1.06] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 ${primaryCtaClass}`}
+    >
+      {nextButtonLabel}
+    </button>
   );
 
-  const feedbackAnnouncement =
-    !isDeferredMode && selectedKey !== null
-      ? isCurrentAnswerCorrect
-        ? 'Correcto. Esta era la clave.'
-        : 'Aquí has fallado.'
-      : '';
+  const feedbackAnnouncement = useMemo(() => {
+    if (isDeferredMode || selectedKey === null) return '';
+    return quizFeedbackAnnouncement({
+      isCorrect: isCurrentAnswerCorrect,
+      hasSelection: true,
+      feedbackStyle: testExperience.feedbackStyle,
+    });
+  }, [
+    isCurrentAnswerCorrect,
+    isDeferredMode,
+    selectedKey,
+    testExperience.feedbackStyle,
+  ]);
+
+  /** Microseñal conductual sobria (solo refuerzos; sin castigar la velocidad). */
+  const behavioralMicroLine = useMemo(() => {
+    if (selectedKey === null) return null;
+    if (!testExperience.feedbackStyle.showMicroReinforcement && mode !== 'simulacro') return null;
+    const correct = selectedKey === question.correctOption;
+    const ms = firstSelectionElapsedMs ?? 0;
+    if (isDeferredMode && changedAnswer && correct) return 'Buena verificación';
+    if (correct && ms >= 11000) return 'Mejor lectura';
+    if (correct && ms >= 6500 && ms < 11000) return 'Lectura pausada';
+    if (mode === 'simulacro' && correct && ms >= 4500) return 'Control bajo presión';
+    return null;
+  }, [
+    changedAnswer,
+    firstSelectionElapsedMs,
+    isDeferredMode,
+    mode,
+    question.correctOption,
+    selectedKey,
+    testExperience.feedbackStyle.showMicroReinforcement,
+  ]);
+
+  const quizSurfaceClass =
+    testExperience.tension === 'high'
+      ? 'ring-1 ring-slate-300/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]'
+      : testExperience.tension === 'low'
+        ? 'ring-1 ring-slate-200/70'
+        : '';
+  const primaryCtaClass =
+    testExperience.tension === 'high'
+      ? 'bg-slate-950 ring-1 ring-white/10 shadow-[0_20px_48px_-20px_rgba(15,23,42,0.45)]'
+      : 'bg-slate-900 shadow-xl';
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-[min(100%,42rem)] flex-1 flex-col bg-gradient-to-b from-slate-100/95 via-slate-50 to-indigo-50/40 px-3 py-3 sm:px-6 sm:py-6 lg:py-8 ${
-        selectedKey !== null ? 'pb-32' : 'pb-10'
-      }`}
+      className={`mx-auto flex w-full max-w-[min(100%,42rem)] flex-1 flex-col rounded-[1.5rem] bg-slate-50 text-slate-900 px-3 py-3 sm:px-6 sm:py-6 lg:py-8 pb-28 ${quizSurfaceClass}`}
     >
       <div role="status" aria-live="assertive" aria-atomic="true" className="sr-only">
         {feedbackAnnouncement}
       </div>
       <AnimatePresence mode="wait">
-        <div className="mb-4 space-y-3 sm:mb-5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                aria-label="Salir de la sesión"
-                onClick={() => onEndSession(buildSubmission())}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-200/90 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
-              >
-                <X aria-hidden="true" size={20} strokeWidth={2.5} />
-              </button>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="text-lg font-black tracking-tight text-slate-900 sm:text-xl">
-                    Práctica
-                  </span>
-                  {!simplified ? (
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 sm:text-[11px]">
-                      {friendlyCopy.sessionKindLabel}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {formattedRemainingTime ? (
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 bg-white/90 px-2.5 py-1 text-[10px] font-bold text-slate-600 shadow-sm">
-                  <Clock3 aria-hidden="true" size={12} />
-                  <span aria-label={`Tiempo restante: ${formattedRemainingTime}`}>
-                    {formattedRemainingTime}
-                  </span>
-                </div>
-              ) : null}
-              <button
-                type="button"
-                aria-label="Salir de la sesión"
-                onClick={() => onEndSession(buildSubmission())}
-                className="rounded-lg px-2 py-1 text-sm font-bold text-violet-600 transition hover:text-violet-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
-              >
-                Salir
-              </button>
-            </div>
-          </div>
+        <div className="mb-4 flex items-center justify-between gap-3 max-w-2xl mx-auto w-full sm:mb-5">
+          <button
+            type="button"
+            aria-label="Salir de la sesión"
+            onClick={() => onEndSession(buildSubmission())}
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-200 text-slate-600 shadow-sm transition hover:bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+          >
+            <RotateCcw aria-hidden="true" size={20} strokeWidth={2.5} />
+          </button>
 
           <div
-            className="h-1 w-full overflow-hidden rounded-full bg-slate-200/90"
+            className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden"
             role="progressbar"
             aria-valuenow={questionIndex + 1}
             aria-valuemin={1}
@@ -343,20 +384,9 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
             />
           </div>
 
-          {!simplified ? (
-            <div className="space-y-0.5 px-0.5 pt-1">
-              <p className="text-xs font-medium text-slate-500">{friendlyCopy.contextLine1}</p>
-              <p className="text-base font-bold text-slate-800">
-                Pregunta {displayQuestionNumber} de {totalQuestions}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-0.5 px-0.5 pt-1">
-              <p className="text-base font-bold text-slate-800">
-                Pregunta {displayQuestionNumber} de {totalQuestions}
-              </p>
-            </div>
-          )}
+          <span className="text-xs font-black text-slate-400 tracking-tight">
+            {questionIndex + 1}/{totalQuestions}
+          </span>
         </div>
 
         <motion.section
@@ -367,54 +397,54 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
           transition={{ duration: 0.35, ease: 'easeOut' }}
           className="flex flex-1 flex-col gap-6"
         >
-          {/* --- ENUNCIADO (superficie de lectura: distinta de las tarjetas de opción) --- */}
-          <div className="sticky top-1 z-30 -mx-1 px-1 pb-1 pt-2 sm:top-2 sm:pb-2 xl:static xl:z-auto xl:mx-0 xl:p-0 xl:pb-0 xl:pt-0">
-            <div
-              className={`relative isolate overflow-hidden rounded-[1.75rem] border border-violet-200/60 bg-[linear-gradient(152deg,#f5f3ff_0%,#ffffff_50%,#eef2ff_100%)] p-5 shadow-[0_22px_50px_-30px_rgba(91,33,182,0.14),0_1px_0_#ffffff_inset] ring-1 ring-violet-100/80 transition-all duration-300 sm:rounded-[2rem] sm:p-8 xl:p-10 ${
-                isDecisionVisible ? 'decision-soft-pulse' : ''
-              }`}
-            >
-              {/* Decoración solo encima del fondo opaco (sin transparencias que mezclen con el scroll de detrás) */}
-              <div className="pointer-events-none absolute -right-8 -top-12 h-40 w-40 rounded-full bg-violet-200 blur-3xl opacity-90" />
-              <div className="pointer-events-none absolute -bottom-16 -left-10 h-36 w-36 rounded-full bg-sky-100 blur-3xl opacity-80" />
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_100%_0%,#ddd6fe_0%,transparent_55%)] opacity-40" />
-              <div className="relative z-10 mb-4 flex items-center gap-2 sm:mb-5">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-400/90">
-                  ENUNCIADO
-                </span>
-                <span
-                  className="hidden h-px flex-1 bg-gradient-to-r from-violet-200/60 to-transparent sm:block"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="relative z-10 max-w-prose text-[1.05rem] font-medium leading-[1.82] tracking-tight text-slate-700 sm:text-[1.12rem] sm:leading-[1.78]">
-                <StatementBody text={question.statement} />
-              </div>
+          {/* --- Enunciado: intención de sesión + lectura seria --- */}
+          <div
+            className={`sticky top-0 z-30 rounded-b-xl bg-slate-50/95 pt-2 pb-3 backdrop-blur-[6px] sm:pt-3 sm:pb-4 ${
+              isDecisionVisible ? 'decision-soft-pulse' : ''
+            }`}
+          >
+            <div className="mb-3 space-y-1.5 border-b border-slate-200/80 pb-3">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                {!simplified ? (
+                  <>
+                    {scopeLabelUpper}
+                    <span className="mx-1.5 text-slate-300">·</span>
+                    Pregunta {questionIndex + 1}/{totalQuestions}
+                  </>
+                ) : (
+                  'Enunciado'
+                )}
+              </p>
+              {!simplified && testExperience.headerContext ? (
+                <p
+                  className={`text-[0.8125rem] font-bold leading-snug tracking-[-0.02em] ${
+                    testExperience.headerContext.subdued ? 'text-slate-600' : 'text-slate-900'
+                  }`}
+                >
+                  {testExperience.headerContext.label}
+                </p>
+              ) : null}
             </div>
+            <h2 className="text-[1.35rem] font-semibold leading-[1.4] tracking-[-0.025em] text-slate-950 sm:text-[1.5rem] sm:leading-[1.38]">
+              {displayQuestionNumber != null ? (
+                <span className="mr-1.5 font-bold text-slate-500">{displayQuestionNumber}.</span>
+              ) : null}
+              <StatementBody
+                text={question.statement}
+                highlightEnabled={statementHighlightEnabled}
+              />
+            </h2>
           </div>
 
           <div className="grid w-full gap-5">
-            {selectedKey === null ? (
-              <p className="text-center text-sm font-medium text-slate-500">
-                Piensa bien antes de responder
-              </p>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-4 sm:gap-5">
-              {optionEntries.map(([key, value]) => {
+            <div className="space-y-4">
+              {optionEntries.map(([key, value], optionIdx) => {
                 const isCorrectOption = revealedCorrectKey === key;
                 const isWrongSelected =
                   selectedKey !== null && selectedKey === key && revealedCorrectKey !== key;
                 const isOtherSelected =
                   selectedKey !== null && selectedKey !== key && !isCorrectOption;
                 const isDeferredSelected = isDeferredMode && selectedKey === key;
-                const feedbackAccentClass = isDeferredSelected
-                  ? 'quantia-bg-gradient opacity-95'
-                  : isCorrectOption
-                    ? 'bg-[linear-gradient(180deg,#34d399_0%,#10b981_100%)] opacity-95'
-                    : isWrongSelected
-                      ? 'bg-[linear-gradient(180deg,#fb7185_0%,#f43f5e_100%)] opacity-95'
-                      : 'bg-white/0 opacity-0';
 
                 const ariaLabel = isCorrectOption
                   ? `Opción ${key.toUpperCase()}: ${value} — Correcta`
@@ -464,114 +494,73 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                       setRevealedCorrectKey(question.correctOption);
                     }}
                     disabled={!isDeferredMode && selectedKey !== null}
-                    className={`relative flex w-full flex-col items-stretch gap-2 overflow-hidden rounded-2xl border px-4 py-3.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-200/80 sm:px-5 sm:py-4 ${
-                      isDeferredMode
-                        ? isDeferredSelected
-                          ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(237,245,255,0.96))] shadow-[0_24px_38px_-28px_rgba(141,147,242,0.22)] ring-1 ring-sky-200'
-                          : 'border-slate-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.94))] shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-white hover:shadow-[0_24px_38px_-28px_rgba(141,147,242,0.16)] active:translate-y-0 active:scale-[0.99]'
-                        : isCorrectOption
-                          ? 'border-emerald-300 bg-[linear-gradient(180deg,rgba(236,253,245,1),rgba(220,252,231,0.92))] shadow-[0_16px_35px_-24px_rgba(16,185,129,0.32)] ring-1 ring-emerald-100'
-                          : isWrongSelected
-                            ? 'border-rose-300 bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))] shadow-[0_16px_35px_-24px_rgba(244,63,94,0.26)] ring-1 ring-rose-100'
-                            : isOtherSelected
-                              ? 'border-slate-200/90 bg-white/55 opacity-60 saturate-75'
-                              : 'border-slate-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.94))] shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)] hover:-translate-y-0.5 hover:border-[#bfd2f6] hover:bg-white hover:shadow-[0_24px_38px_-28px_rgba(141,147,242,0.16)] active:translate-y-0 active:scale-[0.99]'
+                    className={`w-full bg-white border border-slate-200 rounded-3xl text-left font-medium text-slate-700 hover:border-violet-300/90 hover:bg-violet-50/80 transition-all flex items-start gap-3 sm:gap-4 group shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-200/80 ${
+                      testExperience.answerUi.compactOptions ? 'p-3.5 sm:p-4' : 'p-4 sm:p-5'
+                    } ${
+                      isCorrectOption
+                        ? 'border-emerald-300 bg-[linear-gradient(180deg,rgba(236,253,245,1),rgba(220,252,231,0.92))] shadow-[0_16px_35px_-24px_rgba(16,185,129,0.32)] ring-1 ring-emerald-100'
+                        : isWrongSelected
+                          ? 'border-rose-300 bg-[linear-gradient(180deg,rgba(255,241,242,1),rgba(255,228,230,0.92))] shadow-[0_16px_35px_-24px_rgba(244,63,94,0.26)] ring-1 ring-rose-100'
+                          : isOtherSelected
+                            ? 'border-slate-200/90 bg-white/55 opacity-60'
+                            : isDeferredSelected
+                              ? 'border-[#bfd2f6] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(237,245,255,0.96))] shadow-[0_24px_38px_-28px_rgba(141,147,242,0.22)] ring-1 ring-sky-200'
+                              : ''
                     } ${selectedKey === key && isDecisionVisible ? 'decision-commit-in' : ''}`}
                   >
                     <span
+                      className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-black text-sm transition-colors ${
+                        isCorrectOption
+                          ? 'bg-emerald-500 text-white'
+                          : isWrongSelected
+                            ? 'bg-rose-500 text-white'
+                            : isDeferredSelected
+                              ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-200'
+                              : 'bg-slate-100 text-slate-500 group-hover:bg-violet-200 group-hover:text-violet-700'
+                      }`}
                       aria-hidden="true"
-                      className={`absolute inset-y-3 left-0 w-1.5 rounded-r-full transition-all duration-200 ${feedbackAccentClass}`}
+                    >
+                      {key}
+                    </span>
+                    <HighlightedText
+                      text={value}
+                      contentRole="answer_option"
+                      allOptions={optionTextsForCompare}
+                      optionIndex={optionIdx}
+                      disabled={!statementHighlightEnabled}
+                      className={`min-w-0 flex-1 break-words hyphens-auto text-[0.98rem] font-medium leading-[1.55] sm:text-[1rem] sm:leading-[1.52] ${
+                        isCorrectOption ? 'text-emerald-900' : isWrongSelected ? 'text-rose-900' : 'text-slate-800'
+                      }`}
                     />
-                    <span
-                      className={`relative z-10 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.9rem] text-base font-extrabold sm:mt-1 sm:h-10 sm:w-10 sm:rounded-[1rem] sm:text-[1.02rem] xl:h-11 xl:w-11 xl:text-[1.08rem] ${
-                        isDeferredMode
-                          ? isDeferredSelected
-                            ? 'quantia-bg-gradient text-white shadow-[0_14px_24px_-18px_rgba(141,147,242,0.45)]'
-                            : 'bg-[linear-gradient(135deg,rgba(125,182,232,0.18),rgba(141,147,242,0.18))] text-slate-700'
-                          : isCorrectOption
-                            ? 'bg-emerald-500 text-white shadow-[0_14px_24px_-18px_rgba(16,185,129,0.38)]'
-                            : isWrongSelected
-                              ? 'bg-rose-500 text-white shadow-[0_14px_24px_-18px_rgba(244,63,94,0.34)]'
-                              : 'bg-[linear-gradient(135deg,rgba(125,182,232,0.18),rgba(141,147,242,0.18))] text-slate-700'
-                      }`}
-                    >
-                      {key.toUpperCase()}
-                    </span>
-                    <span
-                      className={`relative z-10 min-w-0 flex-1 pr-1 text-[1.02rem] font-semibold leading-[1.72] sm:text-[1.12rem] sm:leading-[1.78] xl:text-[1.18rem] xl:leading-[1.88] ${
-                        isDeferredMode
-                          ? isDeferredSelected
-                            ? 'text-slate-950'
-                            : 'text-slate-800'
-                          : isCorrectOption
-                            ? 'text-emerald-900'
-                            : isWrongSelected
-                              ? 'text-rose-900'
-                              : 'text-slate-800'
-                      }`}
-                    >
-                      {value}
-                    </span>
-                    {isDeferredSelected ? (
-                      <span className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-sky-100 bg-sky-50/90 text-sky-600 shadow-[0_12px_24px_-20px_rgba(125,182,232,0.34)]">
-                        <span className="h-2.5 w-2.5 rounded-full bg-current" />
-                      </span>
-                    ) : null}
-                    {!isDeferredMode && isCorrectOption ? (
-                      <span
-                        aria-hidden="true"
-                        className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-[0_12px_24px_-20px_rgba(16,185,129,0.32)]"
-                      >
-                        <Check size={15} strokeWidth={3} />
-                      </span>
-                    ) : null}
-                    {!isDeferredMode && isWrongSelected ? (
-                      <span
-                        aria-hidden="true"
-                        className="relative z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-rose-100 bg-rose-50 text-rose-600 shadow-[0_12px_24px_-20px_rgba(244,63,94,0.28)]"
-                      >
-                        <X size={15} strokeWidth={3} />
-                      </span>
-                    ) : null}
                   </motion.button>
                 );
               })}
-
-              <AnimatePresence>
-                {selectedKey !== null && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-8 hidden xl:block"
-                  >
-                    <div className="rounded-[2.5rem] border border-white/75 bg-white/95 p-3 shadow-xl backdrop-blur">
-                      {renderActionButton()}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
+
+            {behavioralMicroLine ? (
+              <p
+                className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-800/85"
+                aria-hidden="true"
+              >
+                {behavioralMicroLine}
+              </p>
+            ) : null}
           </div>
         </motion.section>
       </AnimatePresence>
 
+      {/* Botón flotante: aparece al seleccionar una opción */}
       <AnimatePresence>
         {selectedKey !== null && (
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            className="pointer-events-none fixed inset-x-0 bottom-0 z-40 xl:hidden"
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed bottom-0 inset-x-0 z-40 flex justify-center px-3 pb-5 pt-2 pointer-events-none"
           >
-            <div className="mx-auto w-full max-w-2xl bg-[linear-gradient(180deg,rgba(248,250,252,0)_0%,rgba(248,250,252,0.95)_38%,rgba(248,250,252,1)_100%)] px-3 pb-4 pt-8 sm:px-6 sm:pb-6">
-              <div className="pointer-events-auto">
-                <div
-                  ref={actionBarRef}
-                  className="rounded-[2rem] border border-white/80 bg-white/95 p-2 shadow-[0_32px_80px_-24px_rgba(15,23,42,0.35)] backdrop-blur-md sm:p-3"
-                >
-                  {renderActionButton()}
-                </div>
-              </div>
+            <div className="w-full max-w-[min(100%,42rem)] pointer-events-auto">
+              {renderActionButton(false)}
             </div>
           </motion.div>
         )}

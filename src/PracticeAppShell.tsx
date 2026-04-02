@@ -40,6 +40,7 @@ const PracticeAppShell: React.FC = () => {
     answers,
     authReady,
     coachPlan,
+    planV2,
     currentQuestion,
     currentQuestionIndex,
     examTarget,
@@ -87,38 +88,52 @@ const PracticeAppShell: React.FC = () => {
     startCatalogReview,
     syncingState,
     syncError,
-    topBarSubtitle,
     totalBatches,
     view,
     weakCategories,
     weakQuestions,
     onStartLawTraining,
     setActiveTab,
-    pauseActiveSession,
     resumeActiveSession,
+    textHighlightingEnabled,
+    setTextHighlightingEnabled,
   } = usePracticeApp();
   const navigationScrollKey = view === 'home' ? `home:${activeTab}` : view;
   const contentEnterClass =
     view === 'quiz' || view === 'review' || view === 'catalog_review'
       ? 'screen-enter-fixed-safe'
       : 'screen-enter';
-  const topBarSection =
-    view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer)
-      ? undefined
-      : topBarSubtitle;
-  /** Sin barra de marca en Inicio: más aire útil y contenido más arriba. */
-  const hideHomeTopBar = view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer);
+  const streakDays = useMemo(() => {
+    const finishedKeys = new Set(
+      (recentSessions ?? [])
+        .map((s) => {
+          const d = new Date(s.finishedAt);
+          if (Number.isNaN(d.getTime())) return null;
+          return d.toISOString().slice(0, 10);
+        })
+        .filter((v): v is string => Boolean(v)),
+    );
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let streak = 0;
+    for (;;) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - streak);
+      const key = d.toISOString().slice(0, 10);
+      if (!finishedKeys.has(key)) break;
+      streak += 1;
+    }
+    return streak;
+  }, [recentSessions]);
+
   const mainTopPadding =
-    view === 'quiz' || view === 'catalog_review'
-      ? 'pt-4'
-      : hideHomeTopBar
-        ? 'pt-[max(env(safe-area-inset-top),1rem)]'
-        : 'pt-[5.2rem]';
+    view === 'quiz' || view === 'catalog_review' || view === 'review' ? 'pt-4' : 'pt-[5.2rem]';
   const shellBackgroundClass =
     view === 'home' && (activeTab === 'home' || isGuest || isGenericPlayer)
       ? 'app-shell-home'
       : 'app-shell-default';
-  const showDesktopRail = !isGuest;
+  const showDesktopRail = !isGuest && view === 'home';
   const shouldHideDockOnMobile = view !== 'home';
   const screenTelemetryKey = useMemo(
     () =>
@@ -186,8 +201,11 @@ const PracticeAppShell: React.FC = () => {
 
   return (
     <div className={`min-h-[100dvh] text-slate-900 ${shellBackgroundClass}`}>
-      {view !== 'quiz' && view !== 'catalog_review' && !hideHomeTopBar ? (
-        <TopBar section={topBarSection} />
+      {view !== 'quiz' && view !== 'catalog_review' && view !== 'review' ? (
+        <TopBar
+          userName={identity?.current_username ?? 'Alumno'}
+          streakDays={streakDays}
+        />
       ) : null}
       <div className="flex min-h-[100dvh] w-full flex-col px-3 sm:px-5 lg:px-5 xl:px-6 2xl:px-8">
         <div
@@ -197,18 +215,10 @@ const PracticeAppShell: React.FC = () => {
             <BottomDock
               activeTab={activeTab}
               onChangeTab={(tab) => {
-                if (view === 'quiz' || view === 'review' || view === 'catalog_review') {
-                  pauseActiveSession();
-                }
                 setActiveTab(tab);
               }}
               variant={isGenericPlayer ? 'generic' : 'default'}
               hideOnMobile={shouldHideDockOnMobile}
-              stickyRailTopClass={
-                hideHomeTopBar
-                  ? 'xl:top-[max(env(safe-area-inset-top),0.75rem)]'
-                  : undefined
-              }
             />
           ) : null}
 
@@ -340,10 +350,12 @@ const PracticeAppShell: React.FC = () => {
                           learningDashboard={learningDashboard}
                           learningDashboardV2={learningDashboardV2}
                           coachPlan={coachPlan}
+                          planV2={planV2}
                           pressureInsights={pressureInsights}
                           pressureInsightsV2={pressureInsightsV2}
                           profile={profile}
                           recentSessions={recentSessions}
+                          streakDays={streakDays}
                           questionsCount={questionsCount}
                           totalBatches={totalBatches}
                           batchSize={PRACTICE_BATCH_SIZE}
@@ -364,6 +376,8 @@ const PracticeAppShell: React.FC = () => {
                           onStartLawTraining={onStartLawTraining}
                           onStartCatalogReview={startCatalogReview}
                           onSignOut={() => void handleSignOut()}
+                          textHighlightingEnabled={textHighlightingEnabled}
+                          onTextHighlightingChange={setTextHighlightingEnabled}
                         />
                       )
                     ) : null}
@@ -382,6 +396,7 @@ const PracticeAppShell: React.FC = () => {
                           }
                           onNext={handleCatalogReviewNext}
                           onExit={goHome}
+                          textHighlightingEnabled={textHighlightingEnabled}
                         />
                       </div>
                     ) : null}
@@ -404,9 +419,20 @@ const PracticeAppShell: React.FC = () => {
                           simplified={isGuest || isGenericPlayer}
                           showCompactProgress={isGenericPlayer}
                           answers={answers}
+                          activeSession={activeSession}
+                          surfaceContext={{
+                            planV2,
+                            learningDashboardV2,
+                            pressureInsightsV2,
+                            weakCategories,
+                            recentSessions,
+                            streakDays,
+                            profile,
+                          }}
                           onAnswer={handleAnswer}
                           onEndSession={handleEndSessionEarly}
                           onTimeExpired={handleSimulacroTimeExpired}
+                          textHighlightingEnabled={textHighlightingEnabled}
                         />
                       </div>
                     ) : null}
@@ -415,6 +441,16 @@ const PracticeAppShell: React.FC = () => {
                       <div>
                         <PracticeReviewScreen
                           answers={answers}
+                          activeSession={activeSession}
+                          surfaceContext={{
+                            planV2,
+                            learningDashboardV2,
+                            pressureInsightsV2,
+                            weakCategories,
+                            recentSessions,
+                            streakDays,
+                            profile,
+                          }}
                           batchNumber={activeSession.batchNumber}
                           totalBatches={activeSession.totalBatches}
                           sessionId={activeSession.id}
@@ -438,6 +474,7 @@ const PracticeAppShell: React.FC = () => {
                           onRetryBatch={handleRetrySession}
                           onContinue={handleContinueAfterReview}
                           onBackToStart={goHome}
+                          textHighlightingEnabled={textHighlightingEnabled}
                         />
                       </div>
                     ) : null}

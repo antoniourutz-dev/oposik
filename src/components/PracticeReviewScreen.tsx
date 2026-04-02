@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft,
-  ArrowRight,
   BookOpenText,
   CheckCircle2,
   RotateCcw,
@@ -17,14 +15,41 @@ import {
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { recordQuestionExplanationOpened } from '../services/practiceCloudApi';
 import QuestionExplanation from './QuestionExplanation';
-import { PracticeAnswer, PracticeMode } from '../practiceTypes';
+import {
+  ActivePracticeSession,
+  ErrorType,
+  PracticeAnswer,
+  PracticeCategoryRiskSummary,
+  PracticeLearningDashboardV2,
+  PracticeMode,
+  PracticePressureInsightsV2,
+  PracticeProfile,
+  PracticeSessionSummary,
+} from '../practiceTypes';
 import { getSessionPresentation } from '../sessionPresentation';
 import { LawPerformanceCard } from './dashboard/shared';
+import type { CoachPlanV2 } from '../domain/learningEngine/coachV2';
+import { buildReviewAdapterOutput } from '../adapters/surfaces/reviewAdapter';
+import { buildSessionEndAdapterOutput } from '../adapters/surfaces/sessionEndAdapter';
+import { orderReviewEntries } from '../adapters/surfaces/reviewOrdering';
+import { buildCoachEffectTelemetryEvent } from '../adapters/telemetry/buildCoachEffectTelemetryEvent';
+import { dispatchCoachTelemetry } from '../adapters/telemetry/dispatchCoachTelemetry';
+import { writeSessionContinuity } from '../services/sessionContinuityStorage';
 
 type ReviewFilter = 'incorrect' | 'all';
 
 type PracticeReviewScreenProps = {
   answers: PracticeAnswer[];
+  activeSession: ActivePracticeSession;
+  surfaceContext: {
+    planV2: CoachPlanV2;
+    learningDashboardV2?: PracticeLearningDashboardV2 | null;
+    pressureInsightsV2?: PracticePressureInsightsV2 | null;
+    weakCategories?: PracticeCategoryRiskSummary[] | null;
+    recentSessions?: PracticeSessionSummary[] | null;
+    streakDays?: number;
+    profile?: PracticeProfile | null;
+  };
   batchNumber: number;
   totalBatches: number;
   hasNextBatch: boolean;
@@ -42,6 +67,8 @@ type PracticeReviewScreenProps = {
   onRetryBatch: () => void;
   onContinue: () => void;
   onBackToStart: () => void;
+  /** Preferencia de perfil: resaltado en explicaciones. */
+  textHighlightingEnabled?: boolean;
 };
 
 type ReviewEntry = {
@@ -113,11 +140,44 @@ const getReviewClosure = ({
             ? 'Mantener el ritmo'
             : 'Consolidar antes de seguir';
 
+  /** Una sola tesis: prioriza señal conductual sobre la etiqueta de nota */
+  let dominantEyebrow = 'Lectura principal';
+  let dominantTitle = outcomeHeadline;
+  let supportingLine = outcomeSummary;
+
+  if (unansweredCount > 0) {
+    dominantEyebrow = 'Bloque incompleto';
+    dominantTitle = 'Sin cerrar el bloque, la nota no cuenta toda la historia.';
+    supportingLine =
+      'Cierra lo pendiente antes de sacar conclusiones: el ajuste empieza por completar.';
+  } else if (overconfidenceScore >= 0.4) {
+    dominantEyebrow = 'Ejecución';
+    dominantTitle = 'Hoy te ha frenado más la prisa que el vacío de estudio.';
+    supportingLine = outcomeSummary;
+  } else if (fatigueScore >= 0.45) {
+    dominantEyebrow = 'Ritmo';
+    dominantTitle = 'El tramo final te ha costado más que el arranque.';
+    supportingLine = outcomeSummary;
+  } else if (percentage < 55 && unansweredCount === 0) {
+    dominantEyebrow = 'Ajuste';
+    dominantTitle = 'La sesión pide corrección, no veredicto: el patrón está abajo.';
+    supportingLine = outcomeSummary;
+  } else if (percentage >= 80) {
+    dominantEyebrow = 'Lectura';
+    dominantTitle = isSimulacro
+      ? 'Buen ritmo competitivo: afina detalle donde aún sangras puntos.'
+      : 'Base fiable: el siguiente paso es no regalar detalle.';
+    supportingLine = outcomeSummary;
+  }
+
   return {
     outcomeHeadline,
     outcomeSummary,
     resultBand,
     nextFocus,
+    dominantEyebrow,
+    dominantTitle,
+    supportingLine,
   };
 };
 
@@ -148,10 +208,19 @@ const ReviewEntryCard = React.memo(
     curriculum = DEFAULT_CURRICULUM,
     entry,
     sessionId = null,
+    microTags = [],
+    showErrorTypeLabel = false,
+    isPriorityFocus = false,
+    textHighlightingEnabled = true,
   }: {
     entry: ReviewEntry;
     sessionId?: string | null;
     curriculum?: string;
+    microTags?: string[];
+    showErrorTypeLabel?: boolean;
+    /** Primero en el orden inteligente: más atención visual */
+    isPriorityFocus?: boolean;
+    textHighlightingEnabled?: boolean;
   }) => {
     const { answer, reviewIndex } = entry;
     const [isExplanationOpen, setIsExplanationOpen] = useState(false);
@@ -161,7 +230,13 @@ const ReviewEntryCard = React.memo(
     const correctText = answer.question.options[correctKey];
 
     return (
-      <article className="overflow-hidden rounded-[1.25rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.92))] p-3.5 shadow-[0_20px_46px_-36px_rgba(141,147,242,0.16)] backdrop-blur">
+      <article
+        className={`overflow-hidden rounded-[1.25rem] border bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.92))] p-3.5 shadow-[0_20px_46px_-36px_rgba(141,147,242,0.16)] backdrop-blur ${
+          isPriorityFocus && !entry.answer.isCorrect
+            ? 'border-violet-400/55 ring-2 ring-violet-500/20'
+            : 'border-white/80'
+        }`}
+      >
         <div className="flex flex-col gap-2.5">
           <div className="flex flex-col gap-2">
             <div>
@@ -179,6 +254,19 @@ const ReviewEntryCard = React.memo(
                     {answer.question.category}
                   </span>
                 ) : null}
+                {showErrorTypeLabel && answer.errorTypeInferred ? (
+                  <span className="rounded-full bg-white/90 border border-slate-200 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
+                    {getErrorTypeLabel(answer.errorTypeInferred) ?? 'Error'}
+                  </span>
+                ) : null}
+                {microTags.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-700"
+                  >
+                    {t}
+                  </span>
+                ))}
                 <span
                   className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] ${
                     answer.isCorrect
@@ -287,6 +375,7 @@ const ReviewEntryCard = React.memo(
                   explanation={answer.question.explanation}
                   editorialExplanation={answer.question.editorialExplanation}
                   emptyLabel="Esta pregunta todavia no tiene explicacion cargada."
+                  highlightEnabled={textHighlightingEnabled}
                 />
               </div>
             ) : null}
@@ -301,6 +390,8 @@ ReviewEntryCard.displayName = 'ReviewEntryCard';
 
 const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   answers,
+  activeSession,
+  surfaceContext,
   batchNumber,
   totalBatches,
   hasNextBatch,
@@ -318,6 +409,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   onRetryBatch,
   onContinue,
   onBackToStart,
+  textHighlightingEnabled = true,
 }) => {
   const totalQuestions = Math.max(sessionQuestionCount ?? answers.length, answers.length);
   const answeredCount = answers.length;
@@ -365,6 +457,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
     };
   }, [answers]);
   const unansweredCount = Math.max(totalQuestions - answeredCount, 0);
+  const answeredPct = totalQuestions === 0 ? 0 : Math.round((answeredCount / totalQuestions) * 100);
   const percentage = totalQuestions === 0 ? 0 : Math.round((score / totalQuestions) * 100);
   const fatigueLabel =
     fatigueScore >= 0.66 ? 'Fatiga alta' : fatigueScore >= 0.33 ? 'Fatiga media' : 'Fatiga baja';
@@ -426,14 +519,6 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         : percentage >= 55
           ? 'border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.94))] shadow-[0_24px_48px_-34px_rgba(245,158,11,0.2)]'
           : 'border-rose-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.94))] shadow-[0_24px_48px_-34px_rgba(244,63,94,0.2)]';
-  const resultBandClass =
-    percentage >= 85
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : percentage >= 70
-        ? 'border-sky-200 bg-sky-50 text-sky-700'
-        : percentage >= 55
-          ? 'border-amber-200 bg-amber-50 text-amber-700'
-          : 'border-rose-200 bg-rose-50 text-rose-700';
   const nextStepSurfaceClass =
     unansweredCount > 0
       ? 'border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.94))]'
@@ -456,21 +541,153 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   const dockFrameRef = useRef<number | null>(null);
   const isDockVisibleRef = useRef(true);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const reviewExperience = useMemo(
+    () =>
+      buildReviewAdapterOutput({
+        planV2: surfaceContext.planV2,
+        answers,
+        activeSession,
+        surfaceContext: {
+          learningDashboardV2: surfaceContext.learningDashboardV2,
+          pressureInsightsV2: surfaceContext.pressureInsightsV2,
+          weakCategories: surfaceContext.weakCategories,
+          recentSessions: surfaceContext.recentSessions,
+          streakDays: surfaceContext.streakDays,
+          profile: surfaceContext.profile,
+        },
+      }),
+    [activeSession, answers, surfaceContext],
+  );
+
+  const sessionEndExperience = useMemo(
+    () =>
+      buildSessionEndAdapterOutput({
+        planV2: surfaceContext.planV2,
+        answers,
+        activeSession,
+        surfaceContext: {
+          learningDashboardV2: surfaceContext.learningDashboardV2,
+          pressureInsightsV2: surfaceContext.pressureInsightsV2,
+          weakCategories: surfaceContext.weakCategories,
+          recentSessions: surfaceContext.recentSessions,
+          streakDays: surfaceContext.streakDays,
+          profile: surfaceContext.profile,
+        },
+      }),
+    [activeSession, answers, surfaceContext],
+  );
+
+  const primaryExitCtaLabel = useMemo(
+    () =>
+      simplified
+        ? continueDockLabel
+        : sessionEndExperience.nextStep.cta || reviewExperience.nextStep.cta || continueDockLabel,
+    [
+      simplified,
+      continueDockLabel,
+      sessionEndExperience.nextStep.cta,
+      reviewExperience.nextStep.cta,
+    ],
+  );
+
+  const handleContinueCommitted = useCallback(() => {
+    if (!simplified) {
+      writeSessionContinuity({
+        version: 1,
+        finishedAt: new Date().toISOString(),
+        dominantState: sessionEndExperience.dominantState,
+        continuityLine: sessionEndExperience.continuityBridge,
+        nextStepCta: primaryExitCtaLabel,
+        mode: (sessionMode || 'standard') as PracticeMode,
+        percentage,
+      });
+      dispatchCoachTelemetry(
+        buildCoachEffectTelemetryEvent({
+          surface: 'session_end',
+          dominantState: sessionEndExperience.dominantState,
+          ctaShown: primaryExitCtaLabel,
+          ctaPressed: primaryExitCtaLabel,
+          startedSession: false,
+          completedSession: true,
+          repeatedBlock: false,
+          returnedHome: false,
+          followedSuggestedPath: true,
+          meta: { percentage, mode: String(sessionMode ?? 'standard') },
+        }),
+      );
+    }
+    onContinue();
+  }, [
+    simplified,
+    sessionEndExperience.continuityBridge,
+    sessionEndExperience.dominantState,
+    primaryExitCtaLabel,
+    sessionMode,
+    percentage,
+    onContinue,
+  ]);
+
+  const repeatedErrorTypes = useMemo<ReadonlySet<ErrorType>>(() => {
+    const counts = new Map<ErrorType, number>();
+    answers.forEach((a) => {
+      if (a.isCorrect) return;
+      if (!a.errorTypeInferred) return;
+      counts.set(a.errorTypeInferred, (counts.get(a.errorTypeInferred) ?? 0) + 1);
+    });
+    const set = new Set<ErrorType>();
+    counts.forEach((n, k) => {
+      if (n >= 2) set.add(k);
+    });
+    return set;
+  }, [answers]);
+
   const visibleEntries = useMemo(
     () => (reviewFilter === 'incorrect' ? incorrectEntries : reviewEntries),
     [incorrectEntries, reviewEntries, reviewFilter],
   );
-  const renderedEntries = useMemo(
-    () => visibleEntries.slice(0, renderedEntryCount),
-    [renderedEntryCount, visibleEntries],
+
+  const orderedVisibleEntries = useMemo(() => {
+    const byIndex = new Map(visibleEntries.map((e) => [e.reviewIndex, e]));
+    return orderReviewEntries({
+      items: visibleEntries.map((e) => ({
+        answer: {
+          isCorrect: e.answer.isCorrect,
+          errorTypeInferred: e.answer.errorTypeInferred,
+          questionCategory: e.answer.question.category ?? null,
+        },
+        reviewIndex: e.reviewIndex,
+      })),
+      filterPriority: reviewExperience.filterPriority,
+      dominantState: reviewExperience.dominantState,
+      sessionMode,
+      repeatedErrorTypes,
+      weakCategories: surfaceContext.weakCategories ?? null,
+    })
+      .map((ordered) => byIndex.get(ordered.reviewIndex))
+      .filter((e): e is (typeof visibleEntries)[number] => Boolean(e));
+  },
+    [
+      repeatedErrorTypes,
+      reviewExperience.dominantState,
+      reviewExperience.filterPriority,
+      sessionMode,
+      surfaceContext.weakCategories,
+      visibleEntries,
+    ],
   );
-  const hasMoreEntries = renderedEntryCount < visibleEntries.length;
-  const remainingEntries = Math.max(visibleEntries.length - renderedEntryCount, 0);
+
+  const renderedEntries = useMemo(
+    () => orderedVisibleEntries.slice(0, renderedEntryCount),
+    [orderedVisibleEntries, renderedEntryCount],
+  );
+  const hasMoreEntries = renderedEntryCount < orderedVisibleEntries.length;
+  const remainingEntries = Math.max(orderedVisibleEntries.length - renderedEntryCount, 0);
   const loadMoreEntries = useCallback(() => {
     setRenderedEntryCount((currentCount) =>
-      Math.min(visibleEntries.length, currentCount + REVIEW_RENDER_STEP),
+      Math.min(orderedVisibleEntries.length, currentCount + REVIEW_RENDER_STEP),
     );
-  }, [visibleEntries.length]);
+  }, [orderedVisibleEntries.length]);
 
   useEffect(() => {
     isDockVisibleRef.current = isDockVisible;
@@ -579,45 +796,192 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   }, [answers]);
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-0 py-3 pb-32 sm:px-2 sm:pb-32 lg:px-4">
+    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-0 py-3 pb-12 sm:px-2 sm:pb-12 lg:px-4">
+      {/* Lumina overlay header (solo para "review") */}
+      <div className="sticky top-[max(env(safe-area-inset-top),0.75rem)] z-50">
+        <div className="mx-auto flex items-center gap-2 rounded-[2rem] bg-white/80 px-2 py-2 shadow-sm backdrop-blur-[12px] border border-white/50">
+          <button
+            type="button"
+            onClick={onBackToStart}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-600 hover:bg-slate-100 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+            aria-label="Volver al inicio"
+          >
+            <RotateCcw aria-hidden="true" size={20} strokeWidth={2.5} />
+          </button>
+
+          <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-violet-600 rounded-full transition-[width] duration-500"
+              style={{ width: `${answeredPct}%` }}
+            />
+          </div>
+
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-black text-slate-400 tracking-tight">
+              {answeredCount}/{totalQuestions}
+            </span>
+            {resolvedTimeLabel ? (
+              <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 bg-white/90 px-2.5 py-1 text-[10px] font-bold text-slate-600 shadow-sm">
+                {resolvedTimeLabel}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
       <section className="space-y-3.5">
-        <div className="relative overflow-hidden rounded-[1.4rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] p-4 shadow-[0_24px_56px_-36px_rgba(141,147,242,0.2)] backdrop-blur">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(141,147,242,0.1),transparent_24%),linear-gradient(135deg,rgba(125,182,232,0.05),transparent_42%)]" />
+        <div className="relative overflow-hidden rounded-[1.4rem] border border-slate-200/90 bg-[linear-gradient(165deg,rgba(15,23,42,0.97)_0%,rgba(30,27,75,0.96)_48%,rgba(49,46,129,0.94)_100%)] p-5 shadow-[0_28px_64px_-32px_rgba(15,23,42,0.55)] sm:p-6">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_70%_at_0%_0%,rgba(255,255,255,0.08),transparent_45%)]" />
           <div className="relative min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-[#d7e4fb] bg-white/90 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-600">
-                {simplified ? 'Revision' : sessionPresentation.eyebrow}
+              <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.18em] text-violet-200/95">
+                {simplified ? 'Revisión' : reviewClosure.dominantEyebrow}
               </span>
               {!simplified ? (
-                <span
-                  className={`rounded-full border px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] ${resultBandClass}`}
-                >
-                  {reviewClosure.resultBand}
-                </span>
+                <>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] text-violet-100/80">
+                    {sessionPresentation.eyebrow}
+                  </span>
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.16em] ${
+                      percentage >= 70
+                        ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100'
+                        : percentage >= 55
+                          ? 'border-amber-400/35 bg-amber-500/15 text-amber-100'
+                          : 'border-rose-400/35 bg-rose-500/15 text-rose-100'
+                    }`}
+                  >
+                    Nota · {reviewClosure.resultBand}
+                  </span>
+                </>
               ) : null}
             </div>
-            <h2 className="mt-2 text-[1.34rem] font-black leading-[0.98] tracking-[-0.04em] text-slate-950 sm:text-[1.72rem]">
-              {simplified ? simplifiedHeroHeadline : reviewClosure.outcomeHeadline}
+            <h2 className="mt-4 text-[1.2rem] font-black leading-[1.12] tracking-[-0.04em] text-white sm:text-[1.45rem]">
+              {simplified ? simplifiedHeroHeadline : reviewClosure.dominantTitle}
             </h2>
-            <p className="mt-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+            <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-violet-200/75">
               {title || `Bloque ${batchNumber} de ${totalBatches}`}
             </p>
+            {!simplified ? (
+              <>
+                <p className="mt-4 text-[0.9375rem] font-medium leading-relaxed text-violet-100/88">
+                  {reviewClosure.supportingLine}
+                </p>
+                <p className="mt-4 border-t border-white/10 pt-4 text-[0.8125rem] font-semibold leading-snug text-indigo-100/90">
+                  <span className="text-violet-200/80">Preparador · </span>
+                  {sessionEndExperience.closingMessage.title}
+                  <span className="font-medium text-indigo-100/75">
+                    {' '}
+                    — {sessionEndExperience.closingMessage.summary}
+                  </span>
+                </p>
+              </>
+            ) : null}
           </div>
         </div>
 
-        {/* ⚖️ EL BLOQUE DE IMPACTO NORMATIVO */}
-        {sessionLawBreakdown.length > 0 && (
-          <div className="rounded-[1.4rem] overflow-hidden border border-indigo-100 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+        {/* Cómo se ha manifestado (antes que normas o cifras) */}
+        <div className="rounded-[1.4rem] overflow-hidden border border-[#d7e4fb] bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex items-center gap-3 mb-3 sm:mb-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+              <Target size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Cómo se ha notado en la ejecución
+              </p>
+              <h3 className="text-base font-black text-slate-950 tracking-tight sm:text-lg">
+                Patrón en el comportamiento
+              </h3>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/90 p-3.5 sm:p-4">
+                <div className="flex justify-between items-center gap-2 mb-2">
+                  <span className="text-[11px] font-bold text-slate-600">Decisión impulsiva</span>
+                  <span className="text-[11px] font-black text-slate-900 tabular-nums">
+                    {
+                      answers.filter(
+                        (a) => a.timeToFirstSelectionMs && a.timeToFirstSelectionMs < 3000,
+                      ).length
+                    }{' '}
+                    / {answers.length}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: `${(answers.filter((a) => a.timeToFirstSelectionMs && a.timeToFirstSelectionMs < 3000).length / Math.max(1, answers.length)) * 100}%`,
+                    }}
+                    transition={{ duration: 1, ease: 'circOut' }}
+                    className="h-full rounded-full bg-rose-400"
+                  />
+                </div>
+                <p className="mt-2 text-[10px] font-medium leading-snug text-slate-500">
+                  Respuestas marcadas en menos de 3 s: más riesgo de leer de más prisa que de saber de menos.
+                </p>
+                <p className="mt-2 text-[10px] font-bold leading-snug text-rose-700/95">
+                  Corrección: baja la velocidad de la primera decisión; termina el enunciado antes de fijarte en
+                  opciones.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/90 p-3.5 sm:p-4">
+                <div className="flex justify-between items-center gap-2 mb-2">
+                  <span className="text-[11px] font-bold text-slate-600">Duda resuelta</span>
+                  <span className="text-[11px] font-black text-slate-900 tabular-nums">
+                    {answers.filter((a) => a.changedAnswer && a.isCorrect).length} / {answers.length}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: `${(answers.filter((a) => a.changedAnswer && a.isCorrect).length / Math.max(1, answers.length)) * 100}%`,
+                    }}
+                    transition={{ duration: 1, ease: 'circOut' }}
+                    className="h-full rounded-full bg-emerald-400"
+                  />
+                </div>
+                <p className="mt-2 text-[10px] font-medium leading-snug text-slate-500">
+                  Cambiaste y acertaste: el proceso fue bueno; evita alargar demasiado cada ida y vuelta.
+                </p>
+                <p className="mt-2 text-[10px] font-bold leading-snug text-emerald-800/95">
+                  Corrección: repite ese proceso sin estirarlo; valida antes de marcar si vas justo de tiempo.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col justify-center rounded-2xl border border-indigo-400/25 bg-[linear-gradient(165deg,#1e1b4b_0%,#312e81_100%)] p-4 text-white shadow-inner sm:p-5">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-indigo-200/90">
+                Una frase del preparador
+              </p>
+              <p className="mt-3 text-[0.95rem] font-bold leading-snug tracking-[-0.02em]">
+                {overconfidenceScore > 0.3
+                  ? 'Lee el enunciado entero antes de tocar opción: suele costar menos que volver a fallar por prisa.'
+                  : fatigueScore > 0.4
+                    ? 'Si notas caída al final, prioriza una respuesta más lenta y cerrada que tres rápidas fallidas.'
+                    : 'Ritmo y lectura alineados: el siguiente salto es afilar detalle donde aún pierdes margen.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {sessionLawBreakdown.length > 0 ? (
+          <div className="rounded-[1.4rem] overflow-hidden border border-indigo-100 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-3 flex items-center gap-3 sm:mb-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
                 <Target size={20} />
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Rendimiento por norma
+                  Dónde ha pesado la norma
                 </p>
-                <h3 className="text-lg font-black text-slate-950 tracking-tight">
-                  Impacto Normativo
+                <h3 className="text-base font-black tracking-tight text-slate-950 sm:text-lg">
+                  Impacto por materia
                 </h3>
               </div>
             </div>
@@ -632,124 +996,40 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
               ))}
             </div>
           </div>
-        )}
+        ) : null}
 
-        {/* 🧠 EL BLOQUE DE DIAGNÓSTICO CONDUCTUAL */}
-        <div className="rounded-[1.4rem] overflow-hidden border border-[#d7e4fb] bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-              <Target size={20} />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Análisis conductual
-              </p>
-              <h3 className="text-lg font-black text-slate-950 tracking-tight">
-                Anatomía de tu ejecución
-              </h3>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-4">
-              <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-[11px] font-bold text-slate-500">Decisión Impulsiva</span>
-                  <span className="text-[11px] font-black text-slate-900">
-                    {
-                      answers.filter(
-                        (a) => a.timeToFirstSelectionMs && a.timeToFirstSelectionMs < 3000,
-                      ).length
-                    }{' '}
-                    q.
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{
-                      width: `${(answers.filter((a) => a.timeToFirstSelectionMs && a.timeToFirstSelectionMs < 3000).length / Math.max(1, answers.length)) * 100}%`,
-                    }}
-                    transition={{ duration: 1, ease: 'circOut' }}
-                    className="h-full bg-rose-400 rounded-full"
-                  />
-                </div>
-                <p className="mt-2 text-[10px] text-slate-400 leading-relaxed font-medium">
-                  Marcadas en menos de 3s. Alto riesgo de error por literalidad.
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-[11px] font-bold text-slate-500">Duda Resuelta</span>
-                  <span className="text-[11px] font-black text-slate-900">
-                    {answers.filter((a) => a.changedAnswer && a.isCorrect).length} q.
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{
-                      width: `${(answers.filter((a) => a.changedAnswer && a.isCorrect).length / Math.max(1, answers.length)) * 100}%`,
-                    }}
-                    transition={{ duration: 1, ease: 'circOut' }}
-                    className="h-full bg-emerald-400 rounded-full"
-                  />
-                </div>
-                <p className="mt-2 text-[10px] text-slate-400 leading-relaxed font-medium">
-                  Cambiadas a favor del acierto. Refleja un proceso analítico lento pero eficaz.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col justify-center p-4 rounded-2xl bg-indigo-950 text-white relative overflow-hidden">
-              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-indigo-500/20 blur-2xl" />
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">
-                Resumen del Preparador
-              </p>
-              <p className="mt-3 text-sm font-bold leading-relaxed">
-                "
-                {overconfidenceScore > 0.3
-                  ? 'Hoy has pecado de exceso de confianza. Lee el enunciado completo antes de tocar la pantalla: tu nota subirá un 8% solo con eso.'
-                  : fatigueScore > 0.4
-                    ? 'Tu rendimiento ha caído en picado en el último tercio. La fatiga te ha robado 3 aciertos netos.'
-                    : 'Sesión impecable en ritmo y consciencia. Estás en zona de dominio funcional.'}
-                "
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-2.5">
-          <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div
-              className={`rounded-[1.2rem] border px-3.5 py-3.5 shadow-[0_18px_34px_-28px_rgba(15,23,42,0.14)] ${scoreSurfaceClass}`}
+              className={`rounded-[1.05rem] border px-3 py-3 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.12)] ${scoreSurfaceClass}`}
             >
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                Resultado
+              <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                Resultado (contexto)
               </p>
-              <p className="mt-2 text-[2rem] font-black leading-none tracking-[-0.04em] text-slate-950 sm:text-[2.35rem]">
+              <p className="mt-1.5 text-[1.65rem] font-black leading-none tracking-[-0.04em] text-slate-950 sm:text-[1.85rem]">
                 {score}
-                <span className="text-[1rem] text-slate-400 sm:text-[1.2rem]">
+                <span className="text-[0.85rem] text-slate-400 sm:text-[1rem]">
                   {' '}
                   / {totalQuestions}
                 </span>
               </p>
-              <p className="mt-1 text-[12px] font-bold text-slate-500">{percentage}% de acierto</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-500">{percentage}% acierto</p>
             </div>
 
             <div
-              className={`rounded-[1.2rem] border px-3.5 py-3.5 shadow-[0_18px_34px_-28px_rgba(15,23,42,0.14)] ${nextStepSurfaceClass}`}
+              className={`rounded-[1.05rem] border px-3 py-3 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.12)] ${nextStepSurfaceClass}`}
             >
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                {simplified ? 'Siguiente' : 'Ahora'}
+              <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                {simplified ? 'Siguiente' : 'Siguiente lectura'}
               </p>
-              <p className="mt-2 text-[1rem] font-black leading-[1.06] text-slate-950 sm:text-[1.08rem]">
-                {simplified ? simplifiedReviewHint : reviewClosure.nextFocus}
+              <p className="mt-1.5 text-[0.92rem] font-black leading-[1.12] text-slate-950 sm:text-[0.98rem]">
+                {simplified ? simplifiedReviewHint : reviewExperience.summary.title}
               </p>
               {!simplified ? (
-                <p className="mt-1.5 text-[12px] font-semibold leading-5 text-slate-500 sm:text-[13px]">
-                  {reviewClosure.outcomeSummary}
+                <p className="mt-1.5 text-[11px] font-semibold leading-snug text-slate-600 sm:text-[12px]">
+                  {reviewExperience.summary.subtitle ??
+                    sessionEndExperience.nextStep.description ??
+                    reviewClosure.outcomeSummary}
                 </p>
               ) : null}
             </div>
@@ -800,10 +1080,12 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
-                Revision
+                Revisión precisa
               </p>
               <p className="mt-1 text-[0.95rem] font-black leading-5 text-slate-950">
-                {reviewFilter === 'incorrect' ? 'Solo fallos' : 'Todas las respuestas'}
+                {reviewFilter === 'incorrect'
+                  ? 'Donde más te ha costado'
+                  : 'Todas las respuestas'}
               </p>
             </div>
             <div className="inline-flex rounded-full border border-[#d7e4fb] bg-white/90 p-1 shadow-[0_12px_24px_-22px_rgba(141,147,242,0.16)]">
@@ -834,7 +1116,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           </div>
           <p className="mt-2 text-[12px] font-semibold text-slate-500">
             {reviewFilter === 'incorrect'
-              ? `${incorrectCount} fallo${incorrectCount === 1 ? '' : 's'} para revisar`
+              ? `${incorrectCount} fallo${incorrectCount === 1 ? '' : 's'} en orden de prioridad`
               : `${answers.length} respuesta${answers.length === 1 ? '' : 's'} resuelta${answers.length === 1 ? '' : 's'}`}
           </p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
@@ -854,14 +1136,36 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         ) : null}
 
         <div className="grid gap-2.5 xl:grid-cols-2">
-          {renderedEntries.map((entry) => (
-            <ReviewEntryCard
-              key={`${entry.answer.question.id}-${entry.reviewIndex}`}
-              entry={entry}
-              sessionId={sessionId}
-              curriculum={curriculum}
-            />
-          ))}
+          {renderedEntries.map((entry, idx) => {
+            const tags: string[] = [];
+            if (!entry.answer.isCorrect) {
+              if (reviewExperience.dominantState === 'pressure' || sessionMode === 'simulacro') {
+                tags.push('Fallo bajo presión');
+              }
+              if (entry.answer.errorTypeInferred === 'lectura_rapida') {
+                tags.push('Error de lectura');
+              }
+              if (
+                entry.answer.errorTypeInferred &&
+                repeatedErrorTypes.has(entry.answer.errorTypeInferred)
+              ) {
+                tags.push('Error repetido');
+              }
+            }
+
+            return (
+              <ReviewEntryCard
+                key={`${entry.answer.question.id}-${entry.reviewIndex}`}
+                entry={entry}
+                sessionId={sessionId}
+                curriculum={curriculum}
+                microTags={tags}
+                showErrorTypeLabel={reviewExperience.explanationStyle.showErrorTypeLabel}
+                isPriorityFocus={idx === 0}
+                textHighlightingEnabled={textHighlightingEnabled}
+              />
+            );
+          })}
         </div>
 
         {hasMoreEntries ? (
@@ -883,50 +1187,49 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         ) : null}
       </section>
 
-      <nav
-        className={`fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] transition-all duration-300 sm:px-6 lg:px-8 xl:inset-y-0 xl:inset-x-auto xl:right-[max(1.25rem,calc((100vw-1480px)/2+1rem))] xl:bottom-auto xl:flex xl:items-center xl:px-0 xl:pb-0 ${
-          isDockVisible
-            ? 'translate-y-0 opacity-100'
-            : 'pointer-events-none translate-y-6 opacity-0'
-        }`}
-      >
-        <div className="mx-auto w-full max-w-[420px] rounded-[1.35rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(245,249,255,0.9))] p-1 shadow-[0_22px_60px_-34px_rgba(141,147,242,0.2)] backdrop-blur-xl xl:mx-0 xl:w-[118px] xl:max-w-none xl:rounded-[2rem] xl:p-2">
-          <div
-            className={`grid gap-1.5 ${showRetry ? 'grid-cols-3 xl:grid-cols-1' : 'grid-cols-2 xl:grid-cols-1'}`}
-          >
-            <button
-              type="button"
-              onClick={onBackToStart}
-              className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] px-2.5 py-2 text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-sky-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98] xl:min-h-[72px] xl:flex-col xl:gap-2"
-            >
-              <ArrowLeft size={15} />
-              <span className="text-[10px] font-extrabold uppercase tracking-[0.1em]">Inicio</span>
-            </button>
-            {showRetry ? (
-              <button
-                type="button"
-                onClick={onRetryBatch}
-                className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(141,147,242,0.18))] px-2.5 py-2 text-slate-800 shadow-[0_14px_28px_-24px_rgba(141,147,242,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98] xl:min-h-[72px] xl:flex-col xl:gap-2"
-              >
-                <RotateCcw size={15} />
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.1em]">
-                  Repetir
-                </span>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onContinue}
-              className="flex min-h-[46px] items-center justify-center gap-1.5 rounded-[0.9rem] border border-white/70 quantia-bg-gradient px-2.5 py-2 text-white shadow-[0_16px_28px_-18px_rgba(141,147,242,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98] xl:min-h-[88px] xl:flex-col xl:gap-2"
-            >
-              <ArrowRight size={15} />
-              <span className="text-[10px] font-extrabold uppercase tracking-[0.1em]">
-                {continueDockLabel}
-              </span>
-            </button>
-          </div>
+      {!simplified && sessionEndExperience.microRewards.length > 0 ? (
+        <div className="mx-3 mt-6 rounded-[1.1rem] border border-emerald-200/55 bg-emerald-50/45 px-3.5 py-3 sm:mx-2 lg:mx-4">
+          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-emerald-900/75">Proceso reconocido</p>
+          <ul className="mt-2 space-y-1">
+            {sessionEndExperience.microRewards.map((line) => (
+              <li key={line} className="text-[12px] font-semibold leading-snug text-emerald-950/90">
+                · {line}
+              </li>
+            ))}
+          </ul>
         </div>
-      </nav>
+      ) : null}
+
+      {/* CTA: una sola siguiente jugada (session end manda el copy) */}
+      <div className="mt-10 px-3 sm:px-2 lg:px-4">
+        {showRetry ? (
+          <button
+            type="button"
+            onClick={onRetryBatch}
+            className="w-full py-4 bg-white text-slate-800 rounded-[28px] font-black text-sm shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)] border border-slate-200/80 transition-[transform,filter] duration-200 hover:brightness-[1.02] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55"
+          >
+            Repetir
+          </button>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={handleContinueCommitted}
+          className={`w-full py-5 bg-slate-950 text-white rounded-[28px] font-black text-[1.05rem] tracking-[-0.02em] shadow-[0_20px_50px_-24px_rgba(15,23,42,0.45)] ring-1 ring-white/10 transition-[transform,filter] duration-200 hover:brightness-[1.06] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/55 ${
+            showRetry ? 'mt-4' : 'mt-0'
+          }`}
+        >
+          {primaryExitCtaLabel}
+        </button>
+
+        {!simplified ? (
+          <p className="mx-auto mt-3 max-w-md text-center text-[11px] font-medium leading-snug text-slate-500">
+            {sessionEndExperience.nextStep.description ??
+              reviewExperience.summary.subtitle ??
+              reviewClosure.nextFocus}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 };

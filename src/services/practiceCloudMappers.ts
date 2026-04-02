@@ -261,6 +261,7 @@ export const mapLearningDashboardV2 = (
       scope: normalizeQuestionScope(law.raw_scope) ?? 'unknown',
       attempts: toNumber(law.attempts),
       questionCount: toNumber(law.question_count),
+      consolidatedCount: toNumber(law.consolidated_count),
       correctAttempts: toNumber(law.correct_attempts),
       accuracyRate: toNumber(law.accuracy_rate),
     })),
