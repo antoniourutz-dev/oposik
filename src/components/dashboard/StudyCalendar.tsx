@@ -4,10 +4,19 @@ import { SectionCard } from './shared';
 
 interface StudyCalendarProps {
   sessions: Array<{ finishedAt: string }>;
+  /** Día civil (YYYY-MM-DD) seleccionado para el informe */
+  selectedDayKey?: string | null;
+  /** Al pulsar un día del mes visible (con o sin estudio) */
+  onDaySelect?: (dateKey: string) => void;
   className?: string;
 }
 
-export const StudyCalendar: React.FC<StudyCalendarProps> = ({ sessions, className = '' }) => {
+export const StudyCalendar: React.FC<StudyCalendarProps> = ({
+  sessions,
+  selectedDayKey = null,
+  onDaySelect,
+  className = '',
+}) => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const studyDays = useMemo(() => {
@@ -99,19 +108,30 @@ export const StudyCalendar: React.FC<StudyCalendarProps> = ({ sessions, classNam
           const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const isStudied = studyDays.has(dateStr);
           const isToday = new Date().toISOString().split('T')[0] === dateStr;
+          const isSelected = selectedDayKey === dateStr;
 
           return (
-            <div
+            <button
               key={day}
-              className={`relative flex h-9 w-full items-center justify-center rounded-lg text-sm font-bold transition-all ${
+              type="button"
+              onClick={() => onDaySelect?.(dateStr)}
+              aria-label={
+                isStudied
+                  ? `Día ${day}, con estudio. Ver informe.`
+                  : `Día ${day}, sin estudio registrado.`
+              }
+              aria-pressed={isSelected ? 'true' : 'false'}
+              className={`relative flex h-9 w-full items-center justify-center rounded-lg text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
                 isStudied
                   ? 'quantia-bg-gradient text-white shadow-md'
                   : 'bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-              } ${isToday ? 'ring-2 ring-quantia-pink ring-offset-2' : ''}`}
+              } ${isToday ? 'ring-2 ring-quantia-pink ring-offset-2' : ''} ${
+                isSelected ? 'ring-2 ring-violet-500 ring-offset-1' : ''
+              }`}
             >
               {day}
-              {isStudied && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-white/60" />}
-            </div>
+              {isStudied ? <span className="absolute bottom-1 h-1 w-1 rounded-full bg-white/60" /> : null}
+            </button>
           );
         })}
       </div>

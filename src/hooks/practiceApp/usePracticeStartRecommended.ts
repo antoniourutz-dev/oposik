@@ -1,8 +1,10 @@
 import { useCallback } from 'react';
 import type { PracticeCoachPlan, PracticeQuestionScopeFilter } from '../../practiceTypes';
+import type { ActiveLearningContext } from '../../domain/learningContext/types';
 
 type UsePracticeStartRecommendedParams = {
   coachPlan: PracticeCoachPlan;
+  activeLearningContext?: ActiveLearningContext | null;
   recommendedBatchStartIndex: number;
   selectedQuestionScope: PracticeQuestionScopeFilter;
   startAntiTrap: () => void;
@@ -21,6 +23,7 @@ type UsePracticeStartRecommendedParams = {
  */
 export const usePracticeStartRecommended = ({
   coachPlan,
+  activeLearningContext,
   recommendedBatchStartIndex,
   selectedQuestionScope,
   startAntiTrap,
@@ -30,6 +33,10 @@ export const usePracticeStartRecommended = ({
   startStandardSession,
 }: UsePracticeStartRecommendedParams) =>
   useCallback(() => {
+    const supportsExamMode = activeLearningContext?.config.capabilities.supportsExamMode ?? true;
+    const supportsPressureTraining =
+      activeLearningContext?.config.capabilities.supportsPressureTraining ?? true;
+
     switch (coachPlan.mode) {
       case 'mixed':
         startMixed();
@@ -38,15 +45,25 @@ export const usePracticeStartRecommended = ({
         startRandom();
         return;
       case 'anti_trap':
+        if (!supportsPressureTraining) {
+          void startStandardSession(recommendedBatchStartIndex, selectedQuestionScope);
+          return;
+        }
         startAntiTrap();
         return;
       case 'simulacro':
+        if (!supportsExamMode) {
+          void startStandardSession(recommendedBatchStartIndex, selectedQuestionScope);
+          return;
+        }
         startSimulacro();
         return;
       default:
         void startStandardSession(recommendedBatchStartIndex, selectedQuestionScope);
     }
   }, [
+    activeLearningContext?.config.capabilities.supportsExamMode,
+    activeLearningContext?.config.capabilities.supportsPressureTraining,
     coachPlan.mode,
     recommendedBatchStartIndex,
     selectedQuestionScope,

@@ -29,6 +29,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
     activeTab,
     coachPlan,
     homePausedSession = null,
+    activeLearningContext = null,
     identity,
     learningDashboardV2,
     learningDashboard,
@@ -66,6 +67,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
             homePausedSession,
             streakDays,
             weakCategories,
+            activeLearningContext,
           })
         : null,
     [
@@ -78,6 +80,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
       homePausedSession,
       streakDays,
       weakCategories,
+      activeLearningContext,
     ],
   );
 
@@ -177,6 +180,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
             weakTopicsCount,
             recentAccuracyTrend,
           }}
+          activeLearningContext={activeLearningContext}
           sessionContinuityHint={sessionContinuityHint}
           practiceLocked={practiceLocked}
           coachMessage={coachMessage}
@@ -185,7 +189,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
             if (practiceLocked) return;
             switch (homeExperience.dominantState) {
               case 'pressure':
-                onStartSimulacro();
+                onStartRecommended();
                 return;
               case 'errors':
                 onStartWeakReview();
@@ -219,7 +223,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
                 onStartRecommended();
                 return;
               case 'simulacro':
-                onStartSimulacro();
+                onStartRecommended();
                 return;
               default:
                 onStartRandom();

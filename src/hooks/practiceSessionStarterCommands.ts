@@ -40,17 +40,19 @@ export const loadStandardSessionCommand = async ({
   batchStartIndex,
   questionsCount,
   questionScope,
+  curriculum = DEFAULT_CURRICULUM,
 }: {
   batchStartIndex: number;
   questionsCount: number;
   questionScope: PracticeQuestionScopeFilter;
+  curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
   const normalizedStartIndex =
     batchStartIndex >= 0 && batchStartIndex < questionsCount ? batchStartIndex : 0;
   const batchQuestions = await getStandardPracticeBatch(
     normalizedStartIndex,
     PRACTICE_BATCH_SIZE,
-    DEFAULT_CURRICULUM,
+    curriculum,
     questionScope,
   );
 
@@ -67,12 +69,14 @@ export const loadStandardSessionCommand = async ({
 
 export const loadRandomSessionCommand = async ({
   questionScope,
+  curriculum = DEFAULT_CURRICULUM,
 }: {
   questionScope: PracticeQuestionScopeFilter;
+  curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
   const randomQuestions = await getRandomPracticeBatch(
     PRACTICE_BATCH_SIZE,
-    DEFAULT_CURRICULUM,
+    curriculum,
     questionScope,
   );
 
@@ -88,9 +92,11 @@ export const loadRandomSessionCommand = async ({
 export const loadWeakReviewSessionCommand = async ({
   questionScope,
   weakQuestions,
+  curriculum = DEFAULT_CURRICULUM,
 }: {
   questionScope: PracticeQuestionScopeFilter;
   weakQuestions: WeakQuestionInsight[];
+  curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
   let session = buildWeakestPracticeSession(weakQuestions, questionScope);
   if (session) {
@@ -98,7 +104,7 @@ export const loadWeakReviewSessionCommand = async ({
   }
 
   const fresh = await getWeakPracticeInsights(
-    DEFAULT_CURRICULUM,
+    curriculum,
     PRACTICE_BATCH_SIZE,
     questionScope,
   );
@@ -108,11 +114,13 @@ export const loadWeakReviewSessionCommand = async ({
 
 export const loadGuestSessionCommand = async ({
   guestBlocksUsed,
+  curriculum = DEFAULT_CURRICULUM,
 }: {
   guestBlocksUsed: number;
+  curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
   const nextBlockNumber = guestBlocksUsed + 1;
-  const guestQuestions = await getGuestPracticeBatch(PRACTICE_BATCH_SIZE, DEFAULT_CURRICULUM);
+  const guestQuestions = await getGuestPracticeBatch(PRACTICE_BATCH_SIZE, curriculum);
 
   return {
     session: buildGuestPracticeSession({
@@ -128,15 +136,17 @@ export const loadMixedSessionCommand = async ({
   questionScope,
   recommendedBatchStartIndex,
   questionsCount,
+  curriculum = DEFAULT_CURRICULUM,
 }: {
   questionScope: PracticeQuestionScopeFilter;
   recommendedBatchStartIndex: number;
   questionsCount: number;
+  curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
   try {
     const mixedQuestions = await getMixedPracticeBatch(
       PRACTICE_BATCH_SIZE,
-      DEFAULT_CURRICULUM,
+      curriculum,
       questionScope,
     );
 
@@ -148,6 +158,7 @@ export const loadMixedSessionCommand = async ({
       batchStartIndex: recommendedBatchStartIndex,
       questionsCount,
       questionScope,
+      curriculum,
     }).catch(() => null);
 
     if (fallback?.session) {
@@ -161,14 +172,16 @@ export const loadMixedSessionCommand = async ({
 export const loadAntiTrapSessionCommand = async ({
   questionScope,
   weakQuestions,
+  curriculum = DEFAULT_CURRICULUM,
 }: {
   questionScope: PracticeQuestionScopeFilter;
   weakQuestions: WeakQuestionInsight[];
+  curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
   try {
     const antiTrapQuestions = await getAntiTrapPracticeBatch(
       PRACTICE_BATCH_SIZE,
-      DEFAULT_CURRICULUM,
+      curriculum,
       questionScope,
     );
 
@@ -187,13 +200,15 @@ export const loadAntiTrapSessionCommand = async ({
 
 export const loadSimulacroSessionCommand = async ({
   questionScope,
+  curriculum = DEFAULT_CURRICULUM,
 }: {
   questionScope: PracticeQuestionScopeFilter;
+  curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
   try {
     const simulacroQuestions = await getSimulacroPracticeBatch(
       SIMULACRO_BATCH_SIZE,
-      DEFAULT_CURRICULUM,
+      curriculum,
       questionScope,
     );
 
@@ -203,7 +218,7 @@ export const loadSimulacroSessionCommand = async ({
   } catch (error) {
     const fallbackQuestions = await getRandomPracticeBatch(
       SIMULACRO_BATCH_SIZE,
-      DEFAULT_CURRICULUM,
+      curriculum,
       questionScope,
     ).catch(() => null);
 
@@ -221,10 +236,12 @@ export const loadSimulacroSessionCommand = async ({
 
 export const loadLawSessionCommand = async ({
   law,
+  curriculum = DEFAULT_CURRICULUM,
 }: {
   law: string;
+  curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
-  const lawQuestions = await getLawPracticeBatch(law, PRACTICE_BATCH_SIZE, DEFAULT_CURRICULUM);
+  const lawQuestions = await getLawPracticeBatch(law, PRACTICE_BATCH_SIZE, curriculum);
 
   return {
     session: buildLawPracticeSession(lawQuestions, law),
@@ -233,13 +250,15 @@ export const loadLawSessionCommand = async ({
 
 export const loadTopicSessionCommand = async ({
   topic,
+  curriculum = DEFAULT_CURRICULUM,
 }: {
   topic: string;
+  curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
   const topicQuestions = await getTopicPracticeBatch(
     topic,
     PRACTICE_BATCH_SIZE,
-    DEFAULT_CURRICULUM,
+    curriculum,
   );
 
   return {
@@ -249,10 +268,12 @@ export const loadTopicSessionCommand = async ({
 
 export const loadCatalogReviewSessionCommand = async ({
   scope,
+  curriculum = DEFAULT_CURRICULUM,
 }: {
   scope: PracticeQuestionScope;
+  curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
-  const questions = await getFullCatalogQuestionsForScope(scope);
+  const questions = await getFullCatalogQuestionsForScope(scope, curriculum);
   return {
     session: buildCatalogReviewSession({ questions, scope }),
   };

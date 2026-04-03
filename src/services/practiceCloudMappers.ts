@@ -257,15 +257,35 @@ export const mapLearningDashboardV2 = (
     focusMessage:
       toNullableString(value.focus_message) ??
       'La preparacion compuesta aun se esta estabilizando.',
-    lawBreakdown: rawLawBreakdown.map((law: any) => ({
-      ley_referencia: String(law.ley_referencia || 'Otras Normas'),
-      scope: normalizeQuestionScope(law.raw_scope) ?? 'unknown',
-      attempts: toNumber(law.attempts),
-      questionCount: toNumber(law.question_count),
-      consolidatedCount: toNumber(law.consolidated_count),
-      correctAttempts: toNumber(law.correct_attempts),
-      accuracyRate: toNumber(law.accuracy_rate),
-    })),
+    lawBreakdown: rawLawBreakdown.map((law: any) => {
+      const rawBlocks = law.blocks ?? law.block_breakdown;
+      const blocks = Array.isArray(rawBlocks)
+        ? rawBlocks.map((b: Record<string, unknown>) => ({
+            blockId: String(b.block_id ?? b.blockId ?? ''),
+            title: toNullableString(b.title) ?? 'Bloque',
+            trainingFocus: toNullableString(b.training_focus ?? b.trainingFocus),
+            questionCount: toNumber(b.question_count ?? b.questionCount),
+            consolidatedCount: toNumber(b.consolidated_count ?? b.consolidatedCount),
+            attempts: toNumber(b.attempts),
+            correctAttempts: toNumber(b.correct_attempts ?? b.correctAttempts),
+            accuracyRate: toNumber(b.accuracy_rate ?? b.accuracyRate),
+          }))
+        : undefined;
+
+      return {
+        ley_referencia: String(law.ley_referencia || 'Otras Normas'),
+        lawId: toNullableString(law.law_id ?? law.lawId) ?? undefined,
+        shortTitle: toNullableString(law.short_title ?? law.shortTitle),
+        trainingIntent: toNullableString(law.training_intent ?? law.trainingIntent),
+        blocks: blocks && blocks.length > 0 ? blocks : undefined,
+        scope: normalizeQuestionScope(law.raw_scope) ?? 'unknown',
+        attempts: toNumber(law.attempts),
+        questionCount: toNumber(law.question_count),
+        consolidatedCount: toNumber(law.consolidated_count),
+        correctAttempts: toNumber(law.correct_attempts),
+        accuracyRate: toNumber(law.accuracy_rate),
+      };
+    }),
     topicBreakdown: rawTopicBreakdown.flatMap((topic: any) => {
       const topicLabel = toNullableString(
         topic.topic_label ?? topic.temario_pregunta ?? topic.label,

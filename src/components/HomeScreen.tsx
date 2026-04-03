@@ -1,5 +1,6 @@
 import React from 'react';
 import type { CoachTwoLineMessage } from '../domain/learningEngine';
+import type { ActiveLearningContext } from '../domain/learningContext/types';
 
 /**
  * Presentación del hero: solo reordena / recorta el copy ya emitido por `buildCoachTwoLineMessageV2`
@@ -95,6 +96,7 @@ const mockUserState: UserState = {
 
 type HomeScreenProps = {
   state?: UserState;
+  activeLearningContext?: ActiveLearningContext | null;
   /** Sin preguntas en el ámbito: desactiva acciones. */
   practiceLocked?: boolean;
 
@@ -123,6 +125,7 @@ type HomeScreenProps = {
 
 export default function HomeScreen({
   state = mockUserState,
+  activeLearningContext = null,
   practiceLocked = false,
   coachMessage = null,
   coachCtaLabel = 'Empezar ahora',
@@ -133,6 +136,7 @@ export default function HomeScreen({
   sessionContinuityHint = null,
   onSelectMode = () => {},
 }: HomeScreenProps) {
+  void activeLearningContext;
   const interactiveDisabled = practiceLocked;
 
   return (

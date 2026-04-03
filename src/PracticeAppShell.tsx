@@ -29,6 +29,9 @@ const AuthScreen = lazy(() => import('./components/AuthScreen'));
 const DashboardScreen = lazy(() => import('./components/DashboardScreen'));
 const GuestDashboardScreen = lazy(() => import('./components/GuestDashboardScreen'));
 const GenericDashboardScreen = lazy(() => import('./components/GenericDashboardScreen'));
+const LearningContextPickerScreen = lazy(
+  () => import('./components/context/LearningContextPickerScreen'),
+);
 const QuizScreen = lazy(() => import('./components/QuizScreen'));
 const PracticeReviewScreen = lazy(() => import('./components/PracticeReviewScreen'));
 const CatalogReviewScreen = lazy(() => import('./components/CatalogReviewScreen'));
@@ -36,6 +39,9 @@ const CatalogReviewScreen = lazy(() => import('./components/CatalogReviewScreen'
 const PracticeAppShell: React.FC = () => {
   const {
     activeSession,
+    activeLearningContext,
+    activeLearningContextError,
+    activeLearningContextLoading,
     activeTab,
     answers,
     authReady,
@@ -59,6 +65,7 @@ const PracticeAppShell: React.FC = () => {
     handleSignedIn,
     handleSignOut,
     handleSimulacroTimeExpired,
+    isLearningContextPickerOpen,
     identity,
     isGuest,
     isGenericPlayer,
@@ -96,6 +103,13 @@ const PracticeAppShell: React.FC = () => {
     resumeActiveSession,
     textHighlightingEnabled,
     setTextHighlightingEnabled,
+    openLearningContextPicker,
+    learningContextOptions,
+    learningContextOptionsError,
+    learningContextOptionsLoading,
+    learningContextSaving,
+    refreshLearningContextOptions,
+    selectLearningContext,
   } = usePracticeApp();
   const navigationScrollKey = view === 'home' ? `home:${activeTab}` : view;
   const contentEnterClass =
@@ -193,6 +207,25 @@ const PracticeAppShell: React.FC = () => {
           onEnterGuest={handleEnterGuest}
           guestBlocksRemaining={guestBlocksRemaining}
           guestMaxBlocks={guestMaxBlocks}
+        />
+      </Suspense>
+    );
+  }
+
+  if (session && !isGuest && activeLearningContextLoading) {
+    return <AppLoadingSurface />;
+  }
+
+  if (session && !isGuest && (!activeLearningContext || isLearningContextPickerOpen)) {
+    return (
+      <Suspense fallback={<AppLoadingSurface />}>
+        <LearningContextPickerScreen
+          contexts={learningContextOptions}
+          loading={learningContextOptionsLoading}
+          error={activeLearningContextError ?? learningContextOptionsError}
+          saving={learningContextSaving}
+          onSelect={(context) => void selectLearningContext(context)}
+          onRefresh={() => void refreshLearningContextOptions()}
         />
       </Suspense>
     );
@@ -303,6 +336,8 @@ const PracticeAppShell: React.FC = () => {
                         <GenericDashboardScreen
                           activeTab={activeTab}
                           identity={identity!}
+                          activeLearningContext={activeLearningContext}
+                          onChangeLearningContext={openLearningContextPicker}
                           catalogLoading={loadingQuestions}
                           profile={profile}
                           recentSessions={recentSessions}
@@ -319,6 +354,8 @@ const PracticeAppShell: React.FC = () => {
                         <DashboardScreen
                           activeTab={activeTab}
                           identity={identity!}
+                          activeLearningContext={activeLearningContext}
+                          onChangeLearningContext={openLearningContextPicker}
                           catalogLoading={loadingQuestions}
                           homePausedSession={
                             view === 'home' && activeSession
@@ -414,11 +451,14 @@ const PracticeAppShell: React.FC = () => {
                             recentSessions,
                             streakDays,
                             profile,
+                            activeLearningContext,
                           }}
                           onAnswer={handleAnswer}
                           onEndSession={handleEndSessionEarly}
                           onTimeExpired={handleSimulacroTimeExpired}
                           textHighlightingEnabled={textHighlightingEnabled}
+                          isAdmin={Boolean(identity?.is_admin)}
+                          currentUserId={session?.user.id ?? null}
                         />
                       </div>
                     ) : null}
@@ -436,6 +476,7 @@ const PracticeAppShell: React.FC = () => {
                             recentSessions,
                             streakDays,
                             profile,
+                            activeLearningContext,
                           }}
                           batchNumber={activeSession.batchNumber}
                           totalBatches={activeSession.totalBatches}

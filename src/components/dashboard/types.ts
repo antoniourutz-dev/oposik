@@ -14,6 +14,7 @@ import type {
   WeakQuestionInsight,
 } from '../../practiceTypes';
 import type { CoachPlanV2 } from '../../domain/learningEngine/coachV2';
+import type { ActiveLearningContext } from '../../domain/learningContext/types';
 
 export type DashboardExamTargetPayload = {
   examDate: string | null;
@@ -40,6 +41,8 @@ export type DashboardScreenProps = {
   homePausedSession?: HomePausedSessionSnapshot | null;
   /** Reanudar quiz/repaso cuando el hero muestra “sesión en curso”. */
   onResumePracticeSession?: () => void;
+  activeLearningContext?: ActiveLearningContext | null;
+  onChangeLearningContext?: () => void;
   coachPlan: PracticeCoachPlan;
   examTarget: PracticeExamTarget | null;
   examTargetError: string | null;

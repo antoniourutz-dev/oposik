@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -9,9 +9,11 @@ import {
   Zap,
 } from 'lucide-react';
 import { StudyCalendar } from './StudyCalendar';
+import { DailyReportCard, DailyReportEmpty } from './DailyReportCard';
 import type { DashboardContentProps } from './types';
 import { buildStatsAdapterOutput } from '../../adapters/surfaces/statsAdapter';
 import { buildCoachTwoLineMessageV2 } from '../../domain/coachCopyV2';
+import { buildDailyReport, filterSessionsForDay } from '../../domain/dailyReport';
 
 const formatCompact = (n: number) => {
   if (!Number.isFinite(n)) return '--';
@@ -20,6 +22,7 @@ const formatCompact = (n: number) => {
 };
 
 const DashboardStatsTab: React.FC<DashboardContentProps> = ({
+  activeLearningContext,
   coachPlan: _coachPlan,
   examTarget,
   learningDashboard,
@@ -35,6 +38,8 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
   onStartWeakReview,
   weakCategories,
 }) => {
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+
   const statsExperience = useMemo(
     () =>
       buildStatsAdapterOutput({
@@ -44,8 +49,17 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
         recentSessions,
         streakDays,
         weakCategories,
+        activeLearningContext,
       }),
-    [learningDashboardV2, planV2, pressureInsightsV2, recentSessions, streakDays, weakCategories],
+    [
+      activeLearningContext,
+      learningDashboardV2,
+      planV2,
+      pressureInsightsV2,
+      recentSessions,
+      streakDays,
+      weakCategories,
+    ],
   );
 
   const coach = useMemo(
@@ -90,6 +104,23 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
 
   const sessionsForCalendar = (recentSessions ?? []).map((s) => ({ finishedAt: s.finishedAt }));
 
+  const sessionsOnSelectedDay = useMemo(
+    () => (selectedDayKey ? filterSessionsForDay(recentSessions ?? [], selectedDayKey) : []),
+    [recentSessions, selectedDayKey],
+  );
+
+  const dailyReport = useMemo(() => {
+    if (!selectedDayKey || sessionsOnSelectedDay.length === 0) return null;
+    return buildDailyReport(sessionsOnSelectedDay, selectedDayKey, weakCategories);
+  }, [selectedDayKey, sessionsOnSelectedDay, weakCategories]);
+
+  const selectedDayLabel = useMemo(() => {
+    if (!selectedDayKey) return '';
+    const d = new Date(`${selectedDayKey}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return selectedDayKey;
+    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  }, [selectedDayKey]);
+
   const examDate = examTarget?.examDate ?? learningDashboard?.examDate ?? null;
   const daysToExam = useMemo(() => {
     if (!examDate) return null;
@@ -105,7 +136,10 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
   const questionsTotal = learningDashboardV2?.totalQuestions ?? learningDashboard?.totalQuestions ?? 0;
 
   const onBridgeAction = () => {
-    if (statsExperience.dominantState === 'pressure') {
+    if (
+      statsExperience.dominantState === 'pressure' &&
+      (activeLearningContext?.config.capabilities.supportsPressureTraining ?? true)
+    ) {
       onStartAntiTrap();
       return;
     }
@@ -136,7 +170,6 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Estadísticas</p>
-          <p className="mt-0.5 text-[11px] font-semibold text-slate-500">Lectura del momento · misma lógica que Home</p>
         </div>
 
         <button
@@ -187,9 +220,6 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
             >
               {statsExperience.coachBridge.nextActionLabel}
             </button>
-            <p className="mt-3 text-center text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
-              Misma recomendación que el coach en Home
-            </p>
           </div>
         </div>
       </section>
@@ -234,7 +264,19 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
             <h3 className="text-xs font-black text-slate-900">Actividad reciente</h3>
             <p className="text-[11px] font-semibold text-slate-500">Contexto, no juicio</p>
           </div>
-          <StudyCalendar sessions={sessionsForCalendar} className="border-none bg-transparent p-2 shadow-none" />
+          <StudyCalendar
+            sessions={sessionsForCalendar}
+            selectedDayKey={selectedDayKey}
+            onDaySelect={(dateKey) => setSelectedDayKey((prev) => (prev === dateKey ? null : dateKey))}
+            className="border-none bg-transparent p-2 shadow-none"
+          />
+          {selectedDayKey ? (
+            sessionsOnSelectedDay.length > 0 && dailyReport ? (
+              <DailyReportCard report={dailyReport} />
+            ) : (
+              <DailyReportEmpty dateLabel={selectedDayLabel} />
+            )
+          ) : null}
         </div>
 
         <div className="flex flex-col justify-center rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-white shadow-md sm:p-6">

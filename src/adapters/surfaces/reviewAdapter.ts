@@ -1,4 +1,5 @@
 import type { CoachPlanV2 } from '../../domain/learningEngine/coachV2';
+import type { ActiveLearningContext } from '../../domain/learningContext/types';
 import type {
   ActivePracticeSession,
   PracticeAnswer,
@@ -38,6 +39,7 @@ export type ReviewAdapterSurfaceContext = {
   recentSessions?: PracticeSessionSummary[] | null;
   streakDays?: number;
   profile?: PracticeProfile | null;
+  activeLearningContext?: ActiveLearningContext | null;
 };
 
 const tensionByState: Record<SurfaceDominantState, SurfaceTension> = {
@@ -51,13 +53,13 @@ const tensionByState: Record<SurfaceDominantState, SurfaceTension> = {
 };
 
 const summaryTitleByState: Record<SurfaceDominantState, string> = {
-  errors: 'El patrón ya tiene nombre',
-  backlog: 'La deuda baja si la atacas así',
-  pressure: 'Con presión se ve el fallo',
-  recovery: 'Volver ya es señal',
+  errors: 'El patron ya tiene nombre',
+  backlog: 'La deuda baja si la atacas asi',
+  pressure: 'Con presion se ve el fallo',
+  recovery: 'Volver ya es senal',
   memory: 'Fija antes de acelerar',
   growth: 'Sube exigencia sin perder control',
-  gray_zone: 'Ordena señal, luego ritmo',
+  gray_zone: 'Ordena senal, luego ritmo',
 };
 
 export function buildReviewAdapterOutput(input: {
@@ -77,7 +79,9 @@ export function buildReviewAdapterOutput(input: {
     streakDays: surfaceContext?.streakDays,
   });
 
-  const incorrectCount = answers.reduce((acc, a) => acc + (a.isCorrect ? 0 : 1), 0);
+  const incorrectCount = answers.reduce((acc, answer) => acc + (answer.isCorrect ? 0 : 1), 0);
+  const contextConfig = surfaceContext?.activeLearningContext?.config;
+  const supportsExamMode = contextConfig?.capabilities.supportsExamMode ?? true;
 
   const filterPriority: ReviewAdapterOutput['filterPriority'] =
     activeSession.mode === 'simulacro' || dominantState === 'pressure'
@@ -97,8 +101,15 @@ export function buildReviewAdapterOutput(input: {
   };
 
   const nextStep: ReviewAdapterOutput['nextStep'] = (() => {
-    if (activeSession.mode === 'simulacro') return { cta: 'Panel', modeSuggestion: 'simulacro' };
-    if (dominantState === 'pressure') return { cta: 'Entrenar examen', modeSuggestion: 'simulacro' };
+    if (activeSession.mode === 'simulacro' && supportsExamMode) {
+      return { cta: 'Panel', modeSuggestion: 'simulacro' };
+    }
+    if (dominantState === 'pressure') {
+      return {
+        cta: contextConfig?.coachOverrides.reviewPressureCta ?? 'Entrenar examen',
+        modeSuggestion: supportsExamMode ? 'simulacro' : 'standard',
+      };
+    }
     if (dominantState === 'errors') return { cta: 'Corregir ahora', modeSuggestion: 'mistakes' };
     if (dominantState === 'recovery') return { cta: 'Seguir suave', modeSuggestion: 'standard' };
     if (dominantState === 'growth') return { cta: 'Subir nivel', modeSuggestion: 'standard' };
@@ -110,12 +121,17 @@ export function buildReviewAdapterOutput(input: {
     tone: planV2.tone,
     tension: tensionByState[dominantState],
     summary: {
-      title: summaryTitleByState[dominantState],
+      title:
+        dominantState === 'pressure' && !supportsExamMode
+          ? 'Con foco aparece el matiz'
+          : summaryTitleByState[dominantState],
       subtitle:
         dominantState === 'errors'
           ? 'Repite el gesto correcto en lo que falla dos veces.'
           : dominantState === 'pressure'
-            ? 'Entrena el mismo gesto con el cronómetro encendido.'
+            ? supportsExamMode
+              ? 'Entrena el mismo gesto con el cronometro encendido.'
+              : 'Entrena el mismo gesto con lectura mas limpia y menos prisa.'
             : dominantState === 'backlog'
               ? 'Cierra lo viejo antes de abrir carga nueva.'
               : undefined,
@@ -125,4 +141,3 @@ export function buildReviewAdapterOutput(input: {
     nextStep,
   };
 }
-

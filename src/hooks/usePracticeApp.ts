@@ -21,12 +21,18 @@ import { usePracticeShellNavigation } from './practiceApp/usePracticeShellNaviga
 import { usePracticeQuestionScope } from './practiceApp/usePracticeQuestionScope';
 import { usePracticeShellTransitions } from './practiceApp/usePracticeShellTransitions';
 import { usePracticeStartRecommended } from './practiceApp/usePracticeStartRecommended';
+import { useActiveLearningContext } from './useActiveLearningContext';
+import { useLearningContextSelector } from './useLearningContextSelector';
 import { usePracticeDataController } from './usePracticeDataController';
 import { usePracticeSessionFlow } from './usePracticeSessionFlow';
 import {
   readTextHighlightPreference,
   writeTextHighlightPreference,
 } from '../services/textHighlightPreferenceStorage';
+import { DEFAULT_CURRICULUM } from '../practiceConfig';
+import type { LearningContextOption } from '../domain/learningContext/types';
+import { GENERAL_LAW_CURRICULUM_KEY } from '../domain/learningContext/catalog';
+import { readStoredLearningContextSelection } from '../lib/learningContext/activeLearningContextStorage';
 
 const GUEST_IDENTITY: AccountIdentity = {
   user_id: 'guest-preview',
@@ -47,6 +53,7 @@ const debugCoachV2 = import.meta.env.DEV || import.meta.env.VITE_COACH_V2_DEBUG 
 export const usePracticeApp = () => {
   const { authReady, setAuthReady, session, setSession } = usePracticeAuthSessionState();
   const [isGuest, setIsGuest] = useState(false);
+  const [isLearningContextPickerOpen, setIsLearningContextPickerOpen] = useState(false);
   const [guestBlocksUsed, setGuestBlocksUsed] = useState(readGuestBlocksUsed);
   const { handleQuestionScopeChange, selectedQuestionScope, setSelectedQuestionScope } =
     usePracticeQuestionScope();
@@ -54,10 +61,37 @@ export const usePracticeApp = () => {
   const [textHighlightingEnabled, setTextHighlightingEnabledState] = useState(
     readTextHighlightPreference,
   );
+  const activeLearningContext = useActiveLearningContext(session?.user.id ?? null);
+  const learningContextSelector = useLearningContextSelector(session?.user.id ?? null);
+  /** Fuerza el currículo correcto para `general_law` y evita carreras con la query remota. */
+  const curriculumKey = useMemo(() => {
+    if (isGuest) return DEFAULT_CURRICULUM;
+
+    const uid = session?.user?.id;
+    const stored = uid ? readStoredLearningContextSelection(uid) : null;
+    if (stored?.contextType === 'general_law') {
+      return stored.curriculumKey ?? GENERAL_LAW_CURRICULUM_KEY;
+    }
+
+    const ctx = activeLearningContext.data;
+    if (ctx?.contextType === 'general_law') {
+      return ctx.curriculumKey ?? GENERAL_LAW_CURRICULUM_KEY;
+    }
+
+    return ctx?.curriculumKey ?? null;
+  }, [activeLearningContext.data, isGuest, session?.user?.id]);
 
   const setTextHighlightingEnabled = useCallback((enabled: boolean) => {
     setTextHighlightingEnabledState(enabled);
     writeTextHighlightPreference(enabled);
+  }, []);
+
+  const openLearningContextPicker = useCallback(() => {
+    setIsLearningContextPickerOpen(true);
+  }, []);
+
+  const closeLearningContextPicker = useCallback(() => {
+    setIsLearningContextPickerOpen(false);
   }, []);
 
   const {
@@ -88,6 +122,7 @@ export const usePracticeApp = () => {
   } = usePracticeDataController({
     authReady,
     isGuest,
+    curriculum: curriculumKey,
     selectedQuestionScope,
     sessionUserId: session?.user.id ?? null,
   });
@@ -150,10 +185,24 @@ export const usePracticeApp = () => {
     console.debug('[coach-v2]', coachDecisionLog);
   }, [coachDecisionLog]);
 
+  useEffect(() => {
+    if (!session || isGuest) {
+      setIsLearningContextPickerOpen(false);
+    }
+  }, [isGuest, session]);
+
   const handleGuestBlockConsumed = useCallback((nextBlockNumber: number) => {
     setGuestBlocksUsed(nextBlockNumber);
     persistGuestBlocksUsed(nextBlockNumber);
   }, []);
+
+  const handleSelectLearningContext = useCallback(
+    async (context: LearningContextOption) => {
+      await learningContextSelector.selectLearningContext(context);
+      setIsLearningContextPickerOpen(false);
+    },
+    [learningContextSelector],
+  );
 
   const {
     activeSession,
@@ -187,6 +236,7 @@ export const usePracticeApp = () => {
     guestBlocksRemaining,
     guestBlocksUsed,
     isGuest,
+    curriculum: curriculumKey ?? DEFAULT_CURRICULUM,
     onGuestBlockConsumed: handleGuestBlockConsumed,
     questionsCount,
     recommendedBatchStartIndex,
@@ -226,6 +276,7 @@ export const usePracticeApp = () => {
 
   const startRecommended = usePracticeStartRecommended({
     coachPlan,
+    activeLearningContext: activeLearningContext.data,
     recommendedBatchStartIndex,
     selectedQuestionScope,
     startAntiTrap,
@@ -301,5 +352,18 @@ export const usePracticeApp = () => {
     setActiveTab,
     textHighlightingEnabled,
     setTextHighlightingEnabled,
+    openLearningContextPicker,
+    closeLearningContextPicker,
+    isLearningContextPickerOpen,
+    activeLearningContext: activeLearningContext.data,
+    activeLearningContextLoading: activeLearningContext.loading,
+    activeLearningContextError: activeLearningContext.error,
+    refreshActiveLearningContext: activeLearningContext.refresh,
+    learningContextOptions: learningContextSelector.contexts,
+    learningContextOptionsLoading: learningContextSelector.loading,
+    learningContextOptionsError: learningContextSelector.error,
+    learningContextSaving: learningContextSelector.saving,
+    selectLearningContext: handleSelectLearningContext,
+    refreshLearningContextOptions: learningContextSelector.refresh,
   };
 };

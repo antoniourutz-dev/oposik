@@ -1,4 +1,5 @@
 import type { CoachPlanV2 } from '../../domain/learningEngine/coachV2';
+import type { ActiveLearningContext } from '../../domain/learningContext/types';
 import type {
   ActivePracticeSession,
   PracticeAnswer,
@@ -31,7 +32,6 @@ export type TestAdapterOutput = {
     showMicroReinforcement: boolean;
     explanationPriority: 'low' | 'medium' | 'high';
   };
-  /** Etiqueta base del botón principal (preguntas no finales, modo inmediato). */
   submitCta: string;
 };
 
@@ -43,6 +43,7 @@ export type TestAdapterSurfaceContext = {
   recentSessions?: PracticeSessionSummary[] | null;
   streakDays?: number;
   profile?: PracticeProfile | null;
+  activeLearningContext?: ActiveLearningContext | null;
 };
 
 const tensionByState: Record<SurfaceDominantState, SurfaceTension> = {
@@ -59,15 +60,12 @@ const headerLabelByState: Record<SurfaceDominantState, string> = {
   recovery: 'Volviendo al ritmo',
   backlog: 'Consolidando base',
   errors: 'Corrigiendo errores clave',
-  pressure: 'Entrenando bajo presión',
+  pressure: 'Entrenando bajo presion',
   growth: 'Subiendo exigencia',
   memory: 'Fijando lo visto',
   gray_zone: 'Midiendo tu nivel',
 };
 
-/**
- * Entrada mínima del adapter de test + contexto opcional para alinear la narrativa con Home/Stats (`resolveDominantState`).
- */
 export function buildTestAdapterOutput(input: {
   planV2: CoachPlanV2;
   activeSession: ActivePracticeSession;
@@ -99,88 +97,51 @@ export function buildTestAdapterOutput(input: {
   const tone = planV2.tone;
   const tension = tensionByState[dominantState];
   const subdued = tension === 'low' || dominantState === 'gray_zone';
+  const contextConfig = surfaceContext?.activeLearningContext?.config;
+  const supportsExamMode = contextConfig?.capabilities.supportsExamMode ?? true;
 
   const headerContext = {
-    label: headerLabelByState[dominantState],
+    label:
+      dominantState === 'pressure'
+        ? contextConfig?.coachOverrides.pressureHeaderLabel ?? headerLabelByState.pressure
+        : headerLabelByState[dominantState],
     subdued,
   };
 
   const answerUi: TestAdapterOutput['answerUi'] = (() => {
     switch (dominantState) {
       case 'recovery':
-        return {
-          highlightImportantText: true,
-          revealHelpLevel: 'medium',
-          compactOptions: false,
-        };
+        return { highlightImportantText: true, revealHelpLevel: 'medium', compactOptions: false };
       case 'backlog':
-        return {
-          highlightImportantText: true,
-          revealHelpLevel: 'high',
-          compactOptions: false,
-        };
       case 'errors':
-        return {
-          highlightImportantText: true,
-          revealHelpLevel: 'high',
-          compactOptions: false,
-        };
+        return { highlightImportantText: true, revealHelpLevel: 'high', compactOptions: false };
       case 'pressure':
-        return {
-          highlightImportantText: true,
-          revealHelpLevel: 'low',
-          compactOptions: true,
-        };
       case 'growth':
-        return {
-          highlightImportantText: true,
-          revealHelpLevel: 'low',
-          compactOptions: true,
-        };
+        return { highlightImportantText: true, revealHelpLevel: 'low', compactOptions: true };
       case 'memory':
-        return {
-          highlightImportantText: true,
-          revealHelpLevel: 'medium',
-          compactOptions: false,
-        };
+        return { highlightImportantText: true, revealHelpLevel: 'medium', compactOptions: false };
       default:
-        return {
-          highlightImportantText: true,
-          revealHelpLevel: 'medium',
-          compactOptions: false,
-        };
+        return { highlightImportantText: true, revealHelpLevel: 'medium', compactOptions: false };
     }
   })();
 
   const feedbackStyle: TestAdapterOutput['feedbackStyle'] = (() => {
     switch (dominantState) {
       case 'recovery':
-        return {
-          kind: 'protective',
-          showMicroReinforcement: true,
-          explanationPriority: 'low',
-        };
+        return { kind: 'protective', showMicroReinforcement: true, explanationPriority: 'low' };
       case 'backlog':
-        return {
-          kind: 'neutral',
-          showMicroReinforcement: true,
-          explanationPriority: 'high',
-        };
+        return { kind: 'neutral', showMicroReinforcement: true, explanationPriority: 'high' };
       case 'errors':
-        return {
-          kind: 'corrective',
-          showMicroReinforcement: false,
-          explanationPriority: 'high',
-        };
+        return { kind: 'corrective', showMicroReinforcement: false, explanationPriority: 'high' };
       case 'pressure':
         return {
-          kind: 'exam',
+          kind: supportsExamMode ? 'exam' : 'neutral',
           showMicroReinforcement: false,
           explanationPriority: 'low',
         };
       case 'growth':
         return {
-          kind: 'exam',
+          kind: supportsExamMode ? 'exam' : 'neutral',
           showMicroReinforcement: false,
           explanationPriority: 'medium',
         };
@@ -191,11 +152,7 @@ export function buildTestAdapterOutput(input: {
           explanationPriority: 'medium',
         };
       default:
-        return {
-          kind: 'neutral',
-          showMicroReinforcement: true,
-          explanationPriority: 'medium',
-        };
+        return { kind: 'neutral', showMicroReinforcement: true, explanationPriority: 'medium' };
     }
   })();
 
@@ -206,7 +163,7 @@ export function buildTestAdapterOutput(input: {
       case 'backlog':
         return 'Resolver';
       case 'errors':
-        return 'Comprobar patrón';
+        return 'Comprobar patron';
       case 'pressure':
         return 'Confirmar';
       case 'growth':
@@ -225,7 +182,7 @@ export function buildTestAdapterOutput(input: {
   void _selectedQuestionScope;
 
   const simulacroSurface =
-    activeSession.mode === 'simulacro'
+    activeSession.mode === 'simulacro' && supportsExamMode
       ? {
           headerContext: { label: 'Entrenando examen', subdued: false as const },
           answerUi: {
@@ -254,9 +211,6 @@ export function buildTestAdapterOutput(input: {
   };
 }
 
-/**
- * Etiqueta del CTA principal respetando simulacro diferido y última pregunta.
- */
 export function resolveQuizPrimaryButtonLabel(
   test: TestAdapterOutput,
   ctx: {
@@ -286,14 +240,14 @@ export function quizFeedbackAnnouncement(input: {
   const { kind } = feedbackStyle;
   if (isCorrect) {
     if (kind === 'exam') return 'Correcto. Siguiente.';
-    if (kind === 'protective') return 'Bien. Mantén el ritmo.';
+    if (kind === 'protective') return 'Bien. Manten el ritmo.';
     if (kind === 'neutral') return 'Correcto. Consolidas.';
     return 'Correcto.';
   }
 
-  if (kind === 'corrective') return 'Patrón a ajustar. Mira el matiz.';
+  if (kind === 'corrective') return 'Patron a ajustar. Mira el matiz.';
   if (kind === 'exam') return 'Incorrecto. Cierra y sigue.';
   if (kind === 'protective') return 'Sin drama. Corriges y listo.';
-  if (kind === 'neutral') return 'Aquí conviene repasar el detalle.';
+  if (kind === 'neutral') return 'Aqui conviene repasar el detalle.';
   return 'Revisa el matiz y sigue.';
 }

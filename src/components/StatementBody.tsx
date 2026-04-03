@@ -1,16 +1,19 @@
 import React from 'react';
+import type { HighlightOverrideRecord } from '../domain/highlighting/highlightTypes';
 import { HighlightedText } from './HighlightedText';
 
 /** Resalta `**términos**` manualmente; si no hay marcadores, aplica resaltado inteligente (dominio legal ES). */
 export function StatementBody({
   text,
   highlightEnabled = false,
+  manualOverride = null,
 }: {
   text: string;
   /** Si es false, desactiva el resaltado inteligente (texto plano). */
   highlightEnabled?: boolean;
+  manualOverride?: HighlightOverrideRecord | null;
 }) {
-  if (/\*\*[^*]+\*\*/.test(text)) {
+  if (!manualOverride && /\*\*[^*]+\*\*/.test(text)) {
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return (
       <>
@@ -39,5 +42,12 @@ export function StatementBody({
     );
   }
 
-  return <HighlightedText text={text} contentRole="question" disabled={!highlightEnabled} />;
+  return (
+    <HighlightedText
+      text={text}
+      contentRole="question"
+      manualOverride={manualOverride}
+      disabled={!highlightEnabled}
+    />
+  );
 }

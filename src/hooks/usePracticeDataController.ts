@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import type { PracticeQuestionScopeFilter } from '../practiceTypes';
 import {
   loadPracticeAccountSnapshot,
@@ -18,6 +17,7 @@ type PracticeExamTargetPayload = {
 
 type UsePracticeDataControllerOptions = {
   authReady: boolean;
+  curriculum: string | null;
   isGuest: boolean;
   selectedQuestionScope: PracticeQuestionScopeFilter;
   sessionUserId: string | null;
@@ -35,6 +35,7 @@ const shouldRetryRemoteQuery = (failureCount: number, error: unknown) => {
 
 export const usePracticeDataController = ({
   authReady,
+  curriculum,
   isGuest,
   selectedQuestionScope,
   sessionUserId,
@@ -45,14 +46,15 @@ export const usePracticeDataController = ({
   const [syncErrorOverride, setSyncErrorOverride] = useState<string | null>(null);
 
   const userId = sessionUserId ?? 'anonymous';
-  const queriesEnabled = authReady && !isGuest && Boolean(sessionUserId);
-  const accountQueryKey = practiceQueryKeys.account(userId, DEFAULT_CURRICULUM);
-  const scopeRootQueryKey = practiceQueryKeys.scopeRoot(userId, DEFAULT_CURRICULUM);
-  const scopeQueryKey = practiceQueryKeys.scope(userId, DEFAULT_CURRICULUM, selectedQuestionScope);
+  const currentCurriculum = curriculum ?? 'pending-opposition';
+  const queriesEnabled = authReady && !isGuest && Boolean(sessionUserId) && Boolean(curriculum);
+  const accountQueryKey = practiceQueryKeys.account(userId, currentCurriculum);
+  const scopeRootQueryKey = practiceQueryKeys.scopeRoot(userId, currentCurriculum);
+  const scopeQueryKey = practiceQueryKeys.scope(userId, currentCurriculum, selectedQuestionScope);
 
   const accountQuery = useQuery({
     queryKey: accountQueryKey,
-    queryFn: () => loadPracticeAccountSnapshot(DEFAULT_CURRICULUM),
+    queryFn: () => loadPracticeAccountSnapshot(currentCurriculum),
     enabled: queriesEnabled,
     staleTime: 30_000,
     retry: shouldRetryRemoteQuery,
@@ -60,7 +62,7 @@ export const usePracticeDataController = ({
 
   const scopeQuery = useQuery({
     queryKey: scopeQueryKey,
-    queryFn: () => loadPracticeScopeSnapshot(DEFAULT_CURRICULUM, selectedQuestionScope),
+    queryFn: () => loadPracticeScopeSnapshot(currentCurriculum, selectedQuestionScope),
     enabled: queriesEnabled,
     staleTime: 30_000,
     retry: shouldRetryRemoteQuery,
@@ -69,7 +71,7 @@ export const usePracticeDataController = ({
   const saveExamTargetMutation = useMutation({
     mutationFn: ({ examDate, dailyReviewCapacity, dailyNewCapacity }: PracticeExamTargetPayload) =>
       upsertMyExamTarget({
-        curriculum: DEFAULT_CURRICULUM,
+        curriculum: currentCurriculum,
         examDate,
         dailyReviewCapacity,
         dailyNewCapacity,

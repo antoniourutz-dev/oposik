@@ -1,4 +1,5 @@
 import type { CoachPlanV2 } from '../../domain/learningEngine/coachV2';
+import type { ActiveLearningContext } from '../../domain/learningContext/types';
 import type {
   PracticeCategoryRiskSummary,
   PracticeLearningDashboardV2,
@@ -21,9 +22,7 @@ export type StatsAdapterOutput = {
     summary: string;
     severity: SurfaceTension;
   };
-  /** Lectura de trayectoria con datos ya disponibles (sesiones + racha). */
   trajectoryLine: string | null;
-  /** Nota secundaria si hay deuda y no es el estado dominante. */
   footnote?: string;
   secondaryInsight?: {
     title: string;
@@ -51,44 +50,44 @@ const insightByState: Record<
   { title: string; summary: string; severity: SurfaceTension }
 > = {
   pressure: {
-    title: 'La presión te resta más que el temario',
-    summary: 'El patrón dominante es ejecución bajo cronó, no vacío de estudio.',
+    title: 'La presion te resta mas que el temario',
+    summary: 'El patron dominante es ejecucion bajo crono, no vacio de estudio.',
     severity: 'high',
   },
   backlog: {
-    title: 'La deuda te frena más que el nivel',
+    title: 'La deuda te frena mas que el nivel',
     summary: 'Lo vencido roba foco a lo nuevo; conviene limpiar antes de ampliar.',
     severity: 'medium',
   },
   recovery: {
     title: 'Lo que falla es el ritmo, no la capacidad',
-    summary: 'Volver a cerrar días es la palanca más barata ahora.',
+    summary: 'Volver a cerrar dias es la palanca mas barata ahora.',
     severity: 'low',
   },
   growth: {
-    title: 'La base aguanta más exigencia',
-    summary: 'Puedes subir el listón sin romper lo que ya funciona.',
+    title: 'La base aguanta mas exigencia',
+    summary: 'Puedes subir el liston sin romper lo que ya funciona.',
     severity: 'medium',
   },
   errors: {
-    title: 'Hay un patrón que se repite',
+    title: 'Hay un patron que se repite',
     summary: 'Corregirlo ahora evita que se fije como costumbre.',
     severity: 'medium',
   },
   memory: {
-    title: 'La retención pide fijación antes de volumen',
-    summary: 'Mejor menos tema nuevo y más cierre de lo ya visto.',
+    title: 'La retencion pide fijacion antes de volumen',
+    summary: 'Mejor menos tema nuevo y mas cierre de lo ya visto.',
     severity: 'low',
   },
   gray_zone: {
-    title: 'Hace falta una foto más nítida',
-    summary: 'Sin señal clara, conviene medir con sesiones cortas y ordenadas.',
+    title: 'Hace falta una foto mas nitida',
+    summary: 'Sin senal clara, conviene medir con sesiones cortas y ordenadas.',
     severity: 'low',
   },
 };
 
-function sessionAccuracyPct(s: PracticeSessionSummary): number {
-  return Math.round((s.score / Math.max(1, s.total)) * 100);
+function sessionAccuracyPct(session: PracticeSessionSummary): number {
+  return Math.round((session.score / Math.max(1, session.total)) * 100);
 }
 
 function buildTrajectoryLine(
@@ -99,16 +98,16 @@ function buildTrajectoryLine(
   if (list.length >= 2) {
     const last = sessionAccuracyPct(list[0]);
     const prev = sessionAccuracyPct(list[1]);
-    const d = last - prev;
-    if (d >= 10) return 'Trayectoria: la última sesión fue claramente mejor que la anterior.';
-    if (d <= -10) return 'Trayectoria: la última sesión bajó frente a la anterior.';
-    if (d >= 4) return 'Trayectoria: ligera mejora respecto a la sesión previa.';
-    if (d <= -4) return 'Trayectoria: ligera caída respecto a la sesión previa.';
-    return 'Trayectoria: estable respecto a la sesión anterior.';
+    const delta = last - prev;
+    if (delta >= 10) return 'Trayectoria: la ultima sesion fue claramente mejor que la anterior.';
+    if (delta <= -10) return 'Trayectoria: la ultima sesion bajo frente a la anterior.';
+    if (delta >= 4) return 'Trayectoria: ligera mejora respecto a la sesion previa.';
+    if (delta <= -4) return 'Trayectoria: ligera caida respecto a la sesion previa.';
+    return 'Trayectoria: estable respecto a la sesion anterior.';
   }
   if (streakDays >= 10) return 'Constancia: racha alta; buen contexto para exigir con control.';
   if (streakDays >= 3) return 'Constancia: ritmo reciente coherente.';
-  if (streakDays === 0 && list.length > 0) return 'Constancia: un día cerrado ya recupera el hilo.';
+  if (streakDays === 0 && list.length > 0) return 'Constancia: un dia cerrado ya recupera el hilo.';
   return null;
 }
 
@@ -119,8 +118,17 @@ export function buildStatsAdapterOutput(input: {
   recentSessions?: PracticeSessionSummary[] | null;
   streakDays: number;
   weakCategories?: PracticeCategoryRiskSummary[] | null;
+  activeLearningContext?: ActiveLearningContext | null;
 }): StatsAdapterOutput {
-  const { planV2, learningDashboardV2, pressureInsightsV2, recentSessions, streakDays, weakCategories } = input;
+  const {
+    planV2,
+    learningDashboardV2,
+    pressureInsightsV2,
+    recentSessions,
+    streakDays,
+    weakCategories,
+    activeLearningContext,
+  } = input;
 
   const dominantState = resolveDominantState({
     learningDashboardV2,
@@ -131,19 +139,34 @@ export function buildStatsAdapterOutput(input: {
   });
 
   const coachMessage = buildCoachTwoLineMessageV2({ planV2, dominantState });
+  const contextConfig = activeLearningContext?.config;
+  const pressureActionLabel =
+    contextConfig?.statsLabels.pressureActionLabel ?? nextActionLabelByState.pressure;
+  const pressureInsightTitle =
+    contextConfig?.statsLabels.pressureInsightTitle ?? insightByState.pressure.title;
+  const pressureInsightSummary =
+    contextConfig?.statsLabels.pressureInsightSummary ?? insightByState.pressure.summary;
 
   const topCards: StatsAdapterOutput['topCards'] = [
-    { label: 'Estado', value: nextActionLabelByState[dominantState] },
+    { label: 'Estado', value: dominantState === 'pressure' ? pressureActionLabel : nextActionLabelByState[dominantState] },
     { label: 'Tono', value: planV2.tone },
   ];
 
-  const primaryInsight = insightByState[dominantState];
+  const primaryInsight =
+    dominantState === 'pressure'
+      ? {
+          title: pressureInsightTitle,
+          summary: pressureInsightSummary,
+          severity: insightByState.pressure.severity,
+        }
+      : insightByState[dominantState];
+
   const trajectoryLine = buildTrajectoryLine(recentSessions, streakDays);
 
   const overdue = learningDashboardV2?.backlogOverdueCount ?? 0;
   const footnote =
     overdue > 0 && dominantState !== 'backlog'
-      ? `${overdue} repaso${overdue === 1 ? '' : 's'} vencido${overdue === 1 ? '' : 's'} también influyen en lo que verás en Home.`
+      ? `${overdue} repaso${overdue === 1 ? '' : 's'} vencido${overdue === 1 ? '' : 's'} tambien influyen en lo que veras en Home.`
       : undefined;
 
   return {
@@ -154,9 +177,9 @@ export function buildStatsAdapterOutput(input: {
     footnote,
     coachBridge: {
       visibleReason: coachMessage.line2,
-      nextActionLabel: nextActionLabelByState[dominantState],
-      bridgeLead: 'Por eso Home te orienta así',
+      nextActionLabel:
+        dominantState === 'pressure' ? pressureActionLabel : nextActionLabelByState[dominantState],
+      bridgeLead: 'Por eso Home te orienta asi',
     },
   };
 }
-

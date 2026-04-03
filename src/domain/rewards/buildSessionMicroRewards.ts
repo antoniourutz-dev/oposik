@@ -40,7 +40,7 @@ export function buildSessionMicroRewards(input: SessionMicroRewardInput): string
   }
 
   if (dominantState === 'backlog' && incorrect < correct) {
-    out.push('Deuda contenida en esta tanda');
+    out.push('Repasos pendientes bajando en esta tanda');
   }
 
   if (dominantState === 'errors' && incorrect > 0 && incorrect <= Math.ceil(total * 0.35)) {

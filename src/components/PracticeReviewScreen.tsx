@@ -13,11 +13,19 @@ import {
   getErrorTypeLabel,
 } from '../domain/learningEngine';
 import { DEFAULT_CURRICULUM } from '../practiceConfig';
+import {
+  findHighlightOverrideForBlock,
+  useQuestionHighlightOverrides,
+} from '../hooks/useQuestionHighlightOverrides';
 import { recordQuestionExplanationOpened } from '../services/practiceCloudApi';
+import { HighlightedText } from './HighlightedText';
 import QuestionExplanation from './QuestionExplanation';
+import { StatementBody } from './StatementBody';
+import type { ActiveLearningContext } from '../domain/learningContext/types';
 import {
   ActivePracticeSession,
   ErrorType,
+  OptionKey,
   PracticeAnswer,
   PracticeCategoryRiskSummary,
   PracticeLearningDashboardV2,
@@ -31,6 +39,7 @@ import { LawPerformanceCard } from './dashboard/shared';
 import type { CoachPlanV2 } from '../domain/learningEngine/coachV2';
 import { buildReviewAdapterOutput } from '../adapters/surfaces/reviewAdapter';
 import { buildSessionEndAdapterOutput } from '../adapters/surfaces/sessionEndAdapter';
+import { resolveLawTerritoryContinuityHint } from '../domain/generalLaw';
 import { orderReviewEntries } from '../adapters/surfaces/reviewOrdering';
 import { buildCoachEffectTelemetryEvent } from '../adapters/telemetry/buildCoachEffectTelemetryEvent';
 import { dispatchCoachTelemetry } from '../adapters/telemetry/dispatchCoachTelemetry';
@@ -49,6 +58,7 @@ type PracticeReviewScreenProps = {
     recentSessions?: PracticeSessionSummary[] | null;
     streakDays?: number;
     profile?: PracticeProfile | null;
+    activeLearningContext?: ActiveLearningContext | null;
   };
   batchNumber: number;
   totalBatches: number;
@@ -203,6 +213,8 @@ const getExplanationKind = ({
   return 'base';
 };
 
+const OPTION_ORDER: OptionKey[] = ['a', 'b', 'c', 'd'];
+
 const ReviewEntryCard = React.memo(
   ({
     curriculum = DEFAULT_CURRICULUM,
@@ -224,10 +236,33 @@ const ReviewEntryCard = React.memo(
   }) => {
     const { answer, reviewIndex } = entry;
     const [isExplanationOpen, setIsExplanationOpen] = useState(false);
+    const numericQuestionId = useMemo(() => {
+      const parsed = Number(answer.question.id);
+      return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+    }, [answer.question.id]);
+    const { data: overrideRecords } = useQuestionHighlightOverrides(numericQuestionId);
     const selectedKey = answer.selectedOption;
     const correctKey = answer.question.correctOption;
     const selectedText = selectedKey ? answer.question.options[selectedKey] : null;
     const correctText = answer.question.options[correctKey];
+    const questionHighlightOverride = findHighlightOverrideForBlock(overrideRecords, 'question');
+    const explanationHighlightOverride = findHighlightOverrideForBlock(
+      overrideRecords,
+      'explanation',
+    );
+    const selectedAnswerOverride =
+      selectedKey !== null
+        ? findHighlightOverrideForBlock(
+            overrideRecords,
+            'answer',
+            OPTION_ORDER.indexOf(selectedKey),
+          )
+        : null;
+    const correctAnswerOverride = findHighlightOverrideForBlock(
+      overrideRecords,
+      'answer',
+      OPTION_ORDER.indexOf(correctKey),
+    );
 
     return (
       <article
@@ -279,7 +314,11 @@ const ReviewEntryCard = React.memo(
                 </span>
               </div>
               <h3 className="mt-2 text-[1.05rem] font-extrabold leading-[1.5] tracking-[-0.02em] text-slate-900 sm:text-[1.1rem] sm:leading-[1.52]">
-                {answer.question.statement}
+                <StatementBody
+                  text={answer.question.statement}
+                  highlightEnabled={textHighlightingEnabled}
+                  manualOverride={questionHighlightOverride}
+                />
               </h3>
             </div>
           </div>
@@ -296,7 +335,21 @@ const ReviewEntryCard = React.memo(
                 Tu respuesta
               </p>
               <p className="mt-1.5 text-[0.94rem] font-semibold leading-[1.58] text-slate-800 sm:text-[0.97rem] sm:leading-[1.62]">
-                {selectedKey ? `${selectedKey.toUpperCase()}) ${selectedText}` : 'Sin responder'}
+                {selectedKey && selectedText ? (
+                  <>
+                    {selectedKey.toUpperCase()}){' '}
+                    <HighlightedText
+                      text={selectedText}
+                      contentRole="answer_option"
+                      allOptions={OPTION_ORDER.map((key) => answer.question.options[key])}
+                      optionIndex={OPTION_ORDER.indexOf(selectedKey)}
+                      manualOverride={selectedAnswerOverride}
+                      disabled={!textHighlightingEnabled}
+                    />
+                  </>
+                ) : (
+                  'Sin responder'
+                )}
               </p>
             </div>
 
@@ -305,7 +358,15 @@ const ReviewEntryCard = React.memo(
                 Respuesta correcta
               </p>
               <p className="mt-1.5 text-[0.94rem] font-semibold leading-[1.58] text-slate-800 sm:text-[0.97rem] sm:leading-[1.62]">
-                {`${correctKey.toUpperCase()}) ${correctText}`}
+                {correctKey.toUpperCase()}){' '}
+                <HighlightedText
+                  text={correctText}
+                  contentRole="answer_option"
+                  allOptions={OPTION_ORDER.map((key) => answer.question.options[key])}
+                  optionIndex={OPTION_ORDER.indexOf(correctKey)}
+                  manualOverride={correctAnswerOverride}
+                  disabled={!textHighlightingEnabled}
+                />
               </p>
             </div>
           </div>
@@ -374,6 +435,7 @@ const ReviewEntryCard = React.memo(
                 <QuestionExplanation
                   explanation={answer.question.explanation}
                   editorialExplanation={answer.question.editorialExplanation}
+                  highlightOverride={explanationHighlightOverride}
                   emptyLabel="Esta pregunta todavia no tiene explicacion cargada."
                   highlightEnabled={textHighlightingEnabled}
                 />
@@ -542,6 +604,20 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   const isDockVisibleRef = useRef(true);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
 
+  const lawTerritoryContinuity = useMemo(() => {
+    const ctx = surfaceContext.activeLearningContext;
+    if (!ctx || ctx.contextType !== 'general_law') return undefined;
+    if (ctx.config.studyStructure !== 'law_blocks') return undefined;
+    return resolveLawTerritoryContinuityHint(
+      activeSession.title,
+      surfaceContext.learningDashboardV2?.lawBreakdown,
+    );
+  }, [
+    activeSession.title,
+    surfaceContext.activeLearningContext,
+    surfaceContext.learningDashboardV2?.lawBreakdown,
+  ]);
+
   const reviewExperience = useMemo(
     () =>
       buildReviewAdapterOutput({
@@ -555,6 +631,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           recentSessions: surfaceContext.recentSessions,
           streakDays: surfaceContext.streakDays,
           profile: surfaceContext.profile,
+          activeLearningContext: surfaceContext.activeLearningContext,
         },
       }),
     [activeSession, answers, surfaceContext],
@@ -573,9 +650,11 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           recentSessions: surfaceContext.recentSessions,
           streakDays: surfaceContext.streakDays,
           profile: surfaceContext.profile,
+          activeLearningContext: surfaceContext.activeLearningContext,
+          lawTerritoryContinuity,
         },
       }),
-    [activeSession, answers, surfaceContext],
+    [activeSession, answers, lawTerritoryContinuity, surfaceContext],
   );
 
   const primaryExitCtaLabel = useMemo(

@@ -149,8 +149,29 @@ export interface PracticeLearningDashboard {
   riskBreakdown: PracticeRiskInsight[];
 }
 
+/** Bloque dentro de una ley (territorio de entrenamiento); alimenta decisión y narrativa. */
+export interface PracticeLawBlockPerformance {
+  blockId: string;
+  title: string;
+  /** Micro-foco pedagógico; continuidad y coach. */
+  trainingFocus?: string | null;
+  /** Umbral mínimo de preguntas para recomendaciones (servidor puede omitir bloques bajo masa). */
+  questionCount?: number;
+  consolidatedCount?: number;
+  attempts: number;
+  correctAttempts: number;
+  accuracyRate: number;
+}
+
 export interface PracticeLawPerformance {
   ley_referencia: string;
+  /** Identificador estable cuando el catálogo territorial está sincronizado. */
+  lawId?: string;
+  shortTitle?: string | null;
+  /** Intención de entrenamiento (Study, Home, continuidad, Session End). */
+  trainingIntent?: string | null;
+  /** Bloques con métricas; solo los con masa suficiente deben usarse para recomendar. */
+  blocks?: PracticeLawBlockPerformance[];
   scope?: 'common' | 'specific' | 'unknown';
   attempts: number;
   questionCount?: number;

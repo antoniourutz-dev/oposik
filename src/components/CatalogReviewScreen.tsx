@@ -1,6 +1,11 @@
 import React, { useLayoutEffect } from 'react';
 import { RotateCcw } from 'lucide-react';
+import {
+  findHighlightOverrideForBlock,
+  useQuestionHighlightOverrides,
+} from '../hooks/useQuestionHighlightOverrides';
 import type { OptionKey, PracticeQuestion, PracticeQuestionScope } from '../practiceTypes';
+import { HighlightedText } from './HighlightedText';
 import { StatementBody } from './StatementBody';
 
 export type CatalogReviewScreenProps = {
@@ -27,6 +32,12 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
 }) => {
   const optionEntries = Object.entries(question.options) as Array<[OptionKey, string]>;
   const isLast = questionIndex >= totalQuestions - 1;
+  const numericQuestionId = (() => {
+    const parsed = Number(question.id);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+  })();
+  const { data: overrideRecords } = useQuestionHighlightOverrides(numericQuestionId);
+  const questionHighlightOverride = findHighlightOverrideForBlock(overrideRecords, 'question');
 
   useLayoutEffect(() => {
     const scrollRoot = document.scrollingElement;
@@ -93,7 +104,11 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
             />
           </div>
           <div className="relative z-10 max-w-prose text-[1.08rem] font-medium leading-[1.88] tracking-[-0.012em] text-slate-700 sm:text-[1.14rem] sm:leading-[1.82] xl:max-w-none xl:text-[1.1rem] xl:leading-[1.9] 2xl:text-[1.14rem] 2xl:leading-[1.92]">
-            <StatementBody text={question.statement} highlightEnabled={textHighlightingEnabled} />
+            <StatementBody
+              text={question.statement}
+              highlightEnabled={textHighlightingEnabled}
+              manualOverride={questionHighlightOverride}
+            />
           </div>
         </div>
       </div>
@@ -104,7 +119,12 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
         </p>
 
         <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:gap-4 2xl:grid-cols-2 2xl:gap-x-5 2xl:gap-y-4">
-          {optionEntries.map(([key, value]) => {
+          {optionEntries.map(([key, value], optionIndex) => {
+            const answerHighlightOverride = findHighlightOverrideForBlock(
+              overrideRecords,
+              'answer',
+              optionIndex,
+            );
             const isCorrect = key === question.correctOption;
             return (
               <div
@@ -130,7 +150,14 @@ const CatalogReviewScreen: React.FC<CatalogReviewScreenProps> = ({
                       isCorrect ? 'text-emerald-950' : 'text-slate-800'
                     }`}
                   >
-                    {value}
+                    <HighlightedText
+                      text={value}
+                      contentRole="answer_option"
+                      allOptions={optionEntries.map(([, optionValue]) => optionValue)}
+                      optionIndex={optionIndex}
+                      manualOverride={answerHighlightOverride}
+                      disabled={!textHighlightingEnabled}
+                    />
                   </span>
                 </div>
               </div>

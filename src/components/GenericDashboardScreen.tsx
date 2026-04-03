@@ -18,10 +18,13 @@ import type {
 } from '../practiceTypes';
 import type { MainTab } from './BottomDock';
 import QuestionScopePicker from './QuestionScopePicker';
+import type { ActiveLearningContext } from '../domain/learningContext/types';
 
 type GenericDashboardScreenProps = {
   activeTab: MainTab;
   identity: AccountIdentity;
+  activeLearningContext?: ActiveLearningContext | null;
+  onChangeLearningContext?: () => void;
   catalogLoading?: boolean;
   profile: PracticeProfile | null;
   recentSessions: PracticeSessionSummary[];
@@ -163,6 +166,8 @@ const ActionTile: React.FC<{
 const GenericDashboardScreen: React.FC<GenericDashboardScreenProps> = ({
   activeTab,
   identity,
+  activeLearningContext = null,
+  onChangeLearningContext,
   catalogLoading = false,
   profile,
   recentSessions,
@@ -345,7 +350,7 @@ const GenericDashboardScreen: React.FC<GenericDashboardScreenProps> = ({
                 </div>
               </div>
 
-              <div className="mt-5 rounded-[1.3rem] border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+        <div className="mt-5 rounded-[1.3rem] border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-sky-100/72">
@@ -364,9 +369,36 @@ const GenericDashboardScreen: React.FC<GenericDashboardScreenProps> = ({
                     className="h-full rounded-full bg-[linear-gradient(90deg,#79b6e9_0%,#8d93f2_100%)] shadow-[0_10px_20px_-14px_rgba(141,147,242,0.5)]"
                     style={{ width: `${progressWidth}%` }}
                   />
-                </div>
-              </div>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-[1.3rem] border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-sky-100/72">
+                {activeLearningContext?.config.copyDictionary.profileTitle ?? 'Contexto activo'}
+              </p>
+              <p className="mt-1 text-[1rem] font-black leading-[1.12] text-white">
+                {activeLearningContext?.displayName ?? 'Sin contexto seleccionado'}
+              </p>
+              <p className="mt-2 text-[0.9rem] font-medium leading-[1.52] text-slate-100/78">
+                {activeLearningContext
+                  ? `Curriculum ${activeLearningContext.curriculumKey} · ${activeLearningContext.config.copyDictionary.workspaceSummary.toLowerCase()}`
+                  : 'Selecciona un contexto para activar el puente correcto de practica.'}
+              </p>
             </div>
+            {onChangeLearningContext ? (
+              <button
+                type="button"
+                onClick={onChangeLearningContext}
+                className="inline-flex min-h-[40px] items-center justify-center rounded-full border border-white/14 bg-white/10 px-3.5 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-white/90"
+              >
+                {activeLearningContext?.config.copyDictionary.profileChangeCta ?? 'Cambiar'}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
 
             <div className="rounded-[1.4rem] border border-white/12 bg-white/10 px-4 py-5 backdrop-blur-sm shadow-[0_18px_40px_-28px_rgba(15,23,42,0.34)]">
               <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-sky-100/72">

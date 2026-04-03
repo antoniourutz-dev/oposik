@@ -1,4 +1,5 @@
 import type { CoachPlanV2 } from '../../domain/learningEngine/coachV2';
+import type { ActiveLearningContext } from '../../domain/learningContext/types';
 import type {
   PracticeCategoryRiskSummary,
   PracticeCoachPlan,
@@ -49,7 +50,7 @@ const tensionByState: Record<SurfaceDominantState, SurfaceTension> = {
 };
 
 const primaryCtaByState: Record<SurfaceDominantState, string> = {
-  backlog: 'Empezar sesión',
+  backlog: 'Empezar sesion',
   errors: 'Corregir ahora',
   pressure: 'Hacer simulacro',
   recovery: 'Empieza suave',
@@ -60,13 +61,14 @@ const primaryCtaByState: Record<SurfaceDominantState, string> = {
 
 export function buildHomeAdapterOutput(input: {
   planV2: CoachPlanV2;
-  coachPlan: PracticeCoachPlan; // compat UI / fallback
+  coachPlan: PracticeCoachPlan;
   learningDashboardV2?: PracticeLearningDashboardV2 | null;
   pressureInsightsV2?: PracticePressureInsightsV2 | null;
   recentSessions?: PracticeSessionSummary[] | null;
   homePausedSession?: HomePausedSessionSnapshot | null;
   streakDays: number;
   weakCategories?: PracticeCategoryRiskSummary[] | null;
+  activeLearningContext?: ActiveLearningContext | null;
 }): HomeAdapterOutput {
   const {
     planV2,
@@ -76,6 +78,7 @@ export function buildHomeAdapterOutput(input: {
     homePausedSession,
     streakDays,
     weakCategories,
+    activeLearningContext,
   } = input;
 
   const dominantState = resolveDominantState({
@@ -85,13 +88,21 @@ export function buildHomeAdapterOutput(input: {
     streakDays,
   });
 
+  const contextConfig = activeLearningContext?.config;
+  const supportsExamMode = contextConfig?.capabilities.supportsExamMode ?? true;
+  const supportsPressureTraining =
+    contextConfig?.capabilities.supportsPressureTraining ?? true;
+
   const heroMessage = buildCoachTwoLineMessageV2({
     planV2,
     dominantState,
   });
 
   const tension = tensionByState[dominantState];
-  const heroCta = primaryCtaByState[dominantState];
+  const heroCta =
+    dominantState === 'pressure' && !supportsPressureTraining
+      ? contextConfig?.coachOverrides.pressurePrimaryCta ?? 'Practicar bloque'
+      : primaryCtaByState[dominantState];
 
   const hasPausedSession =
     homePausedSession != null &&
@@ -103,33 +114,42 @@ export function buildHomeAdapterOutput(input: {
     : 0;
 
   const progress =
-    hasPausedSession && homePausedSession!.totalQuestions > 0
-      ? Math.round((homePausedSession!.currentQuestionIndex / homePausedSession!.totalQuestions) * 100)
+    hasPausedSession && homePausedSession.totalQuestions > 0
+      ? Math.round((homePausedSession.currentQuestionIndex / homePausedSession.totalQuestions) * 100)
       : 0;
 
   const pausedSessionCard = hasPausedSession
     ? {
         remainingQuestions,
         progress,
-        cta: 'Continuar sesión',
+        cta: 'Continuar sesion',
       }
     : undefined;
 
-  // Una sola alternativa en Home (sin grid de modos).
   const secondaryOption: HomeAdapterOutput['secondaryOption'] =
     dominantState === 'pressure'
       ? {
           mode: 'mistakes',
-          title: 'Falladas',
-          summary: 'Si hoy no es día de presión, limpia errores rápido.',
-          cta: 'Repasar falladas',
+          title:
+            supportsPressureTraining
+              ? 'Falladas'
+              : contextConfig?.coachOverrides.pressureSecondaryTitle ?? 'Bloque aleatorio',
+          summary:
+            supportsPressureTraining
+              ? 'Si hoy no toca presion, limpia errores rapido.'
+              : contextConfig?.coachOverrides.pressureSecondarySummary ??
+                'Si no toca intensidad, vuelve a la ley con una tanda limpia.',
+          cta:
+            supportsPressureTraining
+              ? 'Repasar falladas'
+              : contextConfig?.coachOverrides.pressureSecondaryCta ?? 'Practicar ahora',
         }
       : dominantState === 'errors'
         ? {
             mode: 'random',
             title: 'Aleatoria',
-            summary: 'Si te saturas, genera señal con variedad.',
-            cta: 'Hacer una sesión',
+            summary: 'Si te saturas, genera senal con variedad.',
+            cta: 'Hacer una sesion',
           }
         : dominantState === 'backlog'
           ? {
@@ -139,31 +159,40 @@ export function buildHomeAdapterOutput(input: {
               cta: 'Repasar falladas',
             }
           : dominantState === 'growth'
-            ? {
-                mode: 'simulacro',
-                title: 'Simulacro',
-                summary: 'Si te ves fuerte, prueba presión real.',
-                cta: 'Entrenar examen',
-              }
+            ? supportsExamMode
+              ? {
+                  mode: 'simulacro',
+                  title: 'Simulacro',
+                  summary: 'Si te ves fuerte, prueba presion real.',
+                  cta: 'Entrenar examen',
+                }
+              : {
+                  mode: 'random',
+                  title: 'Bloque aleatorio',
+                  summary: 'Si la base responde, mete variedad sin perder foco.',
+                  cta: 'Practicar bloque',
+                }
             : {
                 mode: 'random',
                 title: 'Aleatoria',
-                summary: 'Sesión sencilla para mantener ritmo.',
+                summary: 'Sesion sencilla para mantener ritmo.',
                 cta: 'Empezar',
               };
 
-  // Justificación compacta (sin métricas técnicas): útil para “por qué” sin saturar.
   const statsJustification =
     dominantState === 'backlog'
-      ? { label: 'Señal', value: 'repasos vencidos' }
+      ? { label: 'Senal', value: 'repasos vencidos' }
       : dominantState === 'pressure'
-        ? { label: 'Señal', value: 'bajo presión' }
+        ? {
+            label: 'Senal',
+            value: supportsPressureTraining ? 'bajo presion' : 'lectura acelerada',
+          }
         : dominantState === 'errors'
-          ? { label: 'Señal', value: 'errores repetidos' }
+          ? { label: 'Senal', value: 'errores repetidos' }
           : dominantState === 'recovery'
-            ? { label: 'Señal', value: 'constancia' }
+            ? { label: 'Senal', value: 'constancia' }
             : dominantState === 'growth'
-              ? { label: 'Señal', value: 'base sólida' }
+              ? { label: 'Senal', value: 'base solida' }
               : undefined;
 
   return {
@@ -171,7 +200,7 @@ export function buildHomeAdapterOutput(input: {
     tone: planV2.tone,
     tension,
     hero: {
-      eyebrow: 'Hoy toca esto',
+      eyebrow: contextConfig?.copyDictionary.homeHeroEyebrow ?? 'Hoy toca esto',
       title: heroMessage.line1,
       summary: heroMessage.line2,
       cta: heroCta,
@@ -181,4 +210,3 @@ export function buildHomeAdapterOutput(input: {
     statsJustification,
   };
 }
-

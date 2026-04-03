@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AdminQuestionHighlightEditor } from './admin/AdminQuestionHighlightEditor';
 import { Button } from './ui/button';
 import { inferAttemptErrorType } from '../domain/learningEngine';
 import {
@@ -20,6 +21,10 @@ import {
 } from '../adapters/surfaces/testAdapter';
 import { getQuizFriendlyCopy } from '../sessionPresentation';
 import { useQuizTelemetry } from '../hooks/useQuizTelemetry';
+import {
+  findHighlightOverrideForBlock,
+  useQuestionHighlightOverrides,
+} from '../hooks/useQuestionHighlightOverrides';
 import { computeSessionFatigueScore } from '../domain/learningEngine/fatigue';
 import { StatementBody } from './StatementBody';
 import { HighlightedText } from './HighlightedText';
@@ -49,6 +54,8 @@ type QuizScreenProps = {
   onTimeExpired: (submission: PracticeAnswerSubmission | null) => void;
   /** Preferencia de perfil: resaltado en enunciado, opciones y explicaciones (si aplica). */
   textHighlightingEnabled?: boolean;
+  isAdmin?: boolean;
+  currentUserId?: string | null;
 };
 
 const QuizScreen: React.FC<QuizScreenProps> = ({
@@ -70,6 +77,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   onEndSession,
   onTimeExpired,
   textHighlightingEnabled = false,
+  isAdmin = false,
+  currentUserId = null,
 }) => {
   const [selectedKey, setSelectedKey] = useState<OptionKey | null>(null);
   const [revealedCorrectKey, setRevealedCorrectKey] = useState<OptionKey | null>(null);
@@ -218,6 +227,37 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     () => optionEntries.map(([, v]) => v),
     [optionEntries],
   );
+  const questionText = question.statement;
+  const questionExplanationText = useMemo(
+    () => question.explanation?.trim() || question.editorialExplanation?.trim() || null,
+    [question.editorialExplanation, question.explanation],
+  );
+  const numericQuestionId = useMemo(() => {
+    const parsed = Number(question.id);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [question.id]);
+  const { data: overrideRecords } = useQuestionHighlightOverrides(numericQuestionId);
+  const questionHighlightOverride = findHighlightOverrideForBlock(overrideRecords, 'question');
+  const answerHighlightOverrides = useMemo(
+    () =>
+      optionEntries.map((_, optionIdx) =>
+        findHighlightOverrideForBlock(overrideRecords, 'answer', optionIdx),
+      ),
+    [optionEntries, overrideRecords],
+  );
+  const adminEditorProps = useMemo(() => {
+    if (!isAdmin || !currentUserId || numericQuestionId === null) {
+      return null;
+    }
+
+    return {
+      questionId: numericQuestionId,
+      questionText,
+      answers: optionTextsForCompare,
+      explanation: questionExplanationText,
+      currentUserId,
+    };
+  }, [currentUserId, isAdmin, numericQuestionId, optionTextsForCompare, questionExplanationText, questionText]);
 
   const testExperience = useMemo(
     () =>
@@ -432,6 +472,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
               <StatementBody
                 text={question.statement}
                 highlightEnabled={statementHighlightEnabled}
+                manualOverride={questionHighlightOverride}
               />
             </h2>
           </div>
@@ -439,6 +480,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
           <div className="grid w-full gap-5">
             <div className="space-y-4">
               {optionEntries.map(([key, value], optionIdx) => {
+                const answerHighlightOverride = answerHighlightOverrides[optionIdx] ?? null;
                 const isCorrectOption = revealedCorrectKey === key;
                 const isWrongSelected =
                   selectedKey !== null && selectedKey === key && revealedCorrectKey !== key;
@@ -527,6 +569,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
                       contentRole="answer_option"
                       allOptions={optionTextsForCompare}
                       optionIndex={optionIdx}
+                      manualOverride={answerHighlightOverride}
                       disabled={!statementHighlightEnabled}
                       className={`min-w-0 flex-1 break-words hyphens-auto text-[1.02rem] font-medium leading-[1.68] tracking-[-0.012em] sm:text-[1.03rem] sm:leading-[1.66] ${
                         isCorrectOption ? 'text-emerald-900' : isWrongSelected ? 'text-rose-900' : 'text-slate-800'
@@ -544,6 +587,28 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
               >
                 {behavioralMicroLine}
               </p>
+            ) : null}
+
+            {adminEditorProps ? (
+              <details className="rounded-[1.2rem] border border-slate-200/80 bg-white/92 p-3.5 shadow-[0_18px_38px_-30px_rgba(15,23,42,0.16)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                  <div>
+                    <p className="ui-label text-slate-500">
+                      Herramienta admin
+                    </p>
+                    <p className="mt-1 text-[0.98rem] font-black tracking-[-0.02em] text-slate-950">
+                      Editor manual de highlights
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-600">
+                    Solo admin
+                  </span>
+                </summary>
+
+                <div className="mt-4">
+                  <AdminQuestionHighlightEditor {...adminEditorProps} />
+                </div>
+              </details>
             ) : null}
           </div>
         </motion.section>

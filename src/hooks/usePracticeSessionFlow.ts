@@ -10,6 +10,7 @@ export type PracticeView = 'home' | 'quiz' | 'review' | 'catalog_review';
 type UsePracticeSessionFlowOptions = {
   guestBlocksRemaining: number;
   guestBlocksUsed: number;
+  curriculum: string;
   isGuest: boolean;
   onGuestBlockConsumed: (nextBlockNumber: number) => void;
   questionsCount: number;
@@ -25,6 +26,7 @@ type UsePracticeSessionFlowOptions = {
 export const usePracticeSessionFlow = ({
   guestBlocksRemaining,
   guestBlocksUsed,
+  curriculum,
   isGuest,
   onGuestBlockConsumed,
   questionsCount,
@@ -75,6 +77,7 @@ export const usePracticeSessionFlow = ({
   } = usePracticeSessionStarters({
     guestBlocksRemaining,
     guestBlocksUsed,
+    curriculum,
     onGuestBlockConsumed,
     questionsCount,
     recommendedBatchStartIndex,
@@ -106,6 +109,7 @@ export const usePracticeSessionFlow = ({
     }
   }, [
     activeSession,
+    curriculum,
     guestBlocksRemaining,
     isGuest,
     resetActiveSession,

@@ -135,6 +135,8 @@ const TrajectorySignalCard = ({
 const DashboardProfileTab: React.FC<DashboardContentProps> = ({
   examTarget,
   examTargetError,
+  activeLearningContext,
+  onChangeLearningContext,
   identity,
   learningDashboard,
   onSaveExamTarget,
@@ -393,6 +395,38 @@ const DashboardProfileTab: React.FC<DashboardContentProps> = ({
           </div>
         </div>
       </section>
+
+      <SectionCard
+        title={activeLearningContext?.config.copyDictionary.profileTitle ?? 'Contexto activo'}
+        hint={
+          activeLearningContext?.config.copyDictionary.profileSummary ??
+          'Este es el contexto que alimenta la practica, el estudio y las lecturas del sistema.'
+        }
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-[1.25rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,249,255,0.94))] px-4 py-4 shadow-[0_18px_34px_-28px_rgba(15,23,42,0.12)]">
+          <div className="min-w-0">
+            <p className="ui-label text-slate-500">Contexto actual</p>
+            <p className="mt-1 text-[1.08rem] font-black leading-[1.08] tracking-[-0.03em] text-slate-950">
+              {activeLearningContext?.displayName ?? 'Sin contexto seleccionado'}
+            </p>
+            <p className="mt-2 text-[0.93rem] font-semibold leading-[1.52] text-slate-600">
+              {activeLearningContext
+                ? `Curriculum ${activeLearningContext.curriculumKey} · ${activeLearningContext.config.copyDictionary.workspaceSummary.toLowerCase()}`
+                : 'Selecciona un contexto para activar el puente correcto de la app.'}
+            </p>
+          </div>
+
+          {onChangeLearningContext ? (
+            <button
+              type="button"
+              onClick={onChangeLearningContext}
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[12px] font-extrabold uppercase tracking-[0.12em] text-slate-700"
+            >
+              {activeLearningContext?.config.copyDictionary.profileChangeCta ?? 'Cambiar'}
+            </button>
+          ) : null}
+        </div>
+      </SectionCard>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <ProfileStatTile
