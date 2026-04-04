@@ -4,7 +4,12 @@ import type {
   PracticeQuestionScopeFilter,
   WeakQuestionInsight,
 } from '../practiceTypes';
-import { DEFAULT_CURRICULUM, PRACTICE_BATCH_SIZE, SIMULACRO_BATCH_SIZE } from '../practiceConfig';
+import {
+  DEFAULT_CURRICULUM,
+  PRACTICE_BATCH_SIZE,
+  QUICK_FIVE_BATCH_SIZE,
+  SIMULACRO_BATCH_SIZE,
+} from '../practiceConfig';
 import {
   getAntiTrapPracticeBatch,
   getFullCatalogQuestionsForScope,
@@ -23,6 +28,7 @@ import {
   buildGuestPracticeSession,
   buildLawPracticeSession,
   buildMixedPracticeSession,
+  buildQuickFivePracticeSession,
   buildRandomPracticeSession,
   buildSimulacroPracticeSession,
   buildStandardPracticeSession,
@@ -85,6 +91,24 @@ export const loadRandomSessionCommand = async ({
   };
 };
 
+export const loadQuickFiveSessionCommand = async ({
+  questionScope,
+  curriculum = DEFAULT_CURRICULUM,
+}: {
+  questionScope: PracticeQuestionScopeFilter;
+  curriculum?: string;
+}): Promise<SessionStarterCommandResult> => {
+  const quickQuestions = await getRandomPracticeBatch(
+    QUICK_FIVE_BATCH_SIZE,
+    curriculum,
+    questionScope,
+  );
+
+  return {
+    session: buildQuickFivePracticeSession(quickQuestions, questionScope),
+  };
+};
+
 /**
  * Repaso de falladas: usa el snapshot local si hay; si no, vuelve a pedir el batch débil al servidor.
  * (El dashboard puede mostrar backlog sin que el snapshot de 5 insights esté relleno.)
@@ -92,10 +116,14 @@ export const loadRandomSessionCommand = async ({
 export const loadWeakReviewSessionCommand = async ({
   questionScope,
   weakQuestions,
+  recommendedBatchStartIndex,
+  questionsCount,
   curriculum = DEFAULT_CURRICULUM,
 }: {
   questionScope: PracticeQuestionScopeFilter;
   weakQuestions: WeakQuestionInsight[];
+  recommendedBatchStartIndex: number;
+  questionsCount: number;
   curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
   let session = buildWeakestPracticeSession(weakQuestions, questionScope);
@@ -109,7 +137,16 @@ export const loadWeakReviewSessionCommand = async ({
     questionScope,
   );
   session = buildWeakestPracticeSession(fresh, questionScope);
-  return { session };
+  if (session) {
+    return { session };
+  }
+
+  return loadStandardSessionCommand({
+    batchStartIndex: recommendedBatchStartIndex,
+    questionsCount,
+    questionScope,
+    curriculum,
+  });
 };
 
 export const loadGuestSessionCommand = async ({

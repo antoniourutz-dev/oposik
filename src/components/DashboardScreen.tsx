@@ -2,10 +2,13 @@ import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'rea
 import HomeScreen from './HomeScreen';
 import type { DashboardScreenProps } from './dashboard/types';
 import { DashboardTabFallback } from './dashboard/shared';
-import { buildHomeAdapterOutput } from '../adapters/surfaces/homeAdapter';
-import { buildCoachTwoLineMessageV2 } from '../domain/coachCopyV2';
+import {
+  buildHomeAdapterOutput,
+  type HomeRecommendationTarget,
+} from '../adapters/surfaces/homeAdapter';
 import { readSessionContinuityLineForHome } from '../services/sessionContinuityStorage';
 import { buildHomeCoachDecisionTelemetryEvent } from '../adapters/telemetry/buildHomeCoachDecisionTelemetryEvent';
+import { buildCoachEffectTelemetryEvent } from '../adapters/telemetry/buildCoachEffectTelemetryEvent';
 import { dispatchCoachTelemetry } from '../adapters/telemetry/dispatchCoachTelemetry';
 
 const DashboardStatsTab = lazy(() => import('./dashboard/DashboardStatsTab'));
@@ -35,6 +38,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
     learningDashboard,
     planV2,
     onResumePracticeSession,
+    onStartLawTraining,
+    onStartQuickFive,
     onStartRandom,
     onStartRecommended,
     onStartSimulacro,
@@ -131,6 +136,71 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
     questionScope,
   ]);
 
+  const runHomeRecommendationTarget = (
+    target: HomeRecommendationTarget | undefined,
+    sourceSlot: 'primary' | 'secondary',
+  ) => {
+    if (practiceLocked || !target || !homeExperience) return;
+
+    const visibleCta =
+      sourceSlot === 'primary'
+        ? homeExperience.hero.cta
+        : homeExperience.secondaryOption?.cta ?? homeExperience.hero.cta;
+
+    dispatchCoachTelemetry(
+      buildCoachEffectTelemetryEvent({
+        surface: 'home',
+        dominantState: homeExperience.dominantState,
+        ctaShown: visibleCta,
+        ctaPressed: visibleCta,
+        startedSession: true,
+        completedSession: false,
+        repeatedBlock: false,
+        returnedHome: false,
+        followedSuggestedPath: sourceSlot === 'primary',
+        meta: {
+          contextKind: homeExperience.hero.contextKind,
+          sourceSlot,
+          targetKind: target.kind,
+          targetValue:
+            target.kind === 'mode'
+              ? target.value
+              : target.kind === 'law_block'
+                ? target.blockId
+                : target.lawReference,
+        },
+      }),
+    );
+
+    switch (target.kind) {
+      case 'law':
+      case 'law_block':
+        onStartLawTraining(target.lawReference);
+        return;
+      case 'mode':
+        switch (target.value) {
+          case 'quick_five':
+            onStartQuickFive();
+            return;
+          case 'simulacro':
+            onStartSimulacro();
+            return;
+          case 'review':
+          case 'weak':
+          case 'mistakes':
+            onStartWeakReview();
+            return;
+          case 'random':
+            onStartRandom();
+            return;
+          case 'recovery':
+          case 'push':
+          default:
+            onStartRecommended();
+        }
+    }
+  };
+
   if (activeTab === 'home' && homeExperience) {
     const mistakesPending = learningDashboardV2?.backlogOverdueCount ?? learningDashboard?.overdueCount ?? 0;
     const weakTopicsCount = weakCategories?.length ?? 0;
@@ -159,14 +229,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
         ? Math.round((homePausedSession.currentQuestionIndex / homePausedSession.totalQuestions) * 100)
         : 0;
 
-    const coachMessage = buildCoachTwoLineMessageV2({
-      planV2,
-      dominantState: homeExperience.dominantState,
-    });
-
-    // En el concepto Lumina el CTA del hero es consistente.
-    const coachCtaLabel = homeExperience.hero.cta;
-
     return (
       <div className="pb-10">
         <HomeScreen
@@ -183,26 +245,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
           activeLearningContext={activeLearningContext}
           sessionContinuityHint={sessionContinuityHint}
           practiceLocked={practiceLocked}
-          coachMessage={coachMessage}
-          coachCtaLabel={coachCtaLabel}
-          onCoachCta={() => {
-            if (practiceLocked) return;
-            switch (homeExperience.dominantState) {
-              case 'pressure':
-                onStartRecommended();
-                return;
-              case 'errors':
-                onStartWeakReview();
-                return;
-              default:
-                onStartRecommended();
-            }
-          }}
+          hero={homeExperience.hero}
+          onPrimaryCta={() =>
+            runHomeRecommendationTarget(homeExperience.hero.recommendedTarget, 'primary')
+          }
           pausedSessionCtaLabel={homeExperience.pausedSessionCard?.cta ?? 'Continuar sesión'}
           secondaryOption={
             homeExperience.secondaryOption
               ? {
-                  mode: homeExperience.secondaryOption.mode,
                   title: homeExperience.secondaryOption.title,
                   summary: homeExperience.secondaryOption.summary,
                   cta: homeExperience.secondaryOption.cta,
@@ -213,22 +263,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = (props) => {
             if (practiceLocked) return;
             onResumePracticeSession?.();
           }}
-          onSelectMode={(mode) => {
-            if (practiceLocked) return;
-            switch (mode) {
-              case 'mistakes':
-                onStartWeakReview();
-                return;
-              case 'weak':
-                onStartRecommended();
-                return;
-              case 'simulacro':
-                onStartRecommended();
-                return;
-              default:
-                onStartRandom();
-            }
-          }}
+          onSecondaryOptionCta={() =>
+            runHomeRecommendationTarget(homeExperience.secondaryOption?.target, 'secondary')
+          }
         />
       </div>
     );

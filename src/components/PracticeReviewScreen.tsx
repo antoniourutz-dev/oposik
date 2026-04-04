@@ -279,11 +279,6 @@ const ReviewEntryCard = React.memo(
                 <span className="rounded-full bg-[linear-gradient(135deg,rgba(121,182,233,0.16),rgba(141,147,242,0.18))] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
                   Pregunta {reviewIndex + 1}
                 </span>
-                {answer.changedAnswer && (
-                  <span className="rounded-full bg-amber-50 border border-amber-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-amber-600 flex items-center gap-1">
-                    <RotateCcw size={10} /> Indecisión
-                  </span>
-                )}
                 {answer.question.category ? (
                   <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-600">
                     {answer.question.category}
@@ -589,11 +584,18 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         : fatigueScore >= 0.45
           ? 'border-sky-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(239,246,255,0.94))]'
           : 'border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.94))]';
-  const simplifiedHeroHeadline =
-    batchNumber >= totalBatches ? 'Prueba completada' : `Bloque ${batchNumber} completado`;
-  const simplifiedReviewHint = hasNextBatch
-    ? 'Revisa este bloque y, si quieres, abre el siguiente.'
-    : 'Revisa tus respuestas y cierra la prueba cuando termines.';
+  const isQuickFiveSession = sessionMode === 'quick_five';
+  const compactReviewLayout = simplified || isQuickFiveSession;
+  const simplifiedHeroHeadline = isQuickFiveSession
+    ? 'Cinco hechas, hilo intacto'
+    : batchNumber >= totalBatches
+      ? 'Prueba completada'
+      : `Bloque ${batchNumber} completado`;
+  const simplifiedReviewHint = isQuickFiveSession
+    ? 'Cierre ligero por hoy. Manana puedes volver a una sesion normal.'
+    : hasNextBatch
+      ? 'Revisa este bloque y, si quieres, abre el siguiente.'
+      : 'Revisa tus respuestas y cierra la prueba cuando termines.';
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>(
     incorrectCount > 0 ? 'incorrect' : 'all',
   );
@@ -914,9 +916,9 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           <div className="relative min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-violet-200/95">
-                {simplified ? 'Revisión' : reviewClosure.dominantEyebrow}
+                {compactReviewLayout ? 'Revision' : reviewClosure.dominantEyebrow}
               </span>
-              {!simplified ? (
+              {!compactReviewLayout ? (
                 <>
                   <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-violet-100/80">
                     {sessionPresentation.eyebrow}
@@ -936,12 +938,12 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
               ) : null}
             </div>
             <h2 className="mt-4 text-[1.36rem] font-black leading-[1.08] tracking-[-0.05em] text-white sm:text-[1.56rem]">
-              {simplified ? simplifiedHeroHeadline : reviewClosure.dominantTitle}
+              {compactReviewLayout ? simplifiedHeroHeadline : reviewClosure.dominantTitle}
             </h2>
             <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-violet-200/75">
               {title || `Bloque ${batchNumber} de ${totalBatches}`}
             </p>
-            {!simplified ? (
+            {!compactReviewLayout ? (
               <>
                 <p className="mt-4 text-[1rem] font-medium leading-[1.64] text-violet-100/88">
                   {reviewClosure.supportingLine}
@@ -1005,31 +1007,6 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
                 <p className="mt-2 text-[12px] font-bold leading-[1.55] text-rose-700/95">
                   Corrección: baja la velocidad de la primera decisión; termina el enunciado antes de fijarte en
                   opciones.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/90 p-3.5 sm:p-4">
-                <div className="flex justify-between items-center gap-2 mb-2">
-                  <span className="text-[11px] font-bold text-slate-600">Duda resuelta</span>
-                  <span className="text-[11px] font-black text-slate-900 tabular-nums">
-                    {answers.filter((a) => a.changedAnswer && a.isCorrect).length} / {answers.length}
-                  </span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{
-                      width: `${(answers.filter((a) => a.changedAnswer && a.isCorrect).length / Math.max(1, answers.length)) * 100}%`,
-                    }}
-                    transition={{ duration: 1, ease: 'circOut' }}
-                    className="h-full rounded-full bg-emerald-400"
-                  />
-                </div>
-                <p className="mt-2 text-[12px] font-medium leading-[1.55] text-slate-500">
-                  Cambiaste y acertaste: el proceso fue bueno; evita alargar demasiado cada ida y vuelta.
-                </p>
-                <p className="mt-2 text-[12px] font-bold leading-[1.55] text-emerald-800/95">
-                  Corrección: repite ese proceso sin estirarlo; valida antes de marcar si vas justo de tiempo.
                 </p>
               </div>
             </div>
@@ -1099,12 +1076,12 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
               className={`rounded-[1.05rem] border px-3 py-3 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.12)] ${nextStepSurfaceClass}`}
             >
               <p className="ui-label text-slate-500">
-                {simplified ? 'Siguiente' : 'Siguiente lectura'}
+                {compactReviewLayout ? 'Siguiente' : 'Siguiente lectura'}
               </p>
               <p className="mt-1.5 text-[1rem] font-black leading-[1.2] tracking-[-0.02em] text-slate-950 sm:text-[1.04rem]">
-                {simplified ? simplifiedReviewHint : reviewExperience.summary.title}
+                {compactReviewLayout ? simplifiedReviewHint : reviewExperience.summary.title}
               </p>
-              {!simplified ? (
+              {!compactReviewLayout ? (
                 <p className="mt-1.5 text-[12px] font-semibold leading-[1.55] text-slate-600 sm:text-[13px]">
                   {reviewExperience.summary.subtitle ??
                     sessionEndExperience.nextStep.description ??
@@ -1114,7 +1091,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
             </div>
           </div>
 
-          {!simplified ? (
+          {!compactReviewLayout ? (
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-[1rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,249,255,0.92))] px-3 py-2.5 shadow-[0_16px_30px_-26px_rgba(15,23,42,0.14)]">
                 <p className="ui-label text-slate-500">
@@ -1266,7 +1243,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         ) : null}
       </section>
 
-      {!simplified && sessionEndExperience.microRewards.length > 0 ? (
+      {!compactReviewLayout && sessionEndExperience.microRewards.length > 0 ? (
         <div className="mx-3 mt-6 rounded-[1.1rem] border border-emerald-200/55 bg-emerald-50/45 px-3.5 py-3 sm:mx-2 lg:mx-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-900/75">
             Proceso reconocido
@@ -1303,7 +1280,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
           {primaryExitCtaLabel}
         </button>
 
-        {!simplified ? (
+        {!compactReviewLayout ? (
           <p className="mx-auto mt-3 max-w-md text-center text-[12px] font-medium leading-[1.55] text-slate-500">
             {sessionEndExperience.nextStep.description ??
               reviewExperience.summary.subtitle ??

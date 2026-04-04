@@ -54,6 +54,7 @@ export const usePracticeSessionFlow = ({
     startSession,
     view,
   } = usePracticeSessionLifecycle({
+    curriculum,
     isGuest,
     selectedQuestionScope,
     setSyncError,
@@ -67,6 +68,7 @@ export const usePracticeSessionFlow = ({
     startGuest,
     startGuestSession,
     startMixed,
+    startQuickFive,
     startRandom,
     startSimulacro,
     startWeakReview,
@@ -141,6 +143,7 @@ export const usePracticeSessionFlow = ({
     startLawSession,
     startTopicSession,
     startMixed,
+    startQuickFive,
     startRandom,
     startSimulacro,
     startStandardSession,

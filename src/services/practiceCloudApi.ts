@@ -90,7 +90,8 @@ export const getMyPracticeState = async (
           .select('session_id, mode, title, started_at, finished_at, score, total')
           .eq('curriculum', curriculum)
           .order('finished_at', { ascending: false })
-          .limit(12),
+          // Calendario y racha usan esta lista: 12 sesiones ocultaban días anteriores con varias sesiones/día.
+          .limit(250),
         supabase
           .schema('app')
           .rpc('get_readiness_dashboard', {

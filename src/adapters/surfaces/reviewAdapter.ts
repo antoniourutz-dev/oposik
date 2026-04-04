@@ -82,9 +82,14 @@ export function buildReviewAdapterOutput(input: {
   const incorrectCount = answers.reduce((acc, answer) => acc + (answer.isCorrect ? 0 : 1), 0);
   const contextConfig = surfaceContext?.activeLearningContext?.config;
   const supportsExamMode = contextConfig?.capabilities.supportsExamMode ?? true;
+  const isQuickFiveSession = activeSession.mode === 'quick_five';
 
   const filterPriority: ReviewAdapterOutput['filterPriority'] =
-    activeSession.mode === 'simulacro' || dominantState === 'pressure'
+    isQuickFiveSession
+      ? incorrectCount > 0
+        ? 'mistakes_first'
+        : 'mixed'
+      : activeSession.mode === 'simulacro' || dominantState === 'pressure'
       ? 'pressure_mistakes'
       : dominantState === 'errors'
         ? 'mistakes_first'
@@ -94,13 +99,25 @@ export function buildReviewAdapterOutput(input: {
             ? 'mistakes_first'
             : 'mixed';
 
-  const explanationStyle: ReviewAdapterOutput['explanationStyle'] = {
-    highlightPatterns: dominantState === 'errors',
-    showErrorTypeLabel: dominantState === 'errors' || dominantState === 'pressure',
-    showRetrySuggestion: dominantState === 'errors' || dominantState === 'backlog',
-  };
+  const explanationStyle: ReviewAdapterOutput['explanationStyle'] = isQuickFiveSession
+    ? {
+        highlightPatterns: false,
+        showErrorTypeLabel: incorrectCount >= 2,
+        showRetrySuggestion: false,
+      }
+    : {
+        highlightPatterns: dominantState === 'errors',
+        showErrorTypeLabel: dominantState === 'errors' || dominantState === 'pressure',
+        showRetrySuggestion: dominantState === 'errors' || dominantState === 'backlog',
+      };
 
   const nextStep: ReviewAdapterOutput['nextStep'] = (() => {
+    if (isQuickFiveSession) {
+      return {
+        cta: 'Cerrar y mantener ritmo',
+        modeSuggestion: 'standard',
+      };
+    }
     if (activeSession.mode === 'simulacro' && supportsExamMode) {
       return { cta: 'Panel', modeSuggestion: 'simulacro' };
     }
@@ -121,20 +138,23 @@ export function buildReviewAdapterOutput(input: {
     tone: planV2.tone,
     tension: tensionByState[dominantState],
     summary: {
-      title:
-        dominantState === 'pressure' && !supportsExamMode
+      title: isQuickFiveSession
+        ? 'Mini revision, señal suficiente'
+        : dominantState === 'pressure' && !supportsExamMode
           ? 'Con foco aparece el matiz'
           : summaryTitleByState[dominantState],
       subtitle:
-        dominantState === 'errors'
-          ? 'Repite el gesto correcto en lo que falla dos veces.'
-          : dominantState === 'pressure'
-            ? supportsExamMode
-              ? 'Entrena el mismo gesto con el cronometro encendido.'
-              : 'Entrena el mismo gesto con lectura mas limpia y menos prisa.'
-            : dominantState === 'backlog'
-              ? 'Cierra lo viejo antes de abrir carga nueva.'
-              : undefined,
+        isQuickFiveSession
+          ? 'Cinco respuestas bastan hoy para no romper el hilo. La carga fuerte sigue siendo la sesion completa.'
+          : dominantState === 'errors'
+            ? 'Repite el gesto correcto en lo que falla dos veces.'
+            : dominantState === 'pressure'
+              ? supportsExamMode
+                ? 'Entrena el mismo gesto con el cronometro encendido.'
+                : 'Entrena el mismo gesto con lectura mas limpia y menos prisa.'
+              : dominantState === 'backlog'
+                ? 'Cierra lo viejo antes de abrir carga nueva.'
+                : undefined,
     },
     filterPriority,
     explanationStyle,

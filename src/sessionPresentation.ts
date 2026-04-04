@@ -15,6 +15,11 @@ export type QuizFriendlyCopy = {
 
 export const getQuizFriendlyCopy = (mode: PracticeMode): QuizFriendlyCopy => {
   switch (mode) {
+    case 'quick_five':
+      return {
+        sessionKindLabel: 'Bloque rapido',
+        contextLine1: 'Cinco para no cortar el hilo',
+      };
     case 'weakest':
     case 'review':
       return {
@@ -57,6 +62,11 @@ export const getQuizFriendlyCopy = (mode: PracticeMode): QuizFriendlyCopy => {
 
 export const getSessionPresentation = (mode: PracticeMode): SessionPresentation => {
   switch (mode) {
+    case 'quick_five':
+      return {
+        eyebrow: 'Continuidad minima',
+        compactLabel: '5 rapidas',
+      };
     case 'mixed':
       return {
         eyebrow: 'Ruta adaptativa',

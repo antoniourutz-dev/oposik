@@ -19,6 +19,7 @@ import type {
 import type { MainTab } from './BottomDock';
 import QuestionScopePicker from './QuestionScopePicker';
 import type { ActiveLearningContext } from '../domain/learningContext/types';
+import { computeConsecutiveDayStreak } from '../utils/localCalendarDate';
 
 type GenericDashboardScreenProps = {
   activeTab: MainTab;
@@ -194,31 +195,10 @@ const GenericDashboardScreen: React.FC<GenericDashboardScreenProps> = ({
   const totalCorrect = profile?.totalCorrect ?? 0;
   const accuracyPct =
     totalAnswered > 0 ? Math.round((Math.max(0, totalCorrect) / totalAnswered) * 100) : null;
-  const streakDays = React.useMemo(() => {
-    const finishedKeys = new Set(
-      recentSessions
-        .map((session) => {
-          const date = new Date(session.finishedAt);
-          if (Number.isNaN(date.getTime())) return null;
-          return date.toISOString().slice(0, 10);
-        })
-        .filter((value): value is string => Boolean(value)),
-    );
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let streak = 0;
-
-    for (;;) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - streak);
-      const key = date.toISOString().slice(0, 10);
-      if (!finishedKeys.has(key)) break;
-      streak += 1;
-    }
-
-    return streak;
-  }, [recentSessions]);
+  const streakDays = React.useMemo(
+    () => computeConsecutiveDayStreak(recentSessions.map((s) => s.finishedAt)),
+    [recentSessions],
+  );
   const level = Math.max(1, Math.round(totalSessions / 10) || 1);
   const levelProgressUnits = totalSessions > 0 ? totalSessions % 10 : 0;
   const levelProgressPct =

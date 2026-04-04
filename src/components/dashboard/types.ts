@@ -64,6 +64,7 @@ export type DashboardScreenProps = {
   onStartAntiTrap: () => void;
   onStartRecommended: () => void;
   onStartMixed: () => void;
+  onStartQuickFive: () => void;
   onStartRandom: () => void;
   onStartFromBeginning: () => void;
   onStartWeakReview: () => void;

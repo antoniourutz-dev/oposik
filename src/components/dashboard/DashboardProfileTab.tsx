@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { DashboardContentProps } from './types';
 import { SectionCard, StatsDisclosure, formatSessionDate, toDateInputValue } from './shared';
+import { computeConsecutiveDayStreak } from '../../utils/localCalendarDate';
 
 const AdminConsoleScreen = lazy(() => import('../AdminConsoleScreen'));
 
@@ -159,28 +160,10 @@ const DashboardProfileTab: React.FC<DashboardContentProps> = ({
     return Math.max(1, Math.round((profile.totalSessions ?? 0) / 10));
   }, [profile]);
 
-  const streakDays = useMemo(() => {
-    const finishedKeys = new Set(
-      (recentSessions ?? [])
-        .map((s) => {
-          const d = new Date(s.finishedAt);
-          if (Number.isNaN(d.getTime())) return null;
-          return d.toISOString().slice(0, 10);
-        })
-        .filter((v): v is string => Boolean(v)),
-    );
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let streak = 0;
-    for (;;) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - streak);
-      const key = d.toISOString().slice(0, 10);
-      if (!finishedKeys.has(key)) break;
-      streak += 1;
-    }
-    return streak;
-  }, [recentSessions]);
+  const streakDays = useMemo(
+    () => computeConsecutiveDayStreak((recentSessions ?? []).map((s) => s.finishedAt)),
+    [recentSessions],
+  );
 
   const totalSessions = profile?.totalSessions ?? 0;
   const totalAnswered = profile?.totalAnswered ?? 0;

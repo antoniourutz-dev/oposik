@@ -7,7 +7,6 @@ import type {
   PracticeQuestion,
   PracticeQuestionScopeFilter,
 } from '../practiceTypes';
-import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { recordPracticeSessionInCloud } from '../services/practiceCloudApi';
 import type { PracticeView } from './usePracticeSessionFlow';
 
@@ -81,6 +80,7 @@ const buildStoredActiveSession = (
 });
 
 type UsePracticeSessionLifecycleOptions = {
+  curriculum: string;
   isGuest: boolean;
   selectedQuestionScope: PracticeQuestionScopeFilter;
   setSyncError: Dispatch<SetStateAction<string | null>>;
@@ -102,6 +102,7 @@ const buildPracticeAnswer = (
 });
 
 export const usePracticeSessionLifecycle = ({
+  curriculum,
   isGuest,
   selectedQuestionScope,
   setSyncError,
@@ -172,7 +173,7 @@ export const usePracticeSessionLifecycle = ({
       if (!activeSession || isGuest) return;
 
       try {
-        await recordPracticeSessionInCloud(activeSession, completedAnswers, DEFAULT_CURRICULUM);
+        await recordPracticeSessionInCloud(activeSession, completedAnswers, curriculum);
         await syncPracticeAfterSession(selectedQuestionScope);
       } catch (error) {
         setSyncError(
@@ -180,7 +181,14 @@ export const usePracticeSessionLifecycle = ({
         );
       }
     },
-    [activeSession, isGuest, selectedQuestionScope, setSyncError, syncPracticeAfterSession],
+    [
+      activeSession,
+      curriculum,
+      isGuest,
+      selectedQuestionScope,
+      setSyncError,
+      syncPracticeAfterSession,
+    ],
   );
 
   const commitSession = useCallback(

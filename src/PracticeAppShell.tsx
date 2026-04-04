@@ -24,6 +24,7 @@ import { usePracticeApp } from './hooks/usePracticeApp';
 import { getScreenTelemetryKey, useNavigationTelemetry } from './hooks/useNavigationTelemetry';
 import { PRACTICE_BATCH_SIZE } from './practiceConfig';
 import ScreenTelemetryBoundary from './telemetry/ScreenTelemetryBoundary';
+import { computeConsecutiveDayStreak } from './utils/localCalendarDate';
 
 const AuthScreen = lazy(() => import('./components/AuthScreen'));
 const DashboardScreen = lazy(() => import('./components/DashboardScreen'));
@@ -89,6 +90,7 @@ const PracticeAppShell: React.FC = () => {
     startGenericRecommended,
     startGuest,
     startMixed,
+    startQuickFive,
     startRandom,
     startRecommended,
     startWeakReview,
@@ -116,29 +118,10 @@ const PracticeAppShell: React.FC = () => {
     view === 'quiz' || view === 'review' || view === 'catalog_review'
       ? 'screen-enter-fixed-safe'
       : 'screen-enter';
-  const streakDays = useMemo(() => {
-    const finishedKeys = new Set(
-      (recentSessions ?? [])
-        .map((s) => {
-          const d = new Date(s.finishedAt);
-          if (Number.isNaN(d.getTime())) return null;
-          return d.toISOString().slice(0, 10);
-        })
-        .filter((v): v is string => Boolean(v)),
-    );
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let streak = 0;
-    for (;;) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - streak);
-      const key = d.toISOString().slice(0, 10);
-      if (!finishedKeys.has(key)) break;
-      streak += 1;
-    }
-    return streak;
-  }, [recentSessions]);
+  const streakDays = useMemo(
+    () => computeConsecutiveDayStreak((recentSessions ?? []).map((s) => s.finishedAt)),
+    [recentSessions],
+  );
 
   const mainTopPadding =
     view === 'quiz' || view === 'catalog_review' || view === 'review' ? 'pt-4' : 'pt-[5.2rem]';
@@ -390,6 +373,7 @@ const PracticeAppShell: React.FC = () => {
                           onStartSimulacro={startSimulacro}
                           onStartAntiTrap={startAntiTrap}
                           onStartMixed={startMixed}
+                          onStartQuickFive={startQuickFive}
                           onStartRandom={startRandom}
                           onStartFromBeginning={startFromBeginning}
                           onStartWeakReview={startWeakReview}

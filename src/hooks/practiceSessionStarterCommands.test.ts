@@ -152,6 +152,8 @@ describe('practiceSessionStarterCommands', () => {
     const result = await loadWeakReviewSessionCommand({
       questionScope: 'all',
       weakQuestions: [{ question: buildQuestion('w1'), stat: {} as never }],
+      recommendedBatchStartIndex: 0,
+      questionsCount: 60,
     });
 
     expect(mockedGetWeakPracticeInsights).not.toHaveBeenCalled();
@@ -169,12 +171,34 @@ describe('practiceSessionStarterCommands', () => {
     const result = await loadWeakReviewSessionCommand({
       questionScope: 'all',
       weakQuestions: [],
+      recommendedBatchStartIndex: 20,
+      questionsCount: 80,
     });
 
     expect(mockedGetWeakPracticeInsights).toHaveBeenCalledWith('general', 20, 'all');
     expect(result.session).toMatchObject({
       mode: 'weakest',
       questionScope: 'all',
+    });
+  });
+
+  it('repaso falladas cae al bloque estandar si tampoco hay batch debil en servidor', async () => {
+    mockedGetWeakPracticeInsights.mockResolvedValue([]);
+    mockedGetStandardPracticeBatch.mockResolvedValue([buildQuestion('q1'), buildQuestion('q2')]);
+
+    const result = await loadWeakReviewSessionCommand({
+      questionScope: 'specific',
+      weakQuestions: [],
+      recommendedBatchStartIndex: 40,
+      questionsCount: 100,
+    });
+
+    expect(mockedGetWeakPracticeInsights).toHaveBeenCalledWith('general', 20, 'specific');
+    expect(mockedGetStandardPracticeBatch).toHaveBeenCalledWith(40, 20, 'general', 'specific');
+    expect(result.session).toMatchObject({
+      mode: 'standard',
+      batchStartIndex: 40,
+      questionScope: 'specific',
     });
   });
 });

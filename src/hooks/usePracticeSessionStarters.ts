@@ -100,6 +100,20 @@ export const usePracticeSessionStarters = ({
     });
   }, [curriculum, executeStarter, selectedQuestionScope]);
 
+  const startQuickFiveSession = useCallback(async () => {
+    await executeStarter({
+      command: async () => {
+        const { loadQuickFiveSessionCommand } = await import('./practiceSessionStarterCommands');
+        return loadQuickFiveSessionCommand({
+          questionScope: selectedQuestionScope,
+          curriculum,
+        });
+      },
+      emptyMessage: 'No se ha podido preparar la partida rapida con el catalogo actual.',
+      fallbackErrorMessage: 'No se ha podido iniciar la partida rapida.',
+    });
+  }, [curriculum, executeStarter, selectedQuestionScope]);
+
   const startGuestSession = useCallback(async () => {
     if (guestBlocksRemaining <= 0) {
       setQuestionsError('El acceso invitado ya ha consumido sus dos bloques de prueba.');
@@ -175,6 +189,8 @@ export const usePracticeSessionStarters = ({
         return loadWeakReviewSessionCommand({
           questionScope: selectedQuestionScope,
           weakQuestions,
+          recommendedBatchStartIndex,
+          questionsCount,
           curriculum,
         });
       },
@@ -191,6 +207,7 @@ export const usePracticeSessionStarters = ({
     startGuest: () => void startGuestSession(),
     startGuestSession,
     startMixed: () => void startMixedSession(),
+    startQuickFive: () => void startQuickFiveSession(),
     startRandom: () => void startRandomSession(),
     startSimulacro: () => void startSimulacroSession(),
     startWeakReview: () => void startWeakReviewSession(),

@@ -9,6 +9,7 @@ type UsePracticeStartRecommendedParams = {
   selectedQuestionScope: PracticeQuestionScopeFilter;
   startAntiTrap: () => void;
   startMixed: () => void;
+  startQuickFive: () => void;
   startRandom: () => void;
   startSimulacro: () => void;
   startStandardSession: (
@@ -28,6 +29,7 @@ export const usePracticeStartRecommended = ({
   selectedQuestionScope,
   startAntiTrap,
   startMixed,
+  startQuickFive,
   startRandom,
   startSimulacro,
   startStandardSession,
@@ -43,6 +45,9 @@ export const usePracticeStartRecommended = ({
         return;
       case 'random':
         startRandom();
+        return;
+      case 'quick_five':
+        startQuickFive();
         return;
       case 'anti_trap':
         if (!supportsPressureTraining) {
@@ -69,6 +74,7 @@ export const usePracticeStartRecommended = ({
     selectedQuestionScope,
     startAntiTrap,
     startMixed,
+    startQuickFive,
     startRandom,
     startSimulacro,
     startStandardSession,

@@ -5,6 +5,7 @@ export const mapExternalPracticeMode = (value: unknown): PracticeMode => {
 
   switch (normalized) {
     case 'weakest':
+    case 'quick_five':
     case 'random':
     case 'review':
     case 'mixed':

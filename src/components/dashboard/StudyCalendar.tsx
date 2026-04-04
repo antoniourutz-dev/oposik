@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { toLocalDateKey } from '../../utils/localCalendarDate';
 import { SectionCard } from './shared';
 
 interface StudyCalendarProps {
@@ -24,10 +25,10 @@ export const StudyCalendar: React.FC<StudyCalendarProps> = ({
     sessions.forEach((s) => {
       try {
         const d = new Date(s.finishedAt);
-        if (!isNaN(d.getTime())) {
-          days.add(d.toISOString().split('T')[0]);
+        if (!Number.isNaN(d.getTime())) {
+          days.add(toLocalDateKey(d));
         }
-      } catch (e) {
+      } catch {
         // ignore invalid dates
       }
     });
@@ -107,7 +108,7 @@ export const StudyCalendar: React.FC<StudyCalendarProps> = ({
 
           const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const isStudied = studyDays.has(dateStr);
-          const isToday = new Date().toISOString().split('T')[0] === dateStr;
+          const isToday = toLocalDateKey(new Date()) === dateStr;
           const isSelected = selectedDayKey === dateStr;
 
           return (

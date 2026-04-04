@@ -12,6 +12,7 @@ export type PracticeQuestionScope = 'common' | 'specific';
 export type PracticeQuestionScopeFilter = 'all' | PracticeQuestionScope;
 export type PracticeMode =
   | 'standard'
+  | 'quick_five'
   | 'weakest'
   | 'random'
   | 'review'
@@ -188,6 +189,12 @@ export interface PracticeTopicPerformance {
   questionCount?: number;
   /** Preguntas con `mastery_level >= 3` (solid o mastered). */
   consolidatedCount?: number;
+  /** Distribución por `mastery_level` en el tema (viene del dashboard v2). */
+  unseenCount?: number;
+  fragileCount?: number;
+  consolidatingCount?: number;
+  solidCount?: number;
+  masteredCount?: number;
   correctAttempts: number;
   accuracyRate: number;
 }

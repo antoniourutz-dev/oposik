@@ -132,6 +132,34 @@ export const buildRandomPracticeSession = (
   };
 };
 
+export const buildQuickFivePracticeSession = (
+  questions: PracticeQuestion[],
+  questionScope: PracticeQuestionScopeFilter = 'all',
+): ActivePracticeSession | null => {
+  const uniqueQuestions = dedupeQuestions(questions);
+  if (uniqueQuestions.length === 0) return null;
+
+  return {
+    id: buildSessionId(),
+    mode: 'quick_five',
+    feedbackMode: 'immediate',
+    title:
+      questionScope === 'all'
+        ? 'Partida rapida'
+        : `Partida rapida - ${getQuestionScopeLabel(questionScope)}`,
+    subtitle: `Cinco preguntas para mantener el hilo en ${getQuestionScopeHint(questionScope)}.`,
+    questions: uniqueQuestions,
+    startedAt: new Date().toISOString(),
+    timeLimitSeconds: null,
+    batchNumber: 1,
+    totalBatches: 1,
+    questionScope,
+    batchStartIndex: null,
+    continueLabel: 'Volver al panel',
+    nextStandardBatchStartIndex: null,
+  };
+};
+
 export const buildGuestPracticeSession = ({
   questions,
   blockNumber,

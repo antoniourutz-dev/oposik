@@ -200,14 +200,37 @@ export function buildTestAdapterOutput(input: {
         }
       : null;
 
+  const quickFiveSurface =
+    activeSession.mode === 'quick_five'
+      ? {
+          headerContext: {
+            label: 'Hoy cuenta entrar',
+            subdued: true as const,
+          },
+          answerUi: {
+            ...answerUi,
+            highlightImportantText: true,
+            revealHelpLevel: 'medium' as const,
+            compactOptions: false,
+          },
+          feedbackStyle: {
+            kind: 'protective' as const,
+            showMicroReinforcement: true,
+            explanationPriority: 'low' as const,
+          },
+          submitCta: 'Seguir' as const,
+        }
+      : null;
+
   return {
     dominantState,
     tone,
     tension,
-    headerContext: simulacroSurface?.headerContext ?? headerContext,
-    answerUi: simulacroSurface?.answerUi ?? answerUi,
-    feedbackStyle: simulacroSurface?.feedbackStyle ?? feedbackStyle,
-    submitCta: simulacroSurface?.submitCta ?? submitCta,
+    headerContext: quickFiveSurface?.headerContext ?? simulacroSurface?.headerContext ?? headerContext,
+    answerUi: quickFiveSurface?.answerUi ?? simulacroSurface?.answerUi ?? answerUi,
+    feedbackStyle:
+      quickFiveSurface?.feedbackStyle ?? simulacroSurface?.feedbackStyle ?? feedbackStyle,
+    submitCta: quickFiveSurface?.submitCta ?? simulacroSurface?.submitCta ?? submitCta,
   };
 }
 

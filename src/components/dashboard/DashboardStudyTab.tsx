@@ -14,11 +14,23 @@ type StudyItem = {
   /** Narrativa de territorio (leyes): intención de entrenamiento o título corto. */
   description?: string;
   badge: string;
+  /** % dominio alto (legacy / leyes sin desglose por etapas). */
   progress: number;
   consolidatedCount: number;
   questionCount: number;
+  /** Temario por oposición: reparto por etapa; si hay datos, la fila usa barra apilada. */
+  masteryTiers?: TopicMasteryTiers;
+  attempts: number;
   action: () => void;
   ariaLabel: string;
+};
+
+type TopicMasteryTiers = {
+  unseen: number;
+  fragile: number;
+  consolidating: number;
+  solid: number;
+  mastered: number;
 };
 
 type StudyCategory = {
@@ -29,6 +41,10 @@ type StudyCategory = {
   totalQuestions: number;
   consolidatedQuestions: number;
   progressPct: number;
+  /** Solo temario por oposición: reparto por etapa de dominio (suma ≈ totalQuestions). */
+  masteryTiers?: TopicMasteryTiers;
+  /** Intentos registrados en el dashboard (tema o ley); para barra cuando no hay fases. */
+  totalAttempts: number;
   gradient: string;
   emptyText: string;
   items: StudyItem[];
@@ -42,6 +58,20 @@ const EXPECTED_TOPICS_BY_SCOPE: Record<TopicCategoryId, number> = {
 
 const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 const safeDivPct = (num: number, den: number) => (den <= 0 ? 0 : clampPct((num / den) * 100));
+
+/**
+ * La barra simple (sin desglose por fases) solo reflejaba dominio alto (nivel ≥3), por eso podía
+ * quedar en 0% con mucha práctica en niveles inferiores. Complementamos con volumen de intentos
+ * del dashboard (suma en el tema) para que el avance sea visible antes del “consolidado”.
+ */
+const practiceVisibilityPctFromAttempts = (attempts: number, questionCount: number) => {
+  if (attempts <= 0 || questionCount <= 0) return 0;
+  const perQ = attempts / questionCount;
+  return clampPct(88 * (1 - Math.exp(-perQ / 1.65)));
+};
+
+const topicBarDisplayPct = (consolidatedPct: number, attempts: number, questionCount: number) =>
+  Math.max(consolidatedPct, practiceVisibilityPctFromAttempts(attempts, questionCount));
 const normalizeTopicKey = (label: string) =>
   label.normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
 const TOPIC_PREFIX_RE = /^\s*(\d{1,2})\s*\.\s*[–-]\s*/;
@@ -97,6 +127,11 @@ const dedupeTopics = (topics: PracticeTopicPerformance[]) => {
       attempts: current.attempts + topic.attempts,
       questionCount: (current.questionCount ?? 0) + (topic.questionCount ?? 0),
       consolidatedCount: (current.consolidatedCount ?? 0) + (topic.consolidatedCount ?? 0),
+      unseenCount: (current.unseenCount ?? 0) + (topic.unseenCount ?? 0),
+      fragileCount: (current.fragileCount ?? 0) + (topic.fragileCount ?? 0),
+      consolidatingCount: (current.consolidatingCount ?? 0) + (topic.consolidatingCount ?? 0),
+      solidCount: (current.solidCount ?? 0) + (topic.solidCount ?? 0),
+      masteredCount: (current.masteredCount ?? 0) + (topic.masteredCount ?? 0),
       correctAttempts: current.correctAttempts + topic.correctAttempts,
       accuracyRate:
         current.attempts + topic.attempts <= 0
@@ -117,6 +152,140 @@ const sortLaws = (laws: PracticeLawPerformance[]) =>
   [...laws].sort((a, b) =>
     a.ley_referencia.localeCompare(b.ley_referencia, 'es', { sensitivity: 'base' }),
   );
+
+const sumTopicMasteryTiers = (topics: PracticeTopicPerformance[]): TopicMasteryTiers =>
+  topics.reduce(
+    (acc, t) => ({
+      unseen: acc.unseen + (t.unseenCount ?? 0),
+      fragile: acc.fragile + (t.fragileCount ?? 0),
+      consolidating: acc.consolidating + (t.consolidatingCount ?? 0),
+      solid: acc.solid + (t.solidCount ?? 0),
+      mastered: acc.mastered + (t.masteredCount ?? 0),
+    }),
+    { unseen: 0, fragile: 0, consolidating: 0, solid: 0, mastered: 0 },
+  );
+
+const tiersFromTopic = (t: PracticeTopicPerformance): TopicMasteryTiers => ({
+  unseen: t.unseenCount ?? 0,
+  fragile: t.fragileCount ?? 0,
+  consolidating: t.consolidatingCount ?? 0,
+  solid: t.solidCount ?? 0,
+  mastered: t.masteredCount ?? 0,
+});
+
+const tierSum = (m: TopicMasteryTiers) =>
+  m.unseen + m.fragile + m.consolidating + m.solid + m.mastered;
+
+/**
+ * Etiqueta breve para la tarjeta (sin texto largo): media ponderada 0–4 → 4 fases sencillas.
+ * Sin datos de etapas, usa el % de dominio alto del bloque.
+ */
+const resolveCategoryPhaseBadge = (
+  tiers: TopicMasteryTiers | undefined,
+  totalQuestions: number,
+  progressPctFallback: number,
+): string => {
+  if (tiers && totalQuestions > 0 && tierSum(tiers) > 0) {
+    const w =
+      (0 * tiers.unseen +
+        1 * tiers.fragile +
+        2 * tiers.consolidating +
+        3 * tiers.solid +
+        4 * tiers.mastered) /
+      totalQuestions;
+    if (w < 1.15) return 'Empezando';
+    if (w < 2.25) return 'En marcha';
+    if (w < 3.15) return 'Muy bien';
+    return 'Genial';
+  }
+  if (progressPctFallback >= 50) return 'Muy bien';
+  if (progressPctFallback >= 12) return 'En marcha';
+  return 'Empezando';
+};
+
+const CARD_TIER_SEGMENTS: { key: keyof TopicMasteryTiers; barClass: string }[] = [
+  { key: 'unseen', barClass: 'bg-white/14' },
+  { key: 'fragile', barClass: 'bg-orange-400/92' },
+  { key: 'consolidating', barClass: 'bg-amber-300/93' },
+  { key: 'solid', barClass: 'bg-lime-200/95' },
+  { key: 'mastered', barClass: 'bg-white' },
+];
+
+/** Barra apilada en tarjetas de categoría (fondo degradado oscuro). */
+const TopicMasteryStackedBar: React.FC<{
+  tiers: TopicMasteryTiers;
+  totalQuestions: number;
+  reduceMotion: boolean | null;
+  segments: { key: keyof TopicMasteryTiers; barClass: string }[];
+  trackClassName: string;
+}> = ({ tiers, totalQuestions, reduceMotion, segments, trackClassName }) => {
+  const denom = totalQuestions > 0 ? totalQuestions : tierSum(tiers);
+  const pctOf = (n: number) => (denom <= 0 ? 0 : (n / denom) * 100);
+
+  return (
+    <div
+      className={`flex w-full overflow-hidden rounded-full ${trackClassName}`}
+      aria-hidden
+    >
+      {segments.map(({ key, barClass }) => {
+        const w = pctOf(tiers[key]);
+        if (w <= 0) return null;
+        return (
+          <motion.div
+            key={key}
+            initial={reduceMotion ? false : { width: 0 }}
+            animate={{ width: `${w}%` }}
+            transition={{ duration: 0.85, ease: 'easeOut' }}
+            className={`h-full min-h-0 shrink-0 ${barClass}`}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
+const ROW_TIER_SEGMENTS: { key: keyof TopicMasteryTiers; barClass: string }[] = [
+  { key: 'unseen', barClass: 'bg-slate-200' },
+  { key: 'fragile', barClass: 'bg-orange-400' },
+  { key: 'consolidating', barClass: 'bg-amber-300' },
+  { key: 'solid', barClass: 'bg-lime-400' },
+  { key: 'mastered', barClass: 'bg-violet-600' },
+];
+
+const TIER_PHASE_TITLES: { key: keyof TopicMasteryTiers; label: string }[] = [
+  { key: 'unseen', label: 'Sin empezar' },
+  { key: 'fragile', label: 'Repaso' },
+  { key: 'consolidating', label: 'Practicando' },
+  { key: 'solid', label: 'Bien' },
+  { key: 'mastered', label: 'Genial' },
+];
+
+const tierDotClass = (key: keyof TopicMasteryTiers, variant: 'card' | 'row') => {
+  const list = variant === 'card' ? CARD_TIER_SEGMENTS : ROW_TIER_SEGMENTS;
+  return list.find((s) => s.key === key)?.barClass ?? 'bg-slate-300';
+};
+
+/** Títulos de fase (leyenda); sin párrafos explicativos, solo nombre + color. */
+const MasteryPhaseTitles: React.FC<{ variant: 'card' | 'row' }> = ({ variant }) => {
+  const textMuted = variant === 'card' ? 'text-white/78' : 'text-slate-500';
+
+  return (
+    <div
+      className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 ${textMuted}`}
+      aria-label="Fases de dominio"
+    >
+      {TIER_PHASE_TITLES.map(({ key, label }) => (
+        <span key={key} className="inline-flex items-center gap-1.5">
+          <span
+            className={`h-2 w-2 shrink-0 rounded-sm ${tierDotClass(key, variant)}`}
+            aria-hidden
+          />
+          <span className="text-[10px] font-bold leading-none tracking-tight">{label}</span>
+        </span>
+      ))}
+    </div>
+  );
+};
 
 const DashboardStudyTab: React.FC<DashboardContentProps> = ({
   activeLearningContext,
@@ -140,6 +309,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
         (acc, law) => acc + (law.consolidatedCount ?? 0),
         0,
       );
+      const totalAttempts = lawBreakdown.reduce((acc, law) => acc + (law.attempts ?? 0), 0);
 
       return [
         {
@@ -150,6 +320,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
           totalQuestions,
           consolidatedQuestions,
           progressPct: safeDivPct(consolidatedQuestions, totalQuestions),
+          totalAttempts,
           gradient: 'from-slate-900 to-indigo-700',
           emptyText: 'No hay leyes disponibles para este workspace todavia.',
           showCatalogReview: false,
@@ -161,6 +332,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             progress: safeDivPct(law.consolidatedCount ?? 0, law.questionCount ?? 0),
             consolidatedCount: law.consolidatedCount ?? 0,
             questionCount: law.questionCount ?? 0,
+            attempts: law.attempts ?? 0,
             action: () => onStartLawTraining(law.ley_referencia),
             ariaLabel: `Empezar practica de ley: ${law.shortTitle?.trim() || law.ley_referencia}`,
           })),
@@ -188,6 +360,8 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
         (acc, topic) => acc + (topic.consolidatedCount ?? 0),
         0,
       );
+      const masteryTiers = sumTopicMasteryTiers(topics);
+      const totalAttempts = topics.reduce((acc, topic) => acc + (topic.attempts ?? 0), 0);
 
       return {
         id,
@@ -197,6 +371,8 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
         totalQuestions,
         consolidatedQuestions,
         progressPct: safeDivPct(consolidatedQuestions, totalQuestions),
+        masteryTiers,
+        totalAttempts,
         gradient,
         emptyText: 'No hay temas disponibles para este bloque todavia.',
         showCatalogReview: true,
@@ -212,6 +388,8 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
             progress: safeDivPct(topic.consolidatedCount ?? 0, topic.questionCount ?? 0),
             consolidatedCount: topic.consolidatedCount ?? 0,
             questionCount: topic.questionCount ?? 0,
+            attempts: topic.attempts ?? 0,
+            masteryTiers: tiersFromTopic(topic),
             action: () => onStartTopicTraining(topic.topicLabel),
             ariaLabel: `Empezar test del tema: ${stripTopicPrefix(topic.topicLabel)}`,
           };
@@ -262,6 +440,14 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
       <div className="space-y-4">
         {categories.map((category) => {
           const isExpanded = expandedCategory === category.id;
+          const phaseBadge =
+            studyStructure === 'law_blocks'
+              ? resolveCategoryPhaseBadge(undefined, category.totalQuestions, category.progressPct)
+              : resolveCategoryPhaseBadge(
+                  category.masteryTiers,
+                  category.totalQuestions,
+                  category.progressPct,
+                );
 
           return (
             <div key={category.id} className="space-y-3">
@@ -287,10 +473,9 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                     <h3 className="text-[1.45rem] font-black tracking-[-0.035em] text-white sm:text-[1.75rem]">
                       {category.title}
                     </h3>
-                    <p className="max-w-[28ch] text-[0.96rem] font-semibold leading-[1.45] text-white/84">
-                      {category.consolidatedQuestions} preguntas consolidadas dentro de{' '}
-                      {category.shortTitle.toLowerCase()}.
-                    </p>
+                    <span className="mt-2 inline-flex max-w-[min(100%,20rem)] items-center rounded-full border border-white/30 bg-white/12 px-2.5 py-1 text-[11px] font-extrabold leading-none tracking-tight text-white shadow-sm backdrop-blur-sm">
+                      {phaseBadge}
+                    </span>
                   </div>
 
                   <div className="rounded-2xl border border-white/20 bg-white/20 p-2 backdrop-blur-md">
@@ -303,20 +488,33 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                 </div>
 
                 <div className="relative z-10 mt-6 sm:mt-8">
-                  <div className="mb-2 flex items-end justify-between">
-                    <span className="text-xs font-bold text-white sm:text-sm">Consolidacion</span>
-                    <span className="text-lg font-black text-white sm:text-xl">
-                      {category.progressPct}%
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-white/20">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${category.progressPct}%` }}
-                      className="h-full rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]"
-                      transition={{ duration: 0.9, ease: 'easeOut' }}
-                    />
-                  </div>
+                  {category.masteryTiers && tierSum(category.masteryTiers) > 0 ? (
+                    <div>
+                      <TopicMasteryStackedBar
+                        tiers={category.masteryTiers}
+                        totalQuestions={category.totalQuestions}
+                        reduceMotion={reduceMotion}
+                        segments={CARD_TIER_SEGMENTS}
+                        trackClassName="h-2.5 bg-white/12 ring-1 ring-white/25"
+                      />
+                      <MasteryPhaseTitles variant="card" />
+                    </div>
+                  ) : (
+                    <div className="h-2 overflow-hidden rounded-full bg-white/20">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{
+                          width: `${topicBarDisplayPct(
+                            category.progressPct,
+                            category.totalAttempts ?? 0,
+                            category.totalQuestions,
+                          )}%`,
+                        }}
+                        className="h-full rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                        transition={{ duration: 0.9, ease: 'easeOut' }}
+                      />
+                    </div>
+                  )}
                 </div>
               </motion.button>
 
@@ -350,7 +548,15 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                     ) : null}
 
                     {category.items.map((item, index) => {
-                      const hasProgress = item.progress > 0;
+                      const rowTiers = item.masteryTiers;
+                      const showTierBar =
+                        rowTiers !== undefined && tierSum(rowTiers) > 0 && studyStructure !== 'law_blocks';
+                      const fallbackBarPct = topicBarDisplayPct(
+                        item.progress,
+                        item.attempts ?? 0,
+                        item.questionCount,
+                      );
+                      const hasProgress = fallbackBarPct > 0;
 
                       return (
                         <motion.button
@@ -361,7 +567,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                           type="button"
                           onClick={item.action}
                           disabled={practiceLocked}
-                          className="group flex min-h-[88px] w-full max-w-full items-center gap-4 rounded-[24px] border border-slate-100 bg-white px-4 py-4 text-left shadow-sm transition-shadow hover:shadow-md disabled:pointer-events-none disabled:opacity-45 sm:min-h-[94px] sm:px-5 sm:py-5"
+                          className="group flex min-h-[80px] w-full max-w-full items-center gap-4 rounded-[24px] border border-slate-100 bg-white px-4 py-4 text-left shadow-sm transition-shadow hover:shadow-md disabled:pointer-events-none disabled:opacity-45 sm:min-h-[88px] sm:px-5 sm:py-5"
                           aria-label={item.ariaLabel}
                         >
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-sm font-black tabular-nums text-slate-500 transition-colors group-hover:bg-violet-50 group-hover:text-violet-700">
@@ -377,24 +583,31 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                                 {item.description}
                               </p>
                             ) : null}
-                            <div className="mt-2 flex items-center gap-3">
-                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-                                <motion.div
-                                  initial={reduceMotion ? false : { width: 0 }}
-                                  animate={{ width: `${item.progress}%` }}
-                                  className={`h-full rounded-full ${
-                                    hasProgress ? 'bg-violet-500' : 'bg-slate-200'
-                                  }`}
-                                  transition={{ duration: 0.8, ease: 'easeOut' }}
-                                />
-                              </div>
-                              <span className="w-8 text-[10px] font-black text-slate-400">
-                                {item.progress}%
-                              </span>
+                            <div className="mt-3">
+                              {showTierBar ? (
+                                <div>
+                                  <TopicMasteryStackedBar
+                                    tiers={rowTiers}
+                                    totalQuestions={item.questionCount}
+                                    reduceMotion={reduceMotion}
+                                    segments={ROW_TIER_SEGMENTS}
+                                    trackClassName="h-2 bg-slate-100 ring-1 ring-slate-200/90"
+                                  />
+                                  <MasteryPhaseTitles variant="row" />
+                                </div>
+                              ) : (
+                                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                                  <motion.div
+                                    initial={reduceMotion ? false : { width: 0 }}
+                                    animate={{ width: `${fallbackBarPct}%` }}
+                                    className={`h-full rounded-full ${
+                                      hasProgress ? 'bg-violet-500' : 'bg-slate-200'
+                                    }`}
+                                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                                  />
+                                </div>
+                              )}
                             </div>
-                            <p className="mt-2 truncate text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                              {item.consolidatedCount}/{item.questionCount} consolidadas
-                            </p>
                           </div>
 
                           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-200">

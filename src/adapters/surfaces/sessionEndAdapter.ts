@@ -83,8 +83,15 @@ export function buildSessionEndAdapterOutput(input: {
   const correct = answers.length - incorrect;
   const contextConfig = surfaceContext?.activeLearningContext?.config;
   const supportsExamMode = contextConfig?.capabilities.supportsExamMode ?? true;
+  const isQuickFiveSession = activeSession.mode === 'quick_five';
 
   const closingMessage: SessionEndAdapterOutput['closingMessage'] = (() => {
+    if (isQuickFiveSession) {
+      return {
+        title: 'Hoy has salvado el ritmo',
+        summary: 'Sesion corta, continuidad intacta. La carga principal sigue siendo la tanda de 20.',
+      };
+    }
     switch (dominantState) {
       case 'recovery':
         return {
@@ -129,6 +136,12 @@ export function buildSessionEndAdapterOutput(input: {
   })();
 
   const nextStep: SessionEndAdapterOutput['nextStep'] = (() => {
+    if (isQuickFiveSession) {
+      return {
+        cta: 'Cerrar con continuidad',
+        description: 'Hoy ya cuenta. Manana puedes volver a una sesion normal.',
+      };
+    }
     if (activeSession.mode === 'simulacro' && supportsExamMode) {
       return {
         cta: 'Volver al panel',
@@ -202,7 +215,9 @@ export function buildSessionEndAdapterOutput(input: {
     hadChangedAnswerToCorrect,
   });
 
-  const baseContinuity = continuityBridgeByState[dominantState];
+  const baseContinuity = isQuickFiveSession
+    ? 'Hoy no has dejado el dia en blanco; manana puedes volver con una sesion completa.'
+    : continuityBridgeByState[dominantState];
   const continuityBridge = appendTerritoryToContinuityBridge(
     baseContinuity,
     surfaceContext?.lawTerritoryContinuity ?? undefined,

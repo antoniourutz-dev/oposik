@@ -14,11 +14,21 @@ import type { DashboardContentProps } from './types';
 import { buildStatsAdapterOutput } from '../../adapters/surfaces/statsAdapter';
 import { buildCoachTwoLineMessageV2 } from '../../domain/coachCopyV2';
 import { buildDailyReport, filterSessionsForDay } from '../../domain/dailyReport';
+import { getSessionDurationsSecondsForStats } from '../../utils/practiceSessionTiming';
 
 const formatCompact = (n: number) => {
   if (!Number.isFinite(n)) return '--';
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
   return String(Math.round(n));
+};
+
+const toPercentValue = (value: number | null | undefined) => {
+  if (!Number.isFinite(value)) return null;
+  const numeric = Number(value);
+  if (numeric <= 1) {
+    return Math.round(Math.max(0, Math.min(1, numeric)) * 100);
+  }
+  return Math.round(Math.max(0, Math.min(100, numeric)));
 };
 
 const DashboardStatsTab: React.FC<DashboardContentProps> = ({
@@ -83,19 +93,16 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
     return Math.round(Math.max(0, Math.min(1, ratio)) * 100);
   }, [recentSessions]);
 
-  const accuracyPct = observedAccuracy ?? derivedAccuracyPct ?? 0;
+  const accuracyPct = toPercentValue(observedAccuracy) ?? derivedAccuracyPct ?? 0;
+  const accuracySupportLabel =
+    (learningDashboardV2?.observedAccuracyN ?? 0) > 0
+      ? `${learningDashboardV2?.observedAccuracyN ?? 0} respuestas`
+      : derivedAccuracyPct !== null
+        ? 'Ultima sesion'
+        : 'Sin muestra';
 
   const avgSeconds = useMemo(() => {
-    const durations = (recentSessions ?? [])
-      .map((s) => {
-        const a = new Date(s.startedAt);
-        const b = new Date(s.finishedAt);
-        if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
-        const diff = (b.getTime() - a.getTime()) / 1000;
-        if (!Number.isFinite(diff) || diff <= 0) return null;
-        return diff;
-      })
-      .filter((v): v is number => v !== null);
+    const durations = getSessionDurationsSecondsForStats(recentSessions ?? []);
 
     if (durations.length === 0) return null;
     const avg = durations.reduce((acc, v) => acc + v, 0) / durations.length;
@@ -236,6 +243,7 @@ const DashboardStatsTab: React.FC<DashboardContentProps> = ({
             </div>
             <p className="text-[8px] font-bold uppercase tracking-wider text-slate-400">Precisión observada</p>
             <p className="mt-1 text-base font-black tabular-nums text-slate-900 sm:text-lg">{Math.round(accuracyPct)}%</p>
+            <p className="mt-1 text-[10px] font-semibold text-slate-400">{accuracySupportLabel}</p>
           </div>
 
           <div className="rounded-2xl border border-slate-100 bg-white/95 p-3 text-center shadow-sm sm:p-4">

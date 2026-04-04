@@ -97,6 +97,7 @@ export interface QuestionStateTransition {
 // UI & Coach Types
 export type PracticeMode =
   | 'standard'
+  | 'quick_five'
   | 'weakest'
   | 'random'
   | 'review'

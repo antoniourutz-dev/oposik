@@ -1,70 +1,21 @@
 import React from 'react';
-import type { CoachTwoLineMessage } from '../domain/learningEngine';
 import type { ActiveLearningContext } from '../domain/learningContext/types';
 
-/**
- * Presentación del hero: solo reordena / recorta el copy ya emitido por `buildCoachTwoLineMessageV2`
- * (claves = pares exactos line1+line2). Sin adapters ni motor.
- */
-type CoachHeroPresentation = {
-  eyebrow: string;
-  headline: string;
-  sub: string;
+export type HomeModeId = 'mistakes' | 'random' | 'weak' | 'simulacro';
+
+type HomeHeroViewModel = {
+  contextKind: 'opposition' | 'general_law';
+  eyebrow?: string;
+  title: string;
+  summary?: string;
+  cta: string;
 };
 
-function coachHeroPresentation(message: CoachTwoLineMessage | null): CoachHeroPresentation {
-  const l1 = message?.line1?.trim() ?? '';
-  const l2 = message?.line2?.trim() ?? '';
-  const key = `${l1}\n${l2}`;
-
-  const fallback: CoachHeroPresentation = {
-    eyebrow: 'Recomendación principal',
-    headline: l1 || 'Tienes preguntas vencidas',
-    sub: l2 || 'Hoy va mejor mezclar y consolidar tus conocimientos.',
-  };
-
-  const byExactPair: Record<string, CoachHeroPresentation> = {
-    'Tienes preguntas vencidas\nHoy va mejor consolidar antes de seguir.': {
-      eyebrow: 'Antes de seguir',
-      headline: 'Consolidar antes de seguir',
-      sub: 'Tienes preguntas vencidas.',
-    },
-    'Estás repitiendo errores\nCorrige el patrón antes de avanzar.': {
-      eyebrow: 'Antes de avanzar',
-      headline: 'Corrige el patrón',
-      sub: 'Estás repitiendo errores.',
-    },
-    'Hoy toca entrenar examen\nTu nivel cae cuando sube la presión.': {
-      eyebrow: 'Tu nivel cae',
-      headline: 'Entrenar examen',
-      sub: 'Cuando sube la presión.',
-    },
-    'Vuelve a entrar fácil\nUna sesión corta hoy ya cambia la dinámica.': {
-      eyebrow: 'Sesión corta',
-      headline: 'Vuelve a entrar fácil',
-      sub: 'Una sesión corta hoy ya cambia la dinámica.',
-    },
-    'Estás listo para subir\nTu base aguanta; hoy puedes exigir más.': {
-      eyebrow: 'Tu base aguanta',
-      headline: 'Estás listo para subir',
-      sub: 'Hoy puedes exigir más.',
-    },
-    'Hoy toca afinar\nVamos a lo seguro para fijar lo importante.': {
-      eyebrow: 'Fijar lo importante',
-      headline: 'Hoy toca afinar',
-      sub: 'Vamos a lo seguro para fijar lo importante.',
-    },
-    'Hoy toca afinar\nVamos a lo seguro para generar señal.': {
-      eyebrow: 'Generar señal',
-      headline: 'Hoy toca afinar',
-      sub: 'Vamos a lo seguro para generar señal.',
-    },
-  };
-
-  return byExactPair[key] ?? fallback;
-}
-
-export type HomeModeId = 'mistakes' | 'random' | 'weak' | 'simulacro';
+type HomeSecondaryOptionViewModel = {
+  title: string;
+  summary: string;
+  cta: string;
+};
 
 export type UserState = {
   name: string;
@@ -100,48 +51,52 @@ type HomeScreenProps = {
   /** Sin preguntas en el ámbito: desactiva acciones. */
   practiceLocked?: boolean;
 
-  /** Card dominante (coach): no tocar lógica, solo presentar copy existente. */
-  coachMessage?: CoachTwoLineMessage | null;
-  coachCtaLabel?: string;
-  onCoachCta?: () => void;
+  /** Card dominante: ya resuelta por adapter/contexto. */
+  hero: HomeHeroViewModel;
+  onPrimaryCta?: () => void;
 
   /** Card secundaria (sesión en curso): continuar/terminar. */
   onResumePracticeSession?: () => void;
   pausedSessionCtaLabel?: string;
 
   /** Una sola alternativa secundaria (misma ruta que antes: `onSelectMode`). */
-  secondaryOption?: {
-    mode: HomeModeId;
-    title: string;
-    summary: string;
-    cta: string;
-  } | null;
+  secondaryOption?: HomeSecondaryOptionViewModel | null;
+  onSecondaryOptionCta?: () => void;
 
   /** Continuidad desde la última sesión cerrada (local, ~48h). */
   sessionContinuityHint?: string | null;
-
-  onSelectMode?: (mode: HomeModeId) => void;
 };
 
 export default function HomeScreen({
   state = mockUserState,
   activeLearningContext = null,
   practiceLocked = false,
-  coachMessage = null,
-  coachCtaLabel = 'Empezar ahora',
-  onCoachCta = () => {},
+  hero,
+  onPrimaryCta = () => {},
   onResumePracticeSession,
   pausedSessionCtaLabel = 'Continuar sesión',
   secondaryOption = null,
+  onSecondaryOptionCta = () => {},
   sessionContinuityHint = null,
-  onSelectMode = () => {},
 }: HomeScreenProps) {
-  void activeLearningContext;
   const interactiveDisabled = practiceLocked;
+  const workspaceLabel =
+    activeLearningContext?.config.copyDictionary.workspaceLabel ??
+    (hero.contextKind === 'general_law' ? 'Aprender leyes' : 'Preparar oposicion');
+  const workspaceName = activeLearningContext?.displayName?.trim() || null;
 
   return (
     <div className="mx-auto w-full max-w-lg px-4 pb-24 pt-6 sm:max-w-xl sm:px-6">
-      {/* El header global (avatar + racha) vive en `TopBar` */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+        <div>
+          <p className="ui-label text-slate-400">{workspaceLabel}</p>
+          {workspaceName ? (
+            <p className="mt-1 text-[0.98rem] font-extrabold tracking-[-0.02em] text-slate-800">
+              {workspaceName}
+            </p>
+          ) : null}
+        </div>
+      </div>
 
       {sessionContinuityHint ? (
         <div className="mt-4 rounded-[1.1rem] border border-violet-200/70 bg-violet-50/60 px-3.5 py-2.5 text-[12px] font-medium leading-[1.5] text-slate-700 shadow-sm">
@@ -152,12 +107,11 @@ export default function HomeScreen({
 
       <div className={sessionContinuityHint ? 'mt-4' : 'mt-5'}>
         <CoachHeroCard
-          message={coachMessage}
-          ctaLabel={coachCtaLabel}
+          hero={hero}
           disabled={interactiveDisabled}
           onCta={() => {
             if (interactiveDisabled) return;
-            onCoachCta();
+            onPrimaryCta();
           }}
         />
       </div>
@@ -186,7 +140,7 @@ export default function HomeScreen({
             disabled={interactiveDisabled}
             onCta={() => {
               if (interactiveDisabled) return;
-              onSelectMode(secondaryOption.mode);
+              onSecondaryOptionCta();
             }}
           />
         </div>
@@ -196,18 +150,14 @@ export default function HomeScreen({
 }
 
 function CoachHeroCard({
-  message,
-  ctaLabel,
+  hero,
   disabled,
   onCta,
 }: {
-  message: CoachTwoLineMessage | null;
-  ctaLabel: string;
+  hero: HomeHeroViewModel;
   disabled: boolean;
   onCta: () => void;
 }) {
-  const { eyebrow, headline, sub } = coachHeroPresentation(message);
-
   return (
     <section
       aria-labelledby="home-coach-hero-title"
@@ -223,18 +173,20 @@ function CoachHeroCard({
       />
 
       <div className="relative flex flex-col">
-        <p className="ui-label-strong text-violet-300/95">{eyebrow}</p>
+        <p className="ui-label-strong text-violet-300/95">{hero.eyebrow ?? 'Recomendacion principal'}</p>
 
         <h2
           id="home-coach-hero-title"
           className="ui-display-hero mt-5 max-w-[17ch] text-balance text-white sm:mt-6 sm:max-w-[19ch]"
         >
-          {headline}
+          {hero.title}
         </h2>
 
-        <p className="ui-body-main mt-6 max-w-[34ch] text-violet-100/[0.82]">
-          {sub}
-        </p>
+        {hero.summary ? (
+          <p className="ui-body-main mt-6 max-w-[34ch] text-violet-100/[0.82]">
+            {hero.summary}
+          </p>
+        ) : null}
 
         <div className="mt-10 sm:mt-11">
           <button
@@ -243,7 +195,7 @@ function CoachHeroCard({
             onClick={onCta}
             className="ui-button-text relative w-full overflow-hidden rounded-[1.25rem] bg-white py-[1.24rem] text-center text-[#1e1b4b] shadow-[0_16px_48px_-10px_rgba(0,0,0,0.55),inset_0_2px_0_rgba(255,255,255,0.95)] ring-[3px] ring-white/30 transition-[transform,box-shadow,filter] duration-200 ease-out hover:brightness-[1.04] hover:ring-white/55 active:scale-[0.982] disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-[3px] focus-visible:ring-offset-[#1e153f] sm:rounded-[1.4rem] sm:py-[1.28rem]"
           >
-            <span className="relative z-[1]">{ctaLabel}</span>
+            <span className="relative z-[1]">{hero.cta}</span>
           </button>
         </div>
       </div>
@@ -305,7 +257,7 @@ function SecondaryOptionCard({
   return (
     <section className="rounded-[1rem] border border-dashed border-slate-200/80 bg-transparent px-0.5 py-0.5">
       <div className="rounded-[0.9rem] border border-slate-100/95 bg-white/65 px-3 py-2.5 sm:px-3.5 sm:py-2.5">
-        <p className="ui-label text-slate-400/95">Plan B</p>
+        <p className="ui-label text-slate-400/95">Alternativa</p>
         <p className="ui-heading-secondary mt-1 text-slate-800">{title}</p>
         <p className="ui-body-secondary mt-1 text-slate-500">{summary}</p>
         <button
