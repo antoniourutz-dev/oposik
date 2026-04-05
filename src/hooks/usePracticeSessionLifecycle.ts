@@ -8,6 +8,7 @@ import type {
   PracticeQuestionScopeFilter,
 } from '../practiceTypes';
 import { recordPracticeSessionInCloud } from '../services/practiceCloudApi';
+import type { SyncPracticeAfterSessionOptions } from './usePracticeDataController';
 import type { PracticeView } from './usePracticeSessionFlow';
 
 const ACTIVE_SESSION_STORAGE_KEY = 'quantia_active_session_v1';
@@ -84,7 +85,10 @@ type UsePracticeSessionLifecycleOptions = {
   isGuest: boolean;
   selectedQuestionScope: PracticeQuestionScopeFilter;
   setSyncError: Dispatch<SetStateAction<string | null>>;
-  syncPracticeAfterSession: (questionScope: PracticeQuestionScopeFilter) => Promise<void>;
+  syncPracticeAfterSession: (
+    questionScope: PracticeQuestionScopeFilter,
+    options?: SyncPracticeAfterSessionOptions,
+  ) => Promise<void>;
 };
 
 const buildPracticeAnswer = (
@@ -174,7 +178,10 @@ export const usePracticeSessionLifecycle = ({
 
       try {
         await recordPracticeSessionInCloud(activeSession, completedAnswers, curriculum);
-        await syncPracticeAfterSession(selectedQuestionScope);
+        await syncPracticeAfterSession(selectedQuestionScope, {
+          nextStandardBatchStartIndex: activeSession.nextStandardBatchStartIndex,
+          sessionMode: activeSession.mode,
+        });
       } catch (error) {
         setSyncError(
           error instanceof Error ? error.message : 'No se ha podido guardar el progreso.',

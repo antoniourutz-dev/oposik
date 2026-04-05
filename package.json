@@ -24,7 +24,7 @@
     "supabase:functions:deploy:login": "npx supabase functions deploy login-with-username --no-verify-jwt",
     "supabase:functions:deploy:admin-user-management": "npx supabase functions deploy admin-user-management",
     "supabase:functions:deploy:daily-push": "npx supabase functions deploy daily-push-reminders --no-verify-jwt",
-    "supabase:functions:deploy:sync-practice": "npx supabase functions deploy sync-practice-session",
+    "supabase:functions:deploy:sync-practice": "npx supabase functions deploy sync-practice-session --no-verify-jwt",
     "supabase:deploy:username-auth": "npm run supabase:db:push && npm run supabase:functions:deploy:login",
     "supabase:deploy:admin-tools": "npm run supabase:db:push && npm run supabase:functions:deploy:admin-user-management",
     "supabase:deploy:push-reminders": "npm run supabase:db:push && npm run supabase:functions:deploy:daily-push",

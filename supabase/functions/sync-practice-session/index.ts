@@ -15,6 +15,22 @@ import { createEdgeLogger, safeUserId } from '../_shared/observability.ts';
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
+/** `get_my_practice_profile` lee `practice_profiles`, no `practice_sessions`. Sin esto el índice no avanza tras sync. */
+const applyStandardNextBatchToProfile = async (
+  adminClient: ReturnType<typeof createClient>,
+  args: { userId: string; curriculum: string; sessionMode: string; nextStandardBatchStartIndex: number | null },
+) => {
+  if (args.sessionMode !== 'standard') return;
+  const idx = Math.max(0, args.nextStandardBatchStartIndex ?? 0);
+  const { error } = await adminClient
+    .schema('app')
+    .from('practice_profiles')
+    .update({ next_standard_batch_start_index: idx })
+    .eq('user_id', args.userId)
+    .eq('curriculum', args.curriculum);
+  if (error) throw error;
+};
+
 Deno.serve(async (req) => {
   const log = createEdgeLogger('sync-practice-session', req);
   if (req.method === 'OPTIONS') {
@@ -113,6 +129,12 @@ Deno.serve(async (req) => {
 
     if (pending.length === 0) {
       await adminClient.schema('app').rpc('ensure_practice_profile', { p_user_id: user.id, p_curriculum: curriculum });
+      await applyStandardNextBatchToProfile(adminClient, {
+        userId: user.id,
+        curriculum,
+        sessionMode: session.mode,
+        nextStandardBatchStartIndex: session.nextStandardBatchStartIndex,
+      });
 
       const { data: newDashboard } = await adminClient
         .schema('app')
@@ -327,6 +349,12 @@ Deno.serve(async (req) => {
     }
 
     await adminClient.schema('app').rpc('ensure_practice_profile', { p_user_id: user.id, p_curriculum: curriculum });
+    await applyStandardNextBatchToProfile(adminClient, {
+      userId: user.id,
+      curriculum,
+      sessionMode: session.mode,
+      nextStandardBatchStartIndex: session.nextStandardBatchStartIndex,
+    });
 
     const { data: newDashboard, error: dashboardError } = await adminClient
       .schema('app')

@@ -15,9 +15,12 @@ describe('practiceAppDerived', () => {
     expect(
       computeRecommendedBatchStartIndex('all', { nextStandardBatchStartIndex: 200 }, 100),
     ).toBe(0);
-    expect(computeRecommendedBatchStartIndex('specific', { nextStandardBatchStartIndex: 20 }, 100)).toBe(
-      0,
-    );
+    expect(
+      computeRecommendedBatchStartIndex('specific', { nextStandardBatchStartIndex: 20 }, 100),
+    ).toBe(20);
+    expect(
+      computeRecommendedBatchStartIndex('common', { nextStandardBatchStartIndex: 40 }, 200),
+    ).toBe(40);
   });
 
   it('computeTotalBatches nunca es menor que 1', () => {

@@ -7,17 +7,20 @@ export type ProfileWithNextBatchIndex = {
   nextStandardBatchStartIndex: number;
 };
 
+/**
+ * Índice del siguiente bloque estándar (offset en el catálogo ya filtrado por scope en el RPC).
+ * Debe aplicarse también con temario **común / específico**: antes solo se usaba con `all`,
+ * así que el offset se reseteaba a 0 y se repetían siempre las mismas 20 preguntas.
+ */
 export const computeRecommendedBatchStartIndex = (
-  selectedQuestionScope: PracticeQuestionScopeFilter,
+  _selectedQuestionScope: PracticeQuestionScopeFilter,
   profile: ProfileWithNextBatchIndex | null | undefined,
   questionsCount: number,
 ): number => {
-  if (
-    selectedQuestionScope === 'all' &&
-    profile &&
-    profile.nextStandardBatchStartIndex < questionsCount
-  ) {
-    return profile.nextStandardBatchStartIndex;
+  if (!profile || questionsCount <= 0) return 0;
+  const idx = profile.nextStandardBatchStartIndex;
+  if (idx >= 0 && idx < questionsCount) {
+    return idx;
   }
   return 0;
 };

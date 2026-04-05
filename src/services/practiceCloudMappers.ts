@@ -99,6 +99,26 @@ export const mapProfile = (value: Record<string, unknown> | null): PracticeProfi
   };
 };
 
+/**
+ * Tras `sync-practice-session`, el siguiente offset vive en `practice_sessions`; `practice_profiles`
+ * puede no reflejarlo hasta desplegar la edge o si solo se actualizó la sesión. La lista de sesiones
+ * viene ordenada por `finished_at` descendente: la primera con `mode === 'standard'` es la estándar
+ * más reciente.
+ */
+export const mergeProfileNextBatchFromLatestStandardSession = (
+  profile: PracticeProfile | null,
+  sessionRows: Array<Record<string, unknown>> | null | undefined,
+): PracticeProfile | null => {
+  if (!profile || !sessionRows?.length) return profile;
+  const latestStandard = sessionRows.find((row) => String(row.mode ?? '').trim() === 'standard');
+  if (!latestStandard) return profile;
+  const raw = latestStandard.next_standard_batch_start_index;
+  if (raw === null || raw === undefined) return profile;
+  const idx = toNumber(raw);
+  if (!Number.isFinite(idx) || idx < 0) return profile;
+  return { ...profile, nextStandardBatchStartIndex: idx };
+};
+
 const mapPracticeMode = (value: unknown): PracticeSessionSummary['mode'] =>
   mapExternalPracticeMode(value);
 

@@ -455,13 +455,15 @@ export function buildHomeAdapterOutput(input: {
       value:
         dominantState === 'pressure'
           ? 'simulacro'
-          : dominantState === 'errors' || dominantState === 'backlog'
+          : dominantState === 'errors'
             ? 'review'
-            : dominantState === 'growth'
+            : dominantState === 'backlog'
               ? 'push'
-              : dominantState === 'recovery'
-                ? 'recovery'
-                : 'weak',
+              : dominantState === 'growth'
+                ? 'push'
+                : dominantState === 'recovery'
+                  ? 'recovery'
+                  : 'weak',
     },
   };
 

@@ -17,6 +17,7 @@ import {
   getStandardPracticeBatch,
   getWeakPracticeInsights,
 } from '../services/preguntasApi';
+import { DEFAULT_CURRICULUM } from '../practiceConfig';
 
 vi.mock('../services/preguntasApi', () => ({
   getAntiTrapPracticeBatch: vi.fn(),
@@ -65,7 +66,7 @@ describe('practiceSessionStarterCommands', () => {
       questionScope: 'all',
     });
 
-    expect(mockedGetStandardPracticeBatch).toHaveBeenCalledWith(0, 20, 'general', 'all');
+    expect(mockedGetStandardPracticeBatch).toHaveBeenCalledWith(0, 20, DEFAULT_CURRICULUM, 'all');
     expect(result.session).toMatchObject({
       mode: 'standard',
       batchStartIndex: 0,
@@ -148,7 +149,8 @@ describe('practiceSessionStarterCommands', () => {
     });
   });
 
-  it('repaso falladas usa snapshot local sin llamar al servidor', async () => {
+  it('repaso falladas pide primero al servidor y usa snapshot solo si el servidor no devuelve preguntas', async () => {
+    mockedGetWeakPracticeInsights.mockResolvedValue([]);
     const result = await loadWeakReviewSessionCommand({
       questionScope: 'all',
       weakQuestions: [{ question: buildQuestion('w1'), stat: {} as never }],
@@ -156,7 +158,7 @@ describe('practiceSessionStarterCommands', () => {
       questionsCount: 60,
     });
 
-    expect(mockedGetWeakPracticeInsights).not.toHaveBeenCalled();
+    expect(mockedGetWeakPracticeInsights).toHaveBeenCalled();
     expect(result.session).toMatchObject({
       mode: 'weakest',
       questionScope: 'all',
@@ -175,7 +177,7 @@ describe('practiceSessionStarterCommands', () => {
       questionsCount: 80,
     });
 
-    expect(mockedGetWeakPracticeInsights).toHaveBeenCalledWith('general', 20, 'all');
+    expect(mockedGetWeakPracticeInsights).toHaveBeenCalledWith(DEFAULT_CURRICULUM, 20, 'all');
     expect(result.session).toMatchObject({
       mode: 'weakest',
       questionScope: 'all',
@@ -193,8 +195,8 @@ describe('practiceSessionStarterCommands', () => {
       questionsCount: 100,
     });
 
-    expect(mockedGetWeakPracticeInsights).toHaveBeenCalledWith('general', 20, 'specific');
-    expect(mockedGetStandardPracticeBatch).toHaveBeenCalledWith(40, 20, 'general', 'specific');
+    expect(mockedGetWeakPracticeInsights).toHaveBeenCalledWith(DEFAULT_CURRICULUM, 20, 'specific');
+    expect(mockedGetStandardPracticeBatch).toHaveBeenCalledWith(40, 20, DEFAULT_CURRICULUM, 'specific');
     expect(result.session).toMatchObject({
       mode: 'standard',
       batchStartIndex: 40,

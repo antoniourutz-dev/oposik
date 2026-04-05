@@ -13,3 +13,8 @@ enable_signup = false
 enable_signup = false
 enable_confirmations = false
 double_confirm_changes = false
+
+# La verificación JWT en la gateway puede fallar con JWT asimétricos (JWKS) y devolver 401 aunque
+# el token sea válido para Auth/PostgREST. La función valida el usuario con `requireAuthenticatedUser`.
+[functions.sync-practice-session]
+verify_jwt = false

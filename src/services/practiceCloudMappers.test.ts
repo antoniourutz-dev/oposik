@@ -10,6 +10,7 @@ import {
   mapProfile,
   mapQuestionStat,
   mapSession,
+  mergeProfileNextBatchFromLatestStandardSession,
 } from './practiceCloudMappers';
 
 describe('practiceCloudMappers', () => {
@@ -33,6 +34,35 @@ describe('practiceCloudMappers', () => {
         message: 'permission denied',
       }),
     ).toBe('La sesion ha caducado. Vuelve a iniciar sesion.');
+  });
+
+  it('actualiza el indice de bloque desde la ultima sesion standard cuando el perfil RPC va atrasado', () => {
+    const profile = mapProfile({
+      user_id: 'u1',
+      curriculum: 'osakidetza_admin',
+      next_standard_batch_start_index: 0,
+      total_answered: 0,
+      total_correct: 0,
+      total_incorrect: 0,
+      total_sessions: 0,
+      last_studied_at: null,
+    });
+    expect(profile).not.toBeNull();
+    const merged = mergeProfileNextBatchFromLatestStandardSession(profile, [
+      {
+        session_id: 's-r',
+        mode: 'random',
+        finished_at: '2026-04-03T12:00:00Z',
+        next_standard_batch_start_index: null,
+      },
+      {
+        session_id: 's-std',
+        mode: 'standard',
+        finished_at: '2026-04-03T11:00:00Z',
+        next_standard_batch_start_index: 40,
+      },
+    ]);
+    expect(merged?.nextStandardBatchStartIndex).toBe(40);
   });
 
   it('convierte perfiles, sesiones y estadisticas al contrato de frontend', () => {
@@ -70,7 +100,7 @@ describe('practiceCloudMappers', () => {
 
     expect(profile).toMatchObject({
       userId: 'user-1',
-      curriculum: 'general',
+      curriculum: 'osakidetza_admin',
       nextStandardBatchStartIndex: 40,
       totalAnswered: 18,
       totalCorrect: 11,

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { BookOpenCheck, ChevronRight, Shuffle, Zap } from 'lucide-react';
+import { BookOpenCheck, ChevronRight, Shuffle } from 'lucide-react';
 import { buildStudyLawDescription } from '../../domain/generalLaw';
 import type { PracticeLawPerformance, PracticeTopicPerformance } from '../../practiceTypes';
 import type { DashboardContentProps } from './types';
@@ -72,6 +72,30 @@ const practiceVisibilityPctFromAttempts = (attempts: number, questionCount: numb
 
 const topicBarDisplayPct = (consolidatedPct: number, attempts: number, questionCount: number) =>
   Math.max(consolidatedPct, practiceVisibilityPctFromAttempts(attempts, questionCount));
+
+/** Un solo 0–100 alineado con las fases (barra apilada); pondera avance medio del tema. */
+const topicPhaseWeightedPct = (tiers: TopicMasteryTiers, questionCount: number) => {
+  if (questionCount <= 0) return 0;
+  const score =
+    (0 * tiers.unseen +
+      22 * tiers.fragile +
+      45 * tiers.consolidating +
+      78 * tiers.solid +
+      100 * tiers.mastered) /
+    questionCount;
+  return clampPct(score);
+};
+
+const topicRowBadgePercent = (
+  showTierBar: boolean,
+  tiers: TopicMasteryTiers | undefined,
+  questionCount: number,
+  consolidatedPct: number,
+  attempts: number,
+) =>
+  showTierBar && tiers
+    ? topicPhaseWeightedPct(tiers, questionCount)
+    : topicBarDisplayPct(consolidatedPct, attempts, questionCount);
 const normalizeTopicKey = (label: string) =>
   label.normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
 const TOPIC_PREFIX_RE = /^\s*(\d{1,2})\s*\.\s*[–-]\s*/;
@@ -203,55 +227,6 @@ const resolveCategoryPhaseBadge = (
   return 'Empezando';
 };
 
-const CARD_TIER_SEGMENTS: { key: keyof TopicMasteryTiers; barClass: string }[] = [
-  { key: 'unseen', barClass: 'bg-white/14' },
-  { key: 'fragile', barClass: 'bg-orange-400/92' },
-  { key: 'consolidating', barClass: 'bg-amber-300/93' },
-  { key: 'solid', barClass: 'bg-lime-200/95' },
-  { key: 'mastered', barClass: 'bg-white' },
-];
-
-/** Barra apilada en tarjetas de categoría (fondo degradado oscuro). */
-const TopicMasteryStackedBar: React.FC<{
-  tiers: TopicMasteryTiers;
-  totalQuestions: number;
-  reduceMotion: boolean | null;
-  segments: { key: keyof TopicMasteryTiers; barClass: string }[];
-  trackClassName: string;
-}> = ({ tiers, totalQuestions, reduceMotion, segments, trackClassName }) => {
-  const denom = totalQuestions > 0 ? totalQuestions : tierSum(tiers);
-  const pctOf = (n: number) => (denom <= 0 ? 0 : (n / denom) * 100);
-
-  return (
-    <div
-      className={`flex w-full overflow-hidden rounded-full ${trackClassName}`}
-      aria-hidden
-    >
-      {segments.map(({ key, barClass }) => {
-        const w = pctOf(tiers[key]);
-        if (w <= 0) return null;
-        return (
-          <motion.div
-            key={key}
-            initial={reduceMotion ? false : { width: 0 }}
-            animate={{ width: `${w}%` }}
-            transition={{ duration: 0.85, ease: 'easeOut' }}
-            className={`h-full min-h-0 shrink-0 ${barClass}`}
-          />
-        );
-      })}
-    </div>
-  );
-};
-
-const ROW_TIER_SEGMENTS: { key: keyof TopicMasteryTiers; barClass: string }[] = [
-  { key: 'unseen', barClass: 'bg-slate-200' },
-  { key: 'fragile', barClass: 'bg-orange-400' },
-  { key: 'consolidating', barClass: 'bg-amber-300' },
-  { key: 'solid', barClass: 'bg-lime-400' },
-  { key: 'mastered', barClass: 'bg-violet-600' },
-];
-
 const TIER_PHASE_TITLES: { key: keyof TopicMasteryTiers; label: string }[] = [
   { key: 'unseen', label: 'Sin empezar' },
   { key: 'fragile', label: 'Repaso' },
@@ -260,29 +235,74 @@ const TIER_PHASE_TITLES: { key: keyof TopicMasteryTiers; label: string }[] = [
   { key: 'mastered', label: 'Genial' },
 ];
 
-const tierDotClass = (key: keyof TopicMasteryTiers, variant: 'card' | 'row') => {
-  const list = variant === 'card' ? CARD_TIER_SEGMENTS : ROW_TIER_SEGMENTS;
-  return list.find((s) => s.key === key)?.barClass ?? 'bg-slate-300';
+/** Índice de fase 0–4 según media ponderada de preguntas por etapa. */
+const masteryPhaseIndex = (tiers: TopicMasteryTiers, totalQuestions: number) => {
+  if (totalQuestions <= 0 || tierSum(tiers) <= 0) return 0;
+  const w =
+    (0 * tiers.unseen +
+      1 * tiers.fragile +
+      2 * tiers.consolidating +
+      3 * tiers.solid +
+      4 * tiers.mastered) /
+    totalQuestions;
+  return Math.min(4, Math.max(0, Math.round(w)));
 };
 
-/** Títulos de fase (leyenda); sin párrafos explicativos, solo nombre + color. */
-const MasteryPhaseTitles: React.FC<{ variant: 'card' | 'row' }> = ({ variant }) => {
-  const textMuted = variant === 'card' ? 'text-white/78' : 'text-slate-500';
+/**
+ * Una sola barra de nivel (relleno continuo izquierda → derecha) con marcas entre niveles 1–5.
+ * Sustituye la barra apilada multicolor + leyenda de cinco etiquetas.
+ */
+const TopicMasteryLevelBar: React.FC<{
+  tiers: TopicMasteryTiers;
+  totalQuestions: number;
+  reduceMotion: boolean | null;
+  variant: 'card' | 'row';
+}> = ({ tiers, totalQuestions, reduceMotion, variant }) => {
+  const pct = topicPhaseWeightedPct(tiers, totalQuestions);
+  const phaseIdx = masteryPhaseIndex(tiers, totalQuestions);
+  const phaseLabel = TIER_PHASE_TITLES[phaseIdx]?.label ?? '—';
+  const levelNum = phaseIdx + 1;
+
+  const track =
+    variant === 'card'
+      ? 'bg-white/14 ring-1 ring-white/25'
+      : 'bg-slate-100 ring-1 ring-slate-200/90';
+  const fill =
+    variant === 'card'
+      ? 'bg-white shadow-[0_0_12px_rgba(255,255,255,0.45)]'
+      : 'bg-violet-500 shadow-sm';
+  const tick = variant === 'card' ? 'bg-white/28' : 'bg-slate-300/90';
+  const captionMuted = variant === 'card' ? 'text-white/72' : 'text-slate-500';
+  const captionStrong = variant === 'card' ? 'text-white' : 'text-slate-800';
+
+  const aria = `Progreso ${Math.round(pct)} por ciento. Nivel ${levelNum} de 5: ${phaseLabel}.`;
 
   return (
-    <div
-      className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 ${textMuted}`}
-      aria-label="Fases de dominio"
-    >
-      {TIER_PHASE_TITLES.map(({ key, label }) => (
-        <span key={key} className="inline-flex items-center gap-1.5">
-          <span
-            className={`h-2 w-2 shrink-0 rounded-sm ${tierDotClass(key, variant)}`}
+    <div className="w-full">
+      <div className={`relative h-2.5 w-full overflow-hidden rounded-full ${track}`}>
+        {[20, 40, 60, 80].map((mark) => (
+          <div
+            key={mark}
+            className={`pointer-events-none absolute bottom-0 top-0 z-[1] w-px ${tick}`}
+            style={{ left: `${mark}%` }}
             aria-hidden
           />
-          <span className="text-[10px] font-bold leading-none tracking-tight">{label}</span>
-        </span>
-      ))}
+        ))}
+        <motion.div
+          initial={reduceMotion ? false : { width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.85, ease: 'easeOut' }}
+          className={`relative z-[2] h-full rounded-full ${fill}`}
+        />
+      </div>
+      <p
+        className={`mt-2 text-[10px] font-bold leading-snug tracking-tight ${captionMuted}`}
+        aria-label={aria}
+      >
+        <span className={captionStrong}>Nivel {levelNum} de 5</span>
+        <span className="mx-1.5 font-normal opacity-80">·</span>
+        <span>{phaseLabel}</span>
+      </p>
     </div>
   );
 };
@@ -489,16 +509,12 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
 
                 <div className="relative z-10 mt-6 sm:mt-8">
                   {category.masteryTiers && tierSum(category.masteryTiers) > 0 ? (
-                    <div>
-                      <TopicMasteryStackedBar
-                        tiers={category.masteryTiers}
-                        totalQuestions={category.totalQuestions}
-                        reduceMotion={reduceMotion}
-                        segments={CARD_TIER_SEGMENTS}
-                        trackClassName="h-2.5 bg-white/12 ring-1 ring-white/25"
-                      />
-                      <MasteryPhaseTitles variant="card" />
-                    </div>
+                    <TopicMasteryLevelBar
+                      tiers={category.masteryTiers}
+                      totalQuestions={category.totalQuestions}
+                      reduceMotion={reduceMotion}
+                      variant="card"
+                    />
                   ) : (
                     <div className="h-2 overflow-hidden rounded-full bg-white/20">
                       <motion.div
@@ -557,6 +573,13 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                         item.questionCount,
                       );
                       const hasProgress = fallbackBarPct > 0;
+                      const badgePct = topicRowBadgePercent(
+                        showTierBar,
+                        rowTiers,
+                        item.questionCount,
+                        item.progress,
+                        item.attempts ?? 0,
+                      );
 
                       return (
                         <motion.button
@@ -585,16 +608,12 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                             ) : null}
                             <div className="mt-3">
                               {showTierBar ? (
-                                <div>
-                                  <TopicMasteryStackedBar
-                                    tiers={rowTiers}
-                                    totalQuestions={item.questionCount}
-                                    reduceMotion={reduceMotion}
-                                    segments={ROW_TIER_SEGMENTS}
-                                    trackClassName="h-2 bg-slate-100 ring-1 ring-slate-200/90"
-                                  />
-                                  <MasteryPhaseTitles variant="row" />
-                                </div>
+                                <TopicMasteryLevelBar
+                                  tiers={rowTiers}
+                                  totalQuestions={item.questionCount}
+                                  reduceMotion={reduceMotion}
+                                  variant="row"
+                                />
                               ) : (
                                 <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                                   <motion.div
@@ -610,8 +629,10 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                             </div>
                           </div>
 
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-200">
-                            <Zap className="h-4 w-4 fill-white" />
+                          <div className="flex h-11 min-w-[3.25rem] shrink-0 items-center justify-center rounded-xl border border-violet-200/70 bg-violet-50/90 px-1 shadow-sm">
+                            <span className="text-[12px] font-black tabular-nums leading-none text-violet-500 sm:text-[13px]">
+                              {Math.round(badgePct)}%
+                            </span>
                           </div>
                         </motion.button>
                       );

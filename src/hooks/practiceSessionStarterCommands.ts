@@ -110,8 +110,9 @@ export const loadQuickFiveSessionCommand = async ({
 };
 
 /**
- * Repaso de falladas: usa el snapshot local si hay; si no, vuelve a pedir el batch débil al servidor.
- * (El dashboard puede mostrar backlog sin que el snapshot de 5 insights esté relleno.)
+ * Repaso de falladas: siempre pide el batch débil al servidor tras sincronizar (user_question_state).
+ * El snapshot de React Query suele ir atrasado; si primero usábamos weakQuestions locales, repetías
+ * siempre las mismas preguntas aunque hubieras acertado.
  */
 export const loadWeakReviewSessionCommand = async ({
   questionScope,
@@ -126,17 +127,17 @@ export const loadWeakReviewSessionCommand = async ({
   questionsCount: number;
   curriculum?: string;
 }): Promise<SessionStarterCommandResult> => {
-  let session = buildWeakestPracticeSession(weakQuestions, questionScope);
-  if (session) {
-    return { session };
-  }
-
   const fresh = await getWeakPracticeInsights(
     curriculum,
     PRACTICE_BATCH_SIZE,
     questionScope,
   );
-  session = buildWeakestPracticeSession(fresh, questionScope);
+  let session = buildWeakestPracticeSession(fresh, questionScope);
+  if (session) {
+    return { session };
+  }
+
+  session = buildWeakestPracticeSession(weakQuestions, questionScope);
   if (session) {
     return { session };
   }

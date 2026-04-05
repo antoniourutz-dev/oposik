@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   BookOpenText,
   CheckCircle2,
+  ChevronDown,
   RotateCcw,
   XCircle,
   Target,
@@ -599,6 +600,10 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>(
     incorrectCount > 0 ? 'incorrect' : 'all',
   );
+  /** Revisión pregunta a pregunta: colapsada por defecto; el alumno despliega si quiere el detalle. */
+  const [detailReviewExpanded, setDetailReviewExpanded] = useState(false);
+  /** Impacto por materia (normas): colapsado por defecto. */
+  const [lawImpactExpanded, setLawImpactExpanded] = useState(false);
   const [isDockVisible, setIsDockVisible] = useState(true);
   const [renderedEntryCount, setRenderedEntryCount] = useState(INITIAL_REVIEW_RENDER_COUNT);
   const hideDockTimeoutRef = useRef<number | null>(null);
@@ -849,7 +854,7 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
     return () => {
       observer.disconnect();
     };
-  }, [hasMoreEntries, loadMoreEntries, renderedEntryCount]);
+  }, [detailReviewExpanded, hasMoreEntries, loadMoreEntries, renderedEntryCount]);
 
   const sessionLawBreakdown = useMemo(() => {
     const breakdown: Record<
@@ -1027,30 +1032,49 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
         </div>
 
         {sessionLawBreakdown.length > 0 ? (
-          <div className="rounded-[1.4rem] overflow-hidden border border-indigo-100 bg-white p-4 shadow-sm sm:p-5">
-            <div className="mb-3 flex items-center gap-3 sm:mb-4">
+          <div className="overflow-hidden rounded-[1.4rem] border border-indigo-100 bg-white shadow-sm">
+            <button
+              type="button"
+              onClick={() => setLawImpactExpanded((open) => !open)}
+              aria-expanded={lawImpactExpanded}
+              className="flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-indigo-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-300/80 sm:px-5 sm:py-4"
+            >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
                 <Target size={20} />
               </div>
-              <div>
-                <p className="ui-label text-slate-400">
-                  Dónde ha pesado la norma
-                </p>
-                <h3 className="text-base font-black tracking-tight text-slate-950 sm:text-lg">
+              <div className="min-w-0 flex-1">
+                <p className="ui-label text-slate-400">Dónde ha pesado la norma</p>
+                <h3 className="mt-0.5 text-base font-black tracking-tight text-slate-950 sm:text-lg">
                   Impacto por materia
                 </h3>
+                <p className="mt-2 text-[13px] font-semibold leading-[1.45] text-slate-500">
+                  {lawImpactExpanded
+                    ? 'Puedes ocultar este bloque cuando ya hayas visto el reparto por norma.'
+                    : `${sessionLawBreakdown.length} materia${sessionLawBreakdown.length === 1 ? '' : 's'} en esta sesión. Despliega para ver el detalle por norma.`}
+                </p>
               </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {sessionLawBreakdown.map((law, idx) => (
-                <LawPerformanceCard
-                  key={idx}
-                  ley_referencia={law.ley_referencia}
-                  accuracy={law.accuracyRate}
-                  attempts={law.attempts}
-                />
-              ))}
-            </div>
+              <ChevronDown
+                aria-hidden
+                className={`mt-1 h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 ${
+                  lawImpactExpanded ? 'rotate-180' : ''
+                }`}
+                strokeWidth={2.5}
+              />
+            </button>
+            {lawImpactExpanded ? (
+              <div className="border-t border-indigo-100 px-4 pb-4 pt-1 sm:px-5 sm:pb-5">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {sessionLawBreakdown.map((law, idx) => (
+                    <LawPerformanceCard
+                      key={idx}
+                      ley_referencia={law.ley_referencia}
+                      accuracy={law.accuracyRate}
+                      attempts={law.attempts}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -1132,115 +1156,153 @@ const PracticeReviewScreen: React.FC<PracticeReviewScreenProps> = ({
       </section>
 
       <section className="space-y-2.5">
-        <div className="rounded-[1.25rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] px-3.5 py-3 shadow-[0_20px_46px_-34px_rgba(141,147,242,0.16)]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="ui-label text-slate-500">
-                Revisión precisa
-              </p>
-              <p className="mt-1 text-[1.02rem] font-black leading-[1.25] tracking-[-0.02em] text-slate-950">
-                {reviewFilter === 'incorrect'
-                  ? 'Donde más te ha costado'
-                  : 'Todas las respuestas'}
-              </p>
-            </div>
-            <div className="inline-flex rounded-full border border-[#d7e4fb] bg-white/90 p-1 shadow-[0_12px_24px_-22px_rgba(141,147,242,0.16)]">
-              <button
-                type="button"
-                onClick={() => setReviewFilter('incorrect')}
-                disabled={incorrectCount === 0}
-                className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] transition-all duration-200 ${
-                  reviewFilter === 'incorrect'
-                    ? 'quantia-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
-                    : 'text-slate-500 hover:bg-sky-50/80'
-                } ${incorrectCount === 0 ? 'cursor-not-allowed opacity-45 hover:bg-transparent' : ''}`}
-              >
-                Incorrectas
-              </button>
-              <button
-                type="button"
-                onClick={() => setReviewFilter('all')}
-                className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] transition-all duration-200 ${
-                  reviewFilter === 'all'
-                    ? 'quantia-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
-                    : 'text-slate-500 hover:bg-sky-50/80'
-                }`}
-              >
-                Todas
-              </button>
-            </div>
-          </div>
-          <p className="mt-2 text-[13px] font-semibold leading-[1.5] text-slate-500">
-            {reviewFilter === 'incorrect'
-              ? `${incorrectCount} fallo${incorrectCount === 1 ? '' : 's'} en orden de prioridad`
-              : `${answers.length} respuesta${answers.length === 1 ? '' : 's'} resuelta${answers.length === 1 ? '' : 's'}`}
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
-            Mostrando {renderedEntries.length} de {visibleEntries.length}
-          </p>
-        </div>
-
-        {renderedEntries.length === 0 ? (
-          <div className="rounded-[1.25rem] border border-dashed border-[#d7e4fb] bg-white/80 px-4 py-5 text-center shadow-[0_18px_34px_-30px_rgba(141,147,242,0.14)]">
-            <p className="text-[1.04rem] font-black tracking-[-0.02em] text-slate-900">
-              No hay respuestas para revisar
-            </p>
-            <p className="mt-1.5 text-[14px] font-semibold leading-[1.55] text-slate-500">
-              Completa un bloque para abrir esta lectura con detalle.
-            </p>
-          </div>
-        ) : null}
-
-        <div className="grid gap-2.5 xl:grid-cols-2">
-          {renderedEntries.map((entry, idx) => {
-            const tags: string[] = [];
-            if (!entry.answer.isCorrect) {
-              if (reviewExperience.dominantState === 'pressure' || sessionMode === 'simulacro') {
-                tags.push('Fallo bajo presión');
-              }
-              if (entry.answer.errorTypeInferred === 'lectura_rapida') {
-                tags.push('Error de lectura');
-              }
-              if (
-                entry.answer.errorTypeInferred &&
-                repeatedErrorTypes.has(entry.answer.errorTypeInferred)
-              ) {
-                tags.push('Error repetido');
-              }
-            }
-
-            return (
-              <ReviewEntryCard
-                key={`${entry.answer.question.id}-${entry.reviewIndex}`}
-                entry={entry}
-                sessionId={sessionId}
-                curriculum={curriculum}
-                microTags={tags}
-                showErrorTypeLabel={reviewExperience.explanationStyle.showErrorTypeLabel}
-                isPriorityFocus={idx === 0}
-                textHighlightingEnabled={textHighlightingEnabled}
-              />
-            );
-          })}
-        </div>
-
-        {hasMoreEntries ? (
-          <div
-            ref={loadMoreSentinelRef}
-            className="flex flex-col items-center gap-2 rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] px-4 py-3.5 shadow-[0_20px_40px_-34px_rgba(141,147,242,0.16)]"
+        <div className="overflow-hidden rounded-[1.25rem] border border-[#d7e4fb] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,247,255,0.92))] shadow-[0_20px_46px_-34px_rgba(141,147,242,0.16)]">
+          <button
+            type="button"
+            onClick={() => setDetailReviewExpanded((open) => !open)}
+            aria-expanded={detailReviewExpanded}
+            className="flex w-full items-start gap-3 px-3.5 py-3.5 text-left transition-colors hover:bg-sky-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300/80 sm:px-4 sm:py-4"
           >
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
-              Quedan {remainingEntries} por cargar
-            </p>
-            <button
-              type="button"
-              onClick={loadMoreEntries}
-              className="rounded-full border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(141,147,242,0.18))] px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-800 shadow-[0_12px_24px_-20px_rgba(141,147,242,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98]"
-            >
-              Cargar {Math.min(REVIEW_RENDER_STEP, remainingEntries)} mas
-            </button>
-          </div>
-        ) : null}
+            <div className="min-w-0 flex-1">
+              <p className="ui-label text-slate-500">Revisión pregunta a pregunta</p>
+              <p className="mt-1 text-[1.02rem] font-black leading-[1.25] tracking-[-0.02em] text-slate-950">
+                {score}/{totalQuestions} aciertos
+                {incorrectCount > 0 ? (
+                  <span className="text-rose-600">
+                    {' '}
+                    · {incorrectCount} incorrecta{incorrectCount === 1 ? '' : 's'}
+                  </span>
+                ) : (
+                  <span className="text-emerald-700"> · Sin fallos</span>
+                )}
+              </p>
+              <p className="mt-2 text-[13px] font-semibold leading-[1.45] text-slate-500">
+                {detailReviewExpanded
+                  ? 'Puedes ocultar este panel cuando termines de revisar.'
+                  : 'Resumen compacto. Despliega para ver enunciados, opciones y explicaciones.'}
+              </p>
+            </div>
+            <ChevronDown
+              aria-hidden
+              className={`mt-0.5 h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 ${
+                detailReviewExpanded ? 'rotate-180' : ''
+              }`}
+              strokeWidth={2.5}
+            />
+          </button>
+
+          {detailReviewExpanded ? (
+            <div className="space-y-2.5 border-t border-[#d7e4fb] px-3.5 pb-3 pt-2 sm:px-4 sm:pb-4">
+              <div className="rounded-[1.1rem] border border-[#e8f0fc] bg-white/90 px-3 py-3 shadow-sm sm:px-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="ui-label text-slate-500">Revisión precisa</p>
+                    <p className="mt-1 text-[1rem] font-black leading-[1.25] tracking-[-0.02em] text-slate-950">
+                      {reviewFilter === 'incorrect'
+                        ? 'Donde más te ha costado'
+                        : 'Todas las respuestas'}
+                    </p>
+                  </div>
+                  <div className="inline-flex rounded-full border border-[#d7e4fb] bg-white/90 p-1 shadow-[0_12px_24px_-22px_rgba(141,147,242,0.16)]">
+                    <button
+                      type="button"
+                      onClick={() => setReviewFilter('incorrect')}
+                      disabled={incorrectCount === 0}
+                      className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] transition-all duration-200 ${
+                        reviewFilter === 'incorrect'
+                          ? 'quantia-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
+                          : 'text-slate-500 hover:bg-sky-50/80'
+                      } ${incorrectCount === 0 ? 'cursor-not-allowed opacity-45 hover:bg-transparent' : ''}`}
+                    >
+                      Incorrectas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReviewFilter('all')}
+                      className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] transition-all duration-200 ${
+                        reviewFilter === 'all'
+                          ? 'quantia-bg-gradient text-white shadow-[0_12px_22px_-16px_rgba(141,147,242,0.28)]'
+                          : 'text-slate-500 hover:bg-sky-50/80'
+                      }`}
+                    >
+                      Todas
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-2 text-[13px] font-semibold leading-[1.5] text-slate-500">
+                  {reviewFilter === 'incorrect'
+                    ? `${incorrectCount} fallo${incorrectCount === 1 ? '' : 's'} en orden de prioridad`
+                    : `${answers.length} respuesta${answers.length === 1 ? '' : 's'} resuelta${answers.length === 1 ? '' : 's'}`}
+                </p>
+                <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Mostrando {renderedEntries.length} de {visibleEntries.length}
+                </p>
+              </div>
+
+              {renderedEntries.length === 0 ? (
+                <div className="rounded-[1.25rem] border border-dashed border-[#d7e4fb] bg-white/80 px-4 py-5 text-center shadow-[0_18px_34px_-30px_rgba(141,147,242,0.14)]">
+                  <p className="text-[1.04rem] font-black tracking-[-0.02em] text-slate-900">
+                    No hay respuestas para revisar
+                  </p>
+                  <p className="mt-1.5 text-[14px] font-semibold leading-[1.55] text-slate-500">
+                    Completa un bloque para abrir esta lectura con detalle.
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="grid gap-2.5 xl:grid-cols-2">
+                {renderedEntries.map((entry, idx) => {
+                  const tags: string[] = [];
+                  if (!entry.answer.isCorrect) {
+                    if (reviewExperience.dominantState === 'pressure' || sessionMode === 'simulacro') {
+                      tags.push('Fallo bajo presión');
+                    }
+                    if (entry.answer.errorTypeInferred === 'lectura_rapida') {
+                      tags.push('Error de lectura');
+                    }
+                    if (
+                      entry.answer.errorTypeInferred &&
+                      repeatedErrorTypes.has(entry.answer.errorTypeInferred)
+                    ) {
+                      tags.push('Error repetido');
+                    }
+                  }
+
+                  return (
+                    <ReviewEntryCard
+                      key={`${entry.answer.question.id}-${entry.reviewIndex}`}
+                      entry={entry}
+                      sessionId={sessionId}
+                      curriculum={curriculum}
+                      microTags={tags}
+                      showErrorTypeLabel={reviewExperience.explanationStyle.showErrorTypeLabel}
+                      isPriorityFocus={idx === 0}
+                      textHighlightingEnabled={textHighlightingEnabled}
+                    />
+                  );
+                })}
+              </div>
+
+              {hasMoreEntries ? (
+                <div
+                  ref={loadMoreSentinelRef}
+                  className="flex flex-col items-center gap-2 rounded-[1.15rem] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,247,255,0.9))] px-4 py-3.5 shadow-[0_20px_40px_-34px_rgba(141,147,242,0.16)]"
+                >
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                    Quedan {remainingEntries} por cargar
+                  </p>
+                  <button
+                    type="button"
+                    onClick={loadMoreEntries}
+                    className="rounded-full border border-[#bfd2f6] bg-[linear-gradient(135deg,rgba(121,182,233,0.14),rgba(141,147,242,0.18))] px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-800 shadow-[0_12px_24px_-20px_rgba(141,147,242,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(121,182,233,0.18),rgba(141,147,242,0.22))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 active:translate-y-0 active:scale-[0.98]"
+                  >
+                    Cargar {Math.min(REVIEW_RENDER_STEP, remainingEntries)} mas
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </section>
 
       {!compactReviewLayout && sessionEndExperience.microRewards.length > 0 ? (

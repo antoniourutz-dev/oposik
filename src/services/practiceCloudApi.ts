@@ -5,7 +5,7 @@ import {
   PracticeLearningDashboardV2,
   PracticePressureInsightsV2,
 } from '../practiceTypes';
-import { DEFAULT_CURRICULUM } from '../practiceConfig';
+import { DEFAULT_CURRICULUM, PRACTICE_BATCH_SIZE } from '../practiceConfig';
 import { supabase } from '../supabaseClient';
 import { trackAsyncOperation } from '../telemetry/telemetryClient';
 import {
@@ -17,7 +17,58 @@ import {
   mapPressureInsightsV2,
   mapProfile,
   mapSession,
+  mergeProfileNextBatchFromLatestStandardSession,
 } from './practiceCloudMappers';
+
+/**
+ * Las Edge Functions con JWT verification rechazan `Authorization: Bearer <anon_key>` (401).
+ * `fetchWithAuth` usa el anon key si no hay sesión; hay que enviar siempre un access_token de usuario.
+ */
+const getAccessTokenForFunctionsInvoke = async (): Promise<string> => {
+  let {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session?.access_token) {
+    throw new Error(
+      'No hay sesion activa. Inicia sesion de nuevo para guardar el progreso en la nube.',
+    );
+  }
+
+  const expiresAtMs = (session.expires_at ?? 0) * 1000;
+  if (expiresAtMs < Date.now() + 90_000) {
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    if (!refreshError && refreshed.session?.access_token) {
+      return refreshed.session.access_token;
+    }
+    if (expiresAtMs < Date.now()) {
+      throw new Error(
+        'Sesion caducada. Vuelve a iniciar sesion para guardar el progreso en la nube.',
+      );
+    }
+  }
+
+  return session.access_token;
+};
+
+/**
+ * Solo los campos que consume `sync-practice-session`. Evita mandar `questions` enteras y fuerza
+ * `nextStandardBatchStartIndex` en modo standard (JSON.stringify omite `undefined`).
+ */
+const buildSyncSessionBody = (session: ActivePracticeSession) => ({
+  id: session.id,
+  mode: session.mode,
+  title: session.title,
+  startedAt: session.startedAt,
+  batchNumber: session.batchNumber,
+  batchSize: session.mode === 'standard' ? session.questions.length || PRACTICE_BATCH_SIZE : null,
+  batchStartIndex: session.batchStartIndex,
+  nextStandardBatchStartIndex:
+    session.mode === 'standard'
+      ? Math.max(0, session.nextStandardBatchStartIndex ?? 0)
+      : session.nextStandardBatchStartIndex,
+});
 
 const buildAttemptPayloads = (answers: PracticeAnswer[]) => {
   const attemptsByQuestionId = new Map<
@@ -87,7 +138,7 @@ export const getMyPracticeState = async (
         supabase
           .schema('app')
           .from('practice_sessions')
-          .select('session_id, mode, title, started_at, finished_at, score, total')
+          .select('session_id, mode, title, started_at, finished_at, score, total, next_standard_batch_start_index')
           .eq('curriculum', curriculum)
           .order('finished_at', { ascending: false })
           // Calendario y racha usan esta lista: 12 sesiones ocultaban días anteriores con varias sesiones/día.
@@ -117,9 +168,12 @@ export const getMyPracticeState = async (
         throw new Error(mapPracticeCloudError(firstError));
       }
 
+      const sessionRows = (sessionsData ?? []) as Array<Record<string, unknown>>;
+      const profileFromRpc = mapProfile((profileData ?? null) as Record<string, unknown> | null);
+
       return {
-        profile: mapProfile((profileData ?? null) as Record<string, unknown> | null),
-        recentSessions: ((sessionsData ?? []) as Array<Record<string, unknown>>).map(mapSession),
+        profile: mergeProfileNextBatchFromLatestStandardSession(profileFromRpc, sessionRows),
+        recentSessions: sessionRows.map(mapSession),
         learningDashboard: learningDashboardError
           ? null
           : mapLearningDashboard((learningDashboardData ?? null) as Record<string, unknown> | null),
@@ -259,11 +313,15 @@ export const recordPracticeSessionInCloud = async (
   await trackAsyncOperation(
     'practiceCloud.recordPracticeSessionSync',
     async () => {
+      const accessToken = await getAccessTokenForFunctionsInvoke();
       const { data, error } = await supabase.functions.invoke('sync-practice-session', {
         body: {
-          session,
+          session: buildSyncSessionBody(session),
           attempts: attemptPayloads,
           curriculum,
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 

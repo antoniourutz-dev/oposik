@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PracticeQuestionScopeFilter } from '../practiceTypes';
+import type { PracticeProfile, PracticeQuestionScopeFilter } from '../practiceTypes';
+import type { PracticeAccountSnapshot } from '../services/practiceBootstrapApi';
 import {
   loadPracticeAccountSnapshot,
   loadPracticeScopeSnapshot,
 } from '../services/practiceBootstrapApi';
+import { DEFAULT_CURRICULUM } from '../practiceConfig';
 import { upsertMyExamTarget } from '../services/practiceCloudApi';
 import { practiceQueryKeys } from '../services/practiceQueryKeys';
 import { trackAsyncOperation } from '../telemetry/telemetryClient';
@@ -21,6 +23,12 @@ type UsePracticeDataControllerOptions = {
   isGuest: boolean;
   selectedQuestionScope: PracticeQuestionScopeFilter;
   sessionUserId: string | null;
+};
+
+/** Tras sync, actualizar el cursor del siguiente bloque estándar sin esperar solo al refetch. */
+export type SyncPracticeAfterSessionOptions = {
+  nextStandardBatchStartIndex?: number | null;
+  sessionMode?: string | null;
 };
 
 const getErrorMessage = (error: unknown, fallback: string) =>
@@ -127,7 +135,10 @@ export const usePracticeDataController = ({
   }, [accountQueryKey, queryClient, scopeQueryKey, selectedQuestionScope, sessionUserId]);
 
   const syncPracticeAfterSession = useCallback(
-    async (_questionScope: PracticeQuestionScopeFilter) => {
+    async (
+      _questionScope: PracticeQuestionScopeFilter,
+      options?: SyncPracticeAfterSessionOptions,
+    ) => {
       if (!sessionUserId) return;
 
       setSyncErrorOverride(null);
@@ -136,6 +147,46 @@ export const usePracticeDataController = ({
         await trackAsyncOperation(
           'practice.syncPracticeAfterSession',
           async () => {
+            const mode = options?.sessionMode;
+            const nextIdx = options?.nextStandardBatchStartIndex;
+            if (
+              mode === 'standard' &&
+              typeof nextIdx === 'number' &&
+              Number.isFinite(nextIdx) &&
+              nextIdx >= 0
+            ) {
+              queryClient.setQueryData<PracticeAccountSnapshot | undefined>(
+                accountQueryKey,
+                (old) => {
+                  if (!old) return old;
+                  const prev = old.practiceState?.profile;
+                  const curriculumLabel =
+                    currentCurriculum !== 'pending-opposition'
+                      ? currentCurriculum
+                      : prev?.curriculum ?? DEFAULT_CURRICULUM;
+                  const nextProfile: PracticeProfile = prev
+                    ? { ...prev, nextStandardBatchStartIndex: nextIdx }
+                    : {
+                        userId: sessionUserId,
+                        curriculum: curriculumLabel,
+                        nextStandardBatchStartIndex: nextIdx,
+                        totalAnswered: 0,
+                        totalCorrect: 0,
+                        totalIncorrect: 0,
+                        totalSessions: 0,
+                        lastStudiedAt: null,
+                      };
+                  return {
+                    ...old,
+                    practiceState: {
+                      ...old.practiceState,
+                      profile: nextProfile,
+                    },
+                  };
+                },
+              );
+            }
+
             await Promise.all([
               queryClient.invalidateQueries({ queryKey: accountQueryKey }),
               queryClient.invalidateQueries({ queryKey: scopeRootQueryKey }),
@@ -149,7 +200,7 @@ export const usePracticeDataController = ({
         throw error;
       }
     },
-    [accountQueryKey, queryClient, scopeRootQueryKey, sessionUserId],
+    [accountQueryKey, currentCurriculum, queryClient, scopeRootQueryKey, sessionUserId],
   );
 
   const handleSaveExamTarget = useCallback(

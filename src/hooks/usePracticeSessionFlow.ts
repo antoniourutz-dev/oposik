@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { PracticeQuestionScopeFilter, WeakQuestionInsight } from '../practiceTypes';
 import { resolveReviewContinuation } from './practiceSessionFlowDecisions';
+import type { SyncPracticeAfterSessionOptions } from './usePracticeDataController';
 import { usePracticeSessionLifecycle } from './usePracticeSessionLifecycle';
 import { usePracticeSessionStarters } from './usePracticeSessionStarters';
 
@@ -19,7 +20,10 @@ type UsePracticeSessionFlowOptions = {
   setLoadingQuestions: Dispatch<SetStateAction<boolean>>;
   setQuestionsError: Dispatch<SetStateAction<string | null>>;
   setSyncError: Dispatch<SetStateAction<string | null>>;
-  syncPracticeAfterSession: (questionScope: PracticeQuestionScopeFilter) => Promise<void>;
+  syncPracticeAfterSession: (
+    questionScope: PracticeQuestionScopeFilter,
+    options?: SyncPracticeAfterSessionOptions,
+  ) => Promise<void>;
   weakQuestions: WeakQuestionInsight[];
 };
 
