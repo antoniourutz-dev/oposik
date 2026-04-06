@@ -1,15 +1,41 @@
 import React, { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { BookOpenCheck, ChevronRight, Shuffle } from 'lucide-react';
-import { buildStudyLawDescription } from '../../domain/generalLaw';
-import type { PracticeLawPerformance, PracticeTopicPerformance } from '../../practiceTypes';
+import {
+  BookCopy,
+  BookMarked,
+  BookOpenCheck,
+  ChevronRight,
+  ClipboardList,
+  Shuffle,
+  Zap,
+} from 'lucide-react';
+import {
+  buildStudyLawDescription,
+  canonicalLawGroupKeyFromLeyReferencia,
+  catalogMatchKeyForLaw,
+  countQuestionsPerLpacap39Title,
+  getLpacap39MergedTitles,
+  mergeLawBreakdownRows,
+  resolveStudyLawCardTitle,
+  shouldGroupLpacap39ByTitles,
+} from '../../domain/generalLaw';
+import type {
+  PracticeLawPerformance,
+  PracticeQuestion,
+  PracticeTopicPerformance,
+} from '../../practiceTypes';
+import { getFullCatalogQuestionsForCurriculum } from '../../services/preguntasApi';
 import type { DashboardContentProps } from './types';
 
 type TopicCategoryId = 'common' | 'specific';
-type StudyCategoryId = TopicCategoryId | 'laws';
+/** Identificador de tarjeta de estudio: temas de oposición o `law-${índice}` por norma. */
+type StudyCategoryId = TopicCategoryId | `law-${number}`;
 
 type StudyItem = {
   key: string;
+  /** Ley 39/2015: tarjeta de TÍTULO → inicia test de ese título. */
+  rowKind?: 'section';
   label: string;
   /** Narrativa de territorio (leyes): intención de entrenamiento o título corto. */
   description?: string;
@@ -38,6 +64,8 @@ type StudyCategory = {
   title: string;
   shortTitle: string;
   expectedItemCount: number;
+  /** Leyes: número de bloques territoriales del servidor; null = sin desglose (solo tanda por ley). */
+  lawBlockCount?: number | null;
   totalQuestions: number;
   consolidatedQuestions: number;
   progressPct: number;
@@ -49,12 +77,23 @@ type StudyCategory = {
   emptyText: string;
   items: StudyItem[];
   showCatalogReview: boolean;
+  /** Leyes: listado desde catálogo completo; fuerza subtítulo solo a «N preguntas». */
+  lawCardSubtitlePreguntas?: number;
+  /** Referencia normativa (law_blocks) para test con todo el catálogo de esa ley. */
+  lawReference?: string;
 };
 
 const EXPECTED_TOPICS_BY_SCOPE: Record<TopicCategoryId, number> = {
   common: 19,
   specific: 12,
 };
+
+const LAW_CARD_GRADIENTS = [
+  'from-slate-900 to-indigo-700',
+  'from-indigo-950 to-violet-800',
+  'from-slate-800 to-emerald-900',
+  'from-violet-900 to-slate-800',
+] as const;
 
 const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 const safeDivPct = (num: number, den: number) => (den <= 0 ? 0 : clampPct((num / den) * 100));
@@ -176,6 +215,20 @@ const sortLaws = (laws: PracticeLawPerformance[]) =>
   [...laws].sort((a, b) =>
     a.ley_referencia.localeCompare(b.ley_referencia, 'es', { sensitivity: 'base' }),
   );
+
+const truncateStudyStatement = (text: string, max = 160) => {
+  const oneLine = text.replace(/\s+/g, ' ').trim();
+  if (oneLine.length <= max) return oneLine;
+  return `${oneLine.slice(0, max - 1)}…`;
+};
+
+const sortLawQuestionsForStudy = (qs: PracticeQuestion[]) =>
+  [...qs].sort((a, b) => {
+    const na = a.number ?? Number.POSITIVE_INFINITY;
+    const nb = b.number ?? Number.POSITIVE_INFINITY;
+    if (na !== nb) return na - nb;
+    return a.id.localeCompare(b.id, 'es');
+  });
 
 const sumTopicMasteryTiers = (topics: PracticeTopicPerformance[]): TopicMasteryTiers =>
   topics.reduce(
@@ -307,57 +360,193 @@ const TopicMasteryLevelBar: React.FC<{
   );
 };
 
+/** Solo un botón por TÍTULO de la LPACAP; al pulsar se inicia el test con las preguntas de ese título. */
+function buildLpacap39TitleOnlyCards(
+  sortedLawQuestions: PracticeQuestion[],
+  onStartTitleTest: (titulo: string) => void,
+): StudyItem[] {
+  const counts = countQuestionsPerLpacap39Title(sortedLawQuestions);
+  const titles = getLpacap39MergedTitles();
+  const items: StudyItem[] = [];
+
+  for (const { titulo, articleFrom, articleTo } of titles) {
+    const n = counts.get(titulo) ?? 0;
+    if (n === 0) continue;
+    items.push({
+      rowKind: 'section',
+      key: `titulo-${titulo}`,
+      label: `🔹 ${titulo}`,
+      description: `Artículos: ${articleFrom}–${articleTo}`,
+      badge: '',
+      progress: 0,
+      consolidatedCount: 0,
+      questionCount: n,
+      attempts: 0,
+      action: () => onStartTitleTest(titulo),
+      ariaLabel: `Test del titulo: ${titulo}. ${n} preguntas, articulos ${articleFrom} a ${articleTo}.`,
+    });
+  }
+
+  return items;
+}
+
 const DashboardStudyTab: React.FC<DashboardContentProps> = ({
   activeLearningContext,
   catalogLoading = false,
   learningDashboardV2,
   onStartCatalogReview,
+  onStartRandom,
   onStartLawTraining,
+  onStartLawFullCatalogTraining,
+  onStartLawLpacapTitleTraining,
   onStartTopicTraining,
+  onStartStudyQuickFive,
+  onStartStudySimulacro,
+  onStartStudyAllTest,
+  onStartStudyCommonTest,
+  onStartStudySpecificTest,
+  studyCommonQuestionCount,
+  studySpecificQuestionCount,
   questionsCount,
 }) => {
   const reduceMotion = useReducedMotion();
   const practiceLocked = catalogLoading || questionsCount === 0;
   const [expandedCategory, setExpandedCategory] = useState<StudyCategoryId | null>(null);
   const studyStructure = activeLearningContext?.config.studyStructure ?? 'opposition_topics';
+  const supportsExamMode = activeLearningContext?.config.capabilities.supportsExamMode ?? true;
+  const canStartCommon = studyCommonQuestionCount > 0;
+  const canStartSpecific = studySpecificQuestionCount > 0;
+  const curriculumKey = activeLearningContext?.curriculumKey ?? '';
+
+  const { data: lawCatalogQuestions } = useQuery({
+    queryKey: ['dashboard-study-law-catalog', curriculumKey],
+    queryFn: () => getFullCatalogQuestionsForCurriculum(curriculumKey),
+    enabled: studyStructure === 'law_blocks' && Boolean(curriculumKey),
+    staleTime: 5 * 60_000,
+  });
 
   const categories = useMemo<StudyCategory[]>(() => {
     if (studyStructure === 'law_blocks') {
-      const lawBreakdown = sortLaws(learningDashboardV2?.lawBreakdown ?? []);
-      const totalQuestions = lawBreakdown.reduce((acc, law) => acc + (law.questionCount ?? 0), 0);
-      const consolidatedQuestions = lawBreakdown.reduce(
-        (acc, law) => acc + (law.consolidatedCount ?? 0),
-        0,
+      const lawBreakdown = sortLaws(
+        mergeLawBreakdownRows(learningDashboardV2?.lawBreakdown ?? []),
       );
-      const totalAttempts = lawBreakdown.reduce((acc, law) => acc + (law.attempts ?? 0), 0);
 
-      return [
-        {
-          id: 'laws',
-          title: 'APRENDER LEYES',
-          shortTitle: 'Leyes',
-          expectedItemCount: lawBreakdown.length,
+      if (lawBreakdown.length === 0) {
+        return [
+          {
+            id: 'law-0' as StudyCategoryId,
+            title: 'NORMATIVA',
+            shortTitle: 'Normativa',
+            expectedItemCount: 0,
+            lawBlockCount: null,
+            totalQuestions: 0,
+            consolidatedQuestions: 0,
+            progressPct: 0,
+            totalAttempts: 0,
+            gradient: LAW_CARD_GRADIENTS[0],
+            emptyText: 'No hay leyes disponibles para este workspace todavia.',
+            showCatalogReview: false,
+            items: [],
+          },
+        ];
+      }
+
+      return lawBreakdown.map((law, lawIndex) => {
+        const cardTitle = resolveStudyLawCardTitle(law);
+        const blocks = law.blocks ?? [];
+        const hasBlocks = blocks.length > 0;
+        const totalQuestions = law.questionCount ?? 0;
+        const consolidatedQuestions = law.consolidatedCount ?? 0;
+        const totalAttempts = law.attempts ?? 0;
+
+        const matchKey = catalogMatchKeyForLaw(law);
+        const catalogForLaw =
+          lawCatalogQuestions?.filter(
+            (q) =>
+              Boolean(q.ley_referencia?.trim()) &&
+              canonicalLawGroupKeyFromLeyReferencia(q.ley_referencia) === matchKey,
+          ) ?? [];
+        const sortedLawQuestions = sortLawQuestionsForStudy(catalogForLaw);
+        const useFullQuestionList = sortedLawQuestions.length > 0;
+
+        let items: StudyItem[];
+        let lawBlockCount: number | null;
+        let lawCardSubtitlePreguntas: number | undefined;
+
+        if (useFullQuestionList) {
+          lawBlockCount = null;
+          lawCardSubtitlePreguntas = sortedLawQuestions.length;
+          if (shouldGroupLpacap39ByTitles(matchKey)) {
+            items = buildLpacap39TitleOnlyCards(sortedLawQuestions, (titulo) =>
+              onStartLawLpacapTitleTraining(law.ley_referencia, titulo),
+            );
+          } else {
+            items = sortedLawQuestions.map((q, qi) => ({
+              key: q.id,
+              label: q.number != null ? `N.º ${q.number}` : `Pregunta ${qi + 1}`,
+              description: truncateStudyStatement(q.statement),
+              badge: String(qi + 1).padStart(2, '0'),
+              progress: 0,
+              consolidatedCount: 0,
+              questionCount: 1,
+              attempts: 0,
+              action: () => onStartLawTraining(law.ley_referencia),
+              ariaLabel: `Practicar ley ${cardTitle}: ${
+                q.number != null ? `pregunta ${q.number}` : `pregunta ${qi + 1}`
+              }`,
+            }));
+          }
+        } else if (hasBlocks) {
+          lawBlockCount = blocks.length;
+          lawCardSubtitlePreguntas = undefined;
+          items = blocks.map((block, bi) => ({
+            key: `${law.ley_referencia}::${block.blockId}`,
+            label: block.title,
+            description: block.trainingFocus?.trim() || undefined,
+            badge: String(bi + 1).padStart(2, '0'),
+            progress: safeDivPct(block.consolidatedCount ?? 0, block.questionCount ?? 0),
+            consolidatedCount: block.consolidatedCount ?? 0,
+            questionCount: block.questionCount ?? 0,
+            attempts: block.attempts ?? 0,
+            action: () => onStartLawTraining(law.ley_referencia),
+            ariaLabel: `Practicar bloque ${block.title} · ${cardTitle}`,
+          }));
+        } else {
+          lawBlockCount = null;
+          lawCardSubtitlePreguntas = undefined;
+          items = [
+            {
+              key: law.ley_referencia,
+              label: cardTitle,
+              description: buildStudyLawDescription(law),
+              badge: '01',
+              progress: safeDivPct(consolidatedQuestions, totalQuestions),
+              consolidatedCount: consolidatedQuestions,
+              questionCount: totalQuestions,
+              attempts: totalAttempts,
+              action: () => onStartLawTraining(law.ley_referencia),
+              ariaLabel: `Empezar practica de ley: ${cardTitle}`,
+            },
+          ];
+        }
+
+        return {
+          id: `law-${lawIndex}` as StudyCategoryId,
+          title: cardTitle,
+          shortTitle: cardTitle,
+          expectedItemCount: items.length,
+          lawBlockCount,
+          lawCardSubtitlePreguntas,
           totalQuestions,
           consolidatedQuestions,
           progressPct: safeDivPct(consolidatedQuestions, totalQuestions),
           totalAttempts,
-          gradient: 'from-slate-900 to-indigo-700',
-          emptyText: 'No hay leyes disponibles para este workspace todavia.',
+          gradient: LAW_CARD_GRADIENTS[lawIndex % LAW_CARD_GRADIENTS.length],
+          emptyText: 'No hay bloques disponibles para esta norma todavia.',
           showCatalogReview: false,
-          items: lawBreakdown.map((law, index) => ({
-            key: law.ley_referencia,
-            label: law.shortTitle?.trim() || law.ley_referencia,
-            description: buildStudyLawDescription(law),
-            badge: String(index + 1).padStart(2, '0'),
-            progress: safeDivPct(law.consolidatedCount ?? 0, law.questionCount ?? 0),
-            consolidatedCount: law.consolidatedCount ?? 0,
-            questionCount: law.questionCount ?? 0,
-            attempts: law.attempts ?? 0,
-            action: () => onStartLawTraining(law.ley_referencia),
-            ariaLabel: `Empezar practica de ley: ${law.shortTitle?.trim() || law.ley_referencia}`,
-          })),
-        },
-      ];
+          items,
+        };
+      });
     }
 
     const topicBreakdown = learningDashboardV2?.topicBreakdown ?? [];
@@ -428,8 +617,10 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
       ),
     ];
   }, [
+    lawCatalogQuestions,
     learningDashboardV2?.lawBreakdown,
     learningDashboardV2?.topicBreakdown,
+    onStartLawLpacapTitleTraining,
     onStartLawTraining,
     onStartTopicTraining,
     studyStructure,
@@ -457,6 +648,154 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
         </div>
       </div>
 
+      <section
+        className="rounded-[1.35rem] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] px-4 py-4 shadow-sm sm:px-5 sm:py-5"
+        aria-label="Modos de test"
+      >
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">
+          Modos de test
+        </p>
+        <p className="mt-1 text-[0.95rem] font-semibold leading-snug text-slate-600">
+          {studyStructure === 'law_blocks'
+            ? 'Practica con tandas cortas, simulacro o un bloque del catalogo legal.'
+            : 'Practica con tandas cortas, simulacro o un bloque del temario comun o especifico.'}
+        </p>
+        <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+          <button
+            type="button"
+            disabled={practiceLocked}
+            onClick={() => onStartStudyQuickFive()}
+            className="flex min-h-[3.75rem] items-center gap-3 rounded-2xl border border-violet-200/80 bg-violet-50/90 px-4 py-3 text-left transition-colors hover:bg-violet-100/90 disabled:pointer-events-none disabled:opacity-45"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
+              <Zap className="h-5 w-5" aria-hidden />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[0.92rem] font-black tracking-tight text-slate-900">
+                Test rapido
+              </span>
+              <span className="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-600">
+                5 preguntas aleatorias del catalogo activo
+              </span>
+            </span>
+          </button>
+
+          {supportsExamMode ? (
+            <button
+              type="button"
+              disabled={practiceLocked}
+              onClick={() => onStartStudySimulacro()}
+              className="flex min-h-[3.75rem] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-45"
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700">
+                <ClipboardList className="h-5 w-5" aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[0.92rem] font-black tracking-tight text-slate-900">
+                  Simulacro de examen
+                </span>
+                <span className="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-600">
+                  Tanda larga con tiempo tipo prueba oficial
+                </span>
+              </span>
+            </button>
+          ) : null}
+
+          {studyStructure !== 'law_blocks' ? (
+            <>
+              <button
+                type="button"
+                disabled={practiceLocked || !canStartCommon}
+                onClick={() => onStartStudyCommonTest()}
+                className="flex min-h-[3.75rem] items-center gap-3 rounded-2xl border border-violet-200/70 bg-white px-4 py-3 text-left transition-colors hover:bg-violet-50/60 disabled:pointer-events-none disabled:opacity-45"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-violet-100 bg-violet-50 text-violet-700">
+                  <BookCopy className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[0.92rem] font-black tracking-tight text-slate-900">
+                    Test temario comun
+                  </span>
+                  <span className="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-600">
+                    Bloque estandar solo comun
+                    {canStartCommon ? (
+                      <span className="text-slate-400"> · {studyCommonQuestionCount} preg.</span>
+                    ) : (
+                      <span className="text-amber-700"> · sin datos en este ambito</span>
+                    )}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled={practiceLocked || !canStartSpecific}
+                onClick={() => onStartStudySpecificTest()}
+                className="flex min-h-[3.75rem] items-center gap-3 rounded-2xl border border-emerald-200/70 bg-white px-4 py-3 text-left transition-colors hover:bg-emerald-50/60 disabled:pointer-events-none disabled:opacity-45"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-800">
+                  <BookMarked className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[0.92rem] font-black tracking-tight text-slate-900">
+                    Test temario especifico
+                  </span>
+                  <span className="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-600">
+                    Bloque estandar solo especifico
+                    {canStartSpecific ? (
+                      <span className="text-slate-400"> · {studySpecificQuestionCount} preg.</span>
+                    ) : (
+                      <span className="text-amber-700"> · sin datos en este ambito</span>
+                    )}
+                  </span>
+                </span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={practiceLocked}
+                onClick={() => onStartStudyAllTest()}
+                className="flex min-h-[3.75rem] items-center gap-3 rounded-2xl border border-violet-200/70 bg-white px-4 py-3 text-left transition-colors hover:bg-violet-50/60 disabled:pointer-events-none disabled:opacity-45"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-violet-100 bg-violet-50 text-violet-700">
+                  <BookCopy className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[0.92rem] font-black tracking-tight text-slate-900">
+                    Test normativa
+                  </span>
+                  <span className="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-600">
+                    Bloque estandar del catalogo legal
+                    {questionsCount > 0 ? (
+                      <span className="text-slate-400"> · {questionsCount} preg.</span>
+                    ) : null}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled={practiceLocked}
+                onClick={() => onStartRandom()}
+                className="flex min-h-[3.75rem] items-center gap-3 rounded-2xl border border-emerald-200/70 bg-white px-4 py-3 text-left transition-colors hover:bg-emerald-50/60 disabled:pointer-events-none disabled:opacity-45"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-800">
+                  <Shuffle className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[0.92rem] font-black tracking-tight text-slate-900">
+                    Test aleatorio
+                  </span>
+                  <span className="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-600">
+                    20 preguntas aleatorias del catalogo legal
+                  </span>
+                </span>
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+
       <div className="space-y-4">
         {categories.map((category) => {
           const isExpanded = expandedCategory === category.id;
@@ -468,13 +807,22 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                   category.totalQuestions,
                   category.progressPct,
                 );
+          const fullLawQuestionCount =
+            category.lawCardSubtitlePreguntas ?? category.totalQuestions;
 
           return (
             <div key={category.id} className="space-y-3">
-              <motion.button
-                type="button"
+              <motion.div
+                role="button"
+                tabIndex={0}
                 onClick={() => setExpandedCategory(isExpanded ? null : category.id)}
-                className={`relative w-full overflow-hidden rounded-[32px] bg-gradient-to-br p-6 text-left shadow-xl transition-all duration-500 sm:rounded-[40px] sm:p-8 ${category.gradient} ${
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setExpandedCategory(isExpanded ? null : category.id);
+                  }
+                }}
+                className={`relative w-full cursor-pointer overflow-hidden rounded-[32px] bg-gradient-to-br p-6 text-left shadow-xl transition-all duration-500 sm:rounded-[40px] sm:p-8 ${category.gradient} ${
                   isExpanded
                     ? 'scale-[1.02] ring-4 ring-slate-900/10 ring-offset-4'
                     : 'hover:scale-[1.01]'
@@ -487,8 +835,21 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                 <div className="relative z-10 flex items-center justify-between gap-4">
                   <div className="space-y-1">
                     <h4 className="text-[10px] font-black uppercase tracking-[0.16em] text-white/78 sm:text-[11px]">
-                      {category.expectedItemCount} {studyStructure === 'law_blocks' ? 'bloques' : 'temas'} ·{' '}
-                      {category.totalQuestions} preguntas
+                      {studyStructure === 'law_blocks' ? (
+                        category.lawCardSubtitlePreguntas != null ? (
+                          <>{category.lawCardSubtitlePreguntas} preguntas</>
+                        ) : category.lawBlockCount != null && category.lawBlockCount > 0 ? (
+                          <>
+                            {category.lawBlockCount} bloques · {category.totalQuestions} preguntas
+                          </>
+                        ) : (
+                          <>{category.totalQuestions} preguntas</>
+                        )
+                      ) : (
+                        <>
+                          {category.expectedItemCount} temas · {category.totalQuestions} preguntas
+                        </>
+                      )}
                     </h4>
                     <h3 className="text-[1.45rem] font-black tracking-[-0.035em] text-white sm:text-[1.75rem]">
                       {category.title}
@@ -506,6 +867,26 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                     />
                   </div>
                 </div>
+
+                {studyStructure === 'law_blocks' &&
+                category.lawReference &&
+                category.totalQuestions > 0 ? (
+                  <div className="relative z-10 mt-4 w-full">
+                    <button
+                      type="button"
+                      disabled={practiceLocked}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStartLawFullCatalogTraining(category.lawReference!);
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/40 bg-white/15 px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md transition hover:bg-white/25 disabled:pointer-events-none disabled:opacity-45"
+                    >
+                      <ClipboardList className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                      Test completo · {fullLawQuestionCount}{' '}
+                      {fullLawQuestionCount === 1 ? 'pregunta' : 'preguntas'}
+                    </button>
+                  </div>
+                ) : null}
 
                 <div className="relative z-10 mt-6 sm:mt-8">
                   {category.masteryTiers && tierSum(category.masteryTiers) > 0 ? (
@@ -532,7 +913,7 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                     </div>
                   )}
                 </div>
-              </motion.button>
+              </motion.div>
 
               <AnimatePresence>
                 {isExpanded ? (
@@ -541,7 +922,11 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.35, ease: 'circOut' }}
-                    className="space-y-3 overflow-hidden px-1"
+                    className={`space-y-3 px-1 ${
+                      studyStructure === 'law_blocks'
+                        ? 'max-h-[min(70vh,36rem)] overflow-y-auto overflow-x-hidden pr-1'
+                        : 'overflow-hidden'
+                    }`}
                   >
                     {category.showCatalogReview ? (
                       <motion.button
@@ -564,6 +949,42 @@ const DashboardStudyTab: React.FC<DashboardContentProps> = ({
                     ) : null}
 
                     {category.items.map((item, index) => {
+                      if (item.rowKind === 'section') {
+                        return (
+                          <motion.button
+                            key={`${category.id}:${item.key}`}
+                            type="button"
+                            initial={reduceMotion ? false : { x: -12, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: index * 0.02 }}
+                            onClick={item.action}
+                            className="flex w-full items-start gap-3 rounded-[22px] border border-slate-200/90 bg-white px-4 py-4 text-left shadow-sm transition hover:border-violet-200/80 hover:bg-slate-50/90 sm:gap-4 sm:px-5 sm:py-4"
+                            aria-label={item.ariaLabel}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <h5 className="text-[0.95rem] font-black leading-snug tracking-[-0.02em] text-slate-900">
+                                {item.label}
+                              </h5>
+                              {item.description ? (
+                                <p className="mt-2 whitespace-pre-line text-[11px] font-semibold leading-relaxed text-slate-600">
+                                  {item.description}
+                                </p>
+                              ) : null}
+                              {item.questionCount > 0 ? (
+                                <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                  {item.questionCount}{' '}
+                                  {item.questionCount === 1 ? 'pregunta' : 'preguntas'}
+                                </p>
+                              ) : null}
+                            </div>
+                            <ChevronRight
+                              className="mt-0.5 h-5 w-5 shrink-0 text-slate-400"
+                              aria-hidden
+                            />
+                          </motion.button>
+                        );
+                      }
+
                       const rowTiers = item.masteryTiers;
                       const showTierBar =
                         rowTiers !== undefined && tierSum(rowTiers) > 0 && studyStructure !== 'law_blocks';

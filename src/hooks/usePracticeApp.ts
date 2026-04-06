@@ -143,6 +143,29 @@ export const usePracticeApp = () => {
     profile,
     questionsCount,
   );
+
+  const studyTopicScopeCounts = useMemo(() => {
+    const topics = learningDashboardV2?.topicBreakdown ?? [];
+    let common = 0;
+    let specific = 0;
+    for (const t of topics) {
+      if (t.scope === 'common') common += t.questionCount ?? 0;
+      if (t.scope === 'specific') specific += t.questionCount ?? 0;
+    }
+    return { common, specific };
+  }, [learningDashboardV2?.topicBreakdown]);
+
+  const recommendedBatchStartIndexCommon = useMemo(
+    () =>
+      computeRecommendedBatchStartIndex('common', profile, studyTopicScopeCounts.common),
+    [profile, studyTopicScopeCounts.common],
+  );
+  const recommendedBatchStartIndexSpecific = useMemo(
+    () =>
+      computeRecommendedBatchStartIndex('specific', profile, studyTopicScopeCounts.specific),
+    [profile, studyTopicScopeCounts.specific],
+  );
+
   const totalBatches = computeTotalBatches(questionsCount, PRACTICE_BATCH_SIZE);
   const recommendedBatchNumber = computeRecommendedBatchNumber(
     recommendedBatchStartIndex,
@@ -230,6 +253,8 @@ export const usePracticeApp = () => {
     startSimulacro,
     startStandardSession,
     startLawSession,
+    startLawFullCatalogSession,
+    startLawLpacapTitleSession,
     startTopicSession,
     startWeakReview,
     view,
@@ -248,6 +273,40 @@ export const usePracticeApp = () => {
     syncPracticeAfterSession,
     weakQuestions,
   });
+
+  const onStartStudyQuickFive = useCallback(() => {
+    void startQuickFive('all');
+  }, [startQuickFive]);
+
+  const onStartStudySimulacro = useCallback(() => {
+    void startSimulacro('all');
+  }, [startSimulacro]);
+
+  const onStartStudyAllTest = useCallback(() => {
+    void startStandardSession(recommendedBatchStartIndex, 'all');
+  }, [startStandardSession, recommendedBatchStartIndex]);
+
+  const onStartStudyCommonTest = useCallback(() => {
+    void startStandardSession(recommendedBatchStartIndexCommon, 'common');
+  }, [startStandardSession, recommendedBatchStartIndexCommon]);
+
+  const onStartStudySpecificTest = useCallback(() => {
+    void startStandardSession(recommendedBatchStartIndexSpecific, 'specific');
+  }, [startStandardSession, recommendedBatchStartIndexSpecific]);
+
+  const onStartLawLpacapTitleTraining = useCallback(
+    (ley: string, titulo: string) => {
+      void startLawLpacapTitleSession(ley, titulo);
+    },
+    [startLawLpacapTitleSession],
+  );
+
+  const onStartLawFullCatalogTraining = useCallback(
+    (ley: string) => {
+      void startLawFullCatalogSession(ley);
+    },
+    [startLawFullCatalogSession],
+  );
 
   const topBarSubtitle = useMemo(() => computeTopBarSubtitle(view, activeTab), [view, activeTab]);
 
@@ -349,7 +408,16 @@ export const usePracticeApp = () => {
     weakCategories,
     weakQuestions,
     onStartLawTraining: startLawSession,
+    onStartLawFullCatalogTraining,
+    onStartLawLpacapTitleTraining,
     onStartTopicTraining: startTopicSession,
+    onStartStudyQuickFive,
+    onStartStudySimulacro,
+    onStartStudyAllTest,
+    onStartStudyCommonTest,
+    onStartStudySpecificTest,
+    studyCommonQuestionCount: studyTopicScopeCounts.common,
+    studySpecificQuestionCount: studyTopicScopeCounts.specific,
     pauseActiveSession,
     resumeActiveSession,
     setActiveTab,

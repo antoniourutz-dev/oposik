@@ -11,7 +11,12 @@ import {
   SIMULACRO_BATCH_SIZE,
 } from '../practiceConfig';
 import {
+  filterQuestionsForLpacap39Title,
+} from '../domain/generalLaw/lpacap39ArticleStructure';
+import { canonicalLawGroupKeyFromLeyReferencia } from '../domain/generalLaw/lawBreakdownGrouping';
+import {
   getAntiTrapPracticeBatch,
+  getFullCatalogQuestionsForCurriculum,
   getFullCatalogQuestionsForScope,
   getGuestPracticeBatch,
   getLawPracticeBatch,
@@ -36,6 +41,15 @@ import {
   buildWeakestPracticeSession,
 } from '../services/practiceSessionFactory';
 import { GUEST_MAX_BLOCKS } from './practiceAppStorage';
+
+function shuffleCopy<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
 
 export type SessionStarterCommandResult = {
   session: ActivePracticeSession | null;
@@ -283,6 +297,57 @@ export const loadLawSessionCommand = async ({
 
   return {
     session: buildLawPracticeSession(lawQuestions, law),
+  };
+};
+
+/** Test con todas las preguntas del catálogo que pertenecen a la misma norma que `lawReference`. */
+export const loadLawFullCatalogSessionCommand = async ({
+  lawReference,
+  curriculum = DEFAULT_CURRICULUM,
+}: {
+  lawReference: string;
+  curriculum?: string;
+}): Promise<SessionStarterCommandResult> => {
+  const all = await getFullCatalogQuestionsForCurriculum(curriculum);
+  const matchKey = canonicalLawGroupKeyFromLeyReferencia(lawReference);
+  const filtered = all.filter(
+    (q) =>
+      Boolean(q.ley_referencia?.trim()) &&
+      canonicalLawGroupKeyFromLeyReferencia(q.ley_referencia) === matchKey,
+  );
+  if (filtered.length === 0) {
+    return { session: null };
+  }
+  const picked = shuffleCopy(filtered);
+  const title = `${lawReference.trim()} · Test completo`;
+  return {
+    session: buildLawPracticeSession(picked, title),
+  };
+};
+
+/** Sesión de práctica acotada a un TÍTULO de la Ley 39/2015 (todas las preguntas del catálogo en ese título). */
+export const loadLawLpacapTitleSessionCommand = async ({
+  lawReference,
+  titulo,
+  curriculum = DEFAULT_CURRICULUM,
+}: {
+  lawReference: string;
+  titulo: string;
+  curriculum?: string;
+}): Promise<SessionStarterCommandResult> => {
+  const all = await getFullCatalogQuestionsForCurriculum(curriculum);
+  const for39 = all.filter(
+    (q) => canonicalLawGroupKeyFromLeyReferencia(q.ley_referencia) === 'norm:ley:39/2015',
+  );
+  const filtered = filterQuestionsForLpacap39Title(for39, titulo);
+  if (filtered.length === 0) {
+    return { session: null };
+  }
+  const picked = shuffleCopy(filtered);
+
+  const sessionTitle = `${lawReference} · ${titulo}`;
+  return {
+    session: buildLawPracticeSession(picked, sessionTitle),
   };
 };
 

@@ -1,0 +1,4 @@
+law_key,block_key,title,sort_order,depth,parent_block_key,status,min_questions_for_training,training_focus
+ley_ejemplo_lpacap,titulo_preliminar,Título preliminar,0,0,,draft,8,
+ley_ejemplo_lpacap,titulo_i,Título I. Disposiciones generales,1,0,,draft,8,Foco en artículos 1-10
+estatuto_autonomia_pais_vasco,eapv_general,Estatuto completo,0,0,,published,8,

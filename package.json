@@ -16,6 +16,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "rotate:internal-auth-emails": "node scripts/rotate-internal-auth-emails.mjs",
+    "import:general-laws": "node scripts/import-general-laws/import-general-laws.mjs",
+    "import:general-law-questions": "node scripts/import-general-laws/import-general-law-questions.mjs",
     "supabase:login": "npx supabase login",
     "supabase:link": "npx supabase link",
     "supabase:config:push": "npx supabase config push",

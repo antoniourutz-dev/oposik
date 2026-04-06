@@ -100,7 +100,16 @@ const PracticeAppShell: React.FC = () => {
     weakCategories,
     weakQuestions,
     onStartLawTraining,
+    onStartLawFullCatalogTraining,
+    onStartLawLpacapTitleTraining,
     onStartTopicTraining,
+    onStartStudyQuickFive,
+    onStartStudySimulacro,
+    onStartStudyAllTest,
+    onStartStudyCommonTest,
+    onStartStudySpecificTest,
+    studyCommonQuestionCount,
+    studySpecificQuestionCount,
     setActiveTab,
     resumeActiveSession,
     textHighlightingEnabled,
@@ -380,7 +389,16 @@ const PracticeAppShell: React.FC = () => {
                           onReloadQuestions={() => void reloadPracticeData()}
                           onSaveExamTarget={(payload) => void handleSaveExamTarget(payload)}
                           onStartLawTraining={onStartLawTraining}
+                          onStartLawFullCatalogTraining={onStartLawFullCatalogTraining}
+                          onStartLawLpacapTitleTraining={onStartLawLpacapTitleTraining}
                           onStartTopicTraining={onStartTopicTraining}
+                          onStartStudyQuickFive={onStartStudyQuickFive}
+                          onStartStudySimulacro={onStartStudySimulacro}
+                          onStartStudyAllTest={onStartStudyAllTest}
+                          onStartStudyCommonTest={onStartStudyCommonTest}
+                          onStartStudySpecificTest={onStartStudySpecificTest}
+                          studyCommonQuestionCount={studyCommonQuestionCount}
+                          studySpecificQuestionCount={studySpecificQuestionCount}
                           onStartCatalogReview={startCatalogReview}
                           onSignOut={() => void handleSignOut()}
                           textHighlightingEnabled={textHighlightingEnabled}

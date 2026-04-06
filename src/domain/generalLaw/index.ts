@@ -22,3 +22,25 @@ export {
   pickWeakestRecommendableBlock,
   resolveLawTerritoryContinuityHint,
 } from './lawTerritory';
+export {
+  canonicalLawGroupKey,
+  canonicalLawGroupKeyFromLeyReferencia,
+  canonicalLawGroupKeyFromText,
+  catalogMatchKeyForLaw,
+  mergeLawBreakdownRows,
+  resolveStudyLawCardTitle,
+} from './lawBreakdownGrouping';
+export type { Lpacap39Section } from './lpacap39ArticleStructure';
+export {
+  countQuestionsPerLpacap39Title,
+  extractLpacapArticleNumber,
+  filterQuestionsForLpacap39Title,
+  filterQuestionsInLpacap39Section,
+  filterUnclassifiedLpacap39Questions,
+  findLpacap39SectionByIdentity,
+  formatLpacap39SectionLines,
+  getLpacap39MergedTitles,
+  groupQuestionsByLpacap39Sections,
+  sectionIdentity,
+  shouldGroupLpacap39ByTitles,
+} from './lpacap39ArticleStructure';

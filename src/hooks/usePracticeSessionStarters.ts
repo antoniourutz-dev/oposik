@@ -100,19 +100,23 @@ export const usePracticeSessionStarters = ({
     });
   }, [curriculum, executeStarter, selectedQuestionScope]);
 
-  const startQuickFiveSession = useCallback(async () => {
-    await executeStarter({
-      command: async () => {
-        const { loadQuickFiveSessionCommand } = await import('./practiceSessionStarterCommands');
-        return loadQuickFiveSessionCommand({
-          questionScope: selectedQuestionScope,
-          curriculum,
-        });
-      },
-      emptyMessage: 'No se ha podido preparar la partida rapida con el catalogo actual.',
-      fallbackErrorMessage: 'No se ha podido iniciar la partida rapida.',
-    });
-  }, [curriculum, executeStarter, selectedQuestionScope]);
+  const startQuickFiveSession = useCallback(
+    async (scopeOverride?: PracticeQuestionScopeFilter) => {
+      const questionScope = scopeOverride ?? selectedQuestionScope;
+      await executeStarter({
+        command: async () => {
+          const { loadQuickFiveSessionCommand } = await import('./practiceSessionStarterCommands');
+          return loadQuickFiveSessionCommand({
+            questionScope,
+            curriculum,
+          });
+        },
+        emptyMessage: 'No se ha podido preparar la partida rapida con el catalogo actual.',
+        fallbackErrorMessage: 'No se ha podido iniciar la partida rapida.',
+      });
+    },
+    [curriculum, executeStarter, selectedQuestionScope],
+  );
 
   const startGuestSession = useCallback(async () => {
     if (guestBlocksRemaining <= 0) {
@@ -168,19 +172,23 @@ export const usePracticeSessionStarters = ({
     });
   }, [curriculum, executeStarter, selectedQuestionScope, weakQuestions]);
 
-  const startSimulacroSession = useCallback(async () => {
-    await executeStarter({
-      command: async () => {
-        const { loadSimulacroSessionCommand } = await import('./practiceSessionStarterCommands');
-        return loadSimulacroSessionCommand({
-          questionScope: selectedQuestionScope,
-          curriculum,
-        });
-      },
-      emptyMessage: 'No se ha podido preparar el simulacro con el catalogo actual.',
-      fallbackErrorMessage: 'No se ha podido preparar el simulacro.',
-    });
-  }, [curriculum, executeStarter, selectedQuestionScope]);
+  const startSimulacroSession = useCallback(
+    async (scopeOverride?: PracticeQuestionScopeFilter) => {
+      const questionScope = scopeOverride ?? selectedQuestionScope;
+      await executeStarter({
+        command: async () => {
+          const { loadSimulacroSessionCommand } = await import('./practiceSessionStarterCommands');
+          return loadSimulacroSessionCommand({
+            questionScope,
+            curriculum,
+          });
+        },
+        emptyMessage: 'No se ha podido preparar el simulacro con el catalogo actual.',
+        fallbackErrorMessage: 'No se ha podido preparar el simulacro.',
+      });
+    },
+    [curriculum, executeStarter, selectedQuestionScope],
+  );
 
   const startWeakReviewSession = useCallback(async () => {
     await executeStarter({
@@ -207,9 +215,9 @@ export const usePracticeSessionStarters = ({
     startGuest: () => void startGuestSession(),
     startGuestSession,
     startMixed: () => void startMixedSession(),
-    startQuickFive: () => void startQuickFiveSession(),
+    startQuickFive: startQuickFiveSession,
     startRandom: () => void startRandomSession(),
-    startSimulacro: () => void startSimulacroSession(),
+    startSimulacro: startSimulacroSession,
     startWeakReview: () => void startWeakReviewSession(),
     startStandardSession,
     startLawSession: (law: string) =>
@@ -220,6 +228,25 @@ export const usePracticeSessionStarters = ({
         },
         emptyMessage: `No se han encontrado preguntas para la ley: ${law}.`,
         fallbackErrorMessage: 'No se ha podido iniciar el entrenamiento por ley.',
+      }),
+    startLawFullCatalogSession: (lawReference: string) =>
+      void executeStarter({
+        command: async () => {
+          const { loadLawFullCatalogSessionCommand } =
+            await import('./practiceSessionStarterCommands');
+          return loadLawFullCatalogSessionCommand({ lawReference, curriculum });
+        },
+        emptyMessage: 'No hay preguntas de esta ley en el catalogo.',
+        fallbackErrorMessage: 'No se ha podido iniciar el test completo de la ley.',
+      }),
+    startLawLpacapTitleSession: (lawReference: string, titulo: string) =>
+      void executeStarter({
+        command: async () => {
+          const { loadLawLpacapTitleSessionCommand } = await import('./practiceSessionStarterCommands');
+          return loadLawLpacapTitleSessionCommand({ lawReference, titulo, curriculum });
+        },
+        emptyMessage: 'No hay preguntas de este titulo en el catalogo.',
+        fallbackErrorMessage: 'No se ha podido iniciar el test por titulo.',
       }),
     startTopicSession: (topic: string) =>
       void executeStarter({

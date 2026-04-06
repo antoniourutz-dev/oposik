@@ -78,6 +78,8 @@ export const usePracticeSessionFlow = ({
     startWeakReview,
     startStandardSession,
     startLawSession,
+    startLawFullCatalogSession,
+    startLawLpacapTitleSession,
     startTopicSession,
     startCatalogReview,
   } = usePracticeSessionStarters({
@@ -145,6 +147,8 @@ export const usePracticeSessionFlow = ({
     startGenericRecommended,
     startGuest,
     startLawSession,
+    startLawFullCatalogSession,
+    startLawLpacapTitleSession,
     startTopicSession,
     startMixed,
     startQuickFive,

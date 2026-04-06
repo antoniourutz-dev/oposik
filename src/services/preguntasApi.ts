@@ -383,3 +383,28 @@ export const getFullCatalogQuestionsForScope = async (
     { curriculum, scope },
   );
 };
+
+/** Catálogo completo del currículo de práctica (p. ej. leyes generales), ámbito `all`. */
+export const getFullCatalogQuestionsForCurriculum = async (
+  curriculum: string,
+): Promise<PracticeQuestion[]> => {
+  return trackAsyncOperation(
+    'preguntas.getFullCatalogQuestionsForCurriculum',
+    async () => {
+      const { totalQuestions } = await getPracticeCatalogSummary(curriculum, 'all');
+      if (totalQuestions <= 0) return [];
+
+      const merged: PracticeQuestion[] = [];
+      let start = 0;
+      while (start < totalQuestions) {
+        const batch = await getStandardPracticeBatch(start, PRACTICE_BATCH_SIZE, curriculum, 'all');
+        if (batch.length === 0) break;
+        merged.push(...batch);
+        start += batch.length;
+        if (batch.length < PRACTICE_BATCH_SIZE) break;
+      }
+      return dedupeQuestionsById(merged);
+    },
+    { curriculum },
+  );
+};

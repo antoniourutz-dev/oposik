@@ -69,9 +69,22 @@ export type DashboardScreenProps = {
   onStartFromBeginning: () => void;
   onStartWeakReview: () => void;
   onStartLawTraining: (ley: string) => void;
+  /** Normativa: test con todas las preguntas del catálogo de esa ley. */
+  onStartLawFullCatalogTraining: (ley: string) => void;
+  /** Ley 39/2015: test con preguntas de un TÍTULO (LPACAP). */
+  onStartLawLpacapTitleTraining: (ley: string, titulo: string) => void;
   onStartTopicTraining: (topic: string) => void;
   /** Recorrido pregunta a pregunta de todo el catálogo (solo común o solo específico). */
   onStartCatalogReview: (scope: 'common' | 'specific') => void;
+  /** Test rápido (5 preguntas), simulacro y bloques por ámbito; pestaña Estudio. */
+  onStartStudyQuickFive: () => void;
+  onStartStudySimulacro: () => void;
+  /** Bloque estándar del catálogo activo (scope `all`). Útil en aprender leyes. */
+  onStartStudyAllTest: () => void;
+  onStartStudyCommonTest: () => void;
+  onStartStudySpecificTest: () => void;
+  studyCommonQuestionCount: number;
+  studySpecificQuestionCount: number;
   onReloadQuestions: () => void;
   onSaveExamTarget: (payload: DashboardExamTargetPayload) => void;
   onSignOut: () => void;

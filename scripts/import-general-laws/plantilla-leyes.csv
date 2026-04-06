@@ -1,0 +1,3 @@
+law_key,title,short_title,legal_reference_label,sort_order,status,training_intent,min_questions_to_publish
+ley_ejemplo_lpacap,Ley de ejemplo del Procedimiento Administrativo Común de las Administraciones Públicas,Ley 39/2015 LPACAP,Ley 39/2015,1,draft,Objetivo de entrenamiento para esta norma (opcional),30
+estatuto_autonomia_pais_vasco,Estatuto de Autonomía del País Vasco,Estatuto País Vasco,Ley Orgánica 3/1979,3,published,Norma basica del ordenamiento autonomico vasco.,30
